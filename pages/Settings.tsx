@@ -15,7 +15,11 @@ import {
   AlertCircle,
   ChevronRight,
   Copy,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck,
+  Send,
+  Globe,
+  Info
 } from 'lucide-react';
 import { Settings as SettingsType, User } from '../types';
 import { useStore } from '../store';
@@ -125,6 +129,102 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, onAddCategory }
           </div>
         </div>
 
+        {/* Email Delivery Status & Domain Guide */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col">
+          <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+            <Send size={20} className="text-indigo-600" /> Email Delivery Status
+          </h2>
+          <div className="space-y-4 flex-1">
+            <div className={`p-4 rounded-2xl flex items-start gap-3 ${user?.isVerified ? 'bg-emerald-50 border border-emerald-100' : 'bg-rose-50 border border-rose-100'}`}>
+              {user?.isVerified ? (
+                <CheckCircle2 size={24} className="text-emerald-500 shrink-0" />
+              ) : (
+                <AlertCircle size={24} className="text-rose-500 shrink-0" />
+              )}
+              <div>
+                <p className={`text-sm font-bold ${user?.isVerified ? 'text-emerald-800' : 'text-rose-800'}`}>
+                  {user?.isVerified ? 'SMTP Authenticated' : 'Action Required: Verify Custom Domain'}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {user?.isVerified 
+                    ? 'Your email delivery system (Resend + Supabase) is fully active.' 
+                    : 'A custom domain is required. Free subdomains (e.g., .netlify.app) cannot be used for SMTP.'}
+                </p>
+              </div>
+            </div>
+
+            {!user?.isVerified && (
+              <div className="text-[11px] space-y-3 text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <div className="flex items-center gap-2 text-slate-900 font-bold">
+                  <Globe size={14} className="text-indigo-600" /> Domain Checklist:
+                </div>
+                <ul className="space-y-2">
+                  <li className="flex gap-2">
+                    <span className="text-indigo-600 font-bold">1.</span>
+                    <span>Purchase a custom domain (e.g., <strong>stockbit.pro</strong> or <strong>yourstore.com</strong>).</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-indigo-600 font-bold">2.</span>
+                    <span>Enter this domain in Resend. Free .netlify.app subdomains will fail verification.</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-indigo-600 font-bold">3.</span>
+                    <span>Copy the <strong>MX</strong> and <strong>SPF</strong> records from Resend to your domain registrar.</span>
+                  </li>
+                </ul>
+                <div className="pt-2 border-t border-slate-200 mt-2 flex items-center justify-between">
+                   <a href="https://resend.com/domains" target="_blank" className="text-indigo-600 font-bold flex items-center gap-1 hover:underline">
+                    Resend Domains <ExternalLink size={12} />
+                  </a>
+                  <span className="text-slate-400 italic flex items-center gap-1">
+                    <Info size={10} /> Needs DNS access
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Notification Settings */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+            <Bell size={20} className="text-indigo-600" /> Notification Settings
+          </h2>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <div className="flex items-center gap-3">
+                <Mail className="text-slate-400" size={20} />
+                <div>
+                  <p className="text-sm font-bold text-slate-900">Email Alerts</p>
+                  <p className="text-xs text-slate-500">Send notifications for low stock events</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer" data-tooltip="Enable or disable email notifications">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer" 
+                  checked={settings.lowStockEmailAlerts}
+                  onChange={() => onUpdate({ lowStockEmailAlerts: !settings.lowStockEmailAlerts })}
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Alert Email Address</label>
+              <input 
+                type="email" 
+                placeholder="alerts@company.com"
+                data-tooltip="Destination address for automated stock alerts"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
+                value={notifEmail}
+                onChange={e => setNotifEmail(e.target.value)}
+              />
+              <p className="text-[10px] text-slate-400 mt-1">Leave empty to use your account email.</p>
+            </div>
+          </div>
+        </div>
+
         {/* Subscription & Billing Section */}
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col">
           <div className="flex items-center justify-between mb-6">
@@ -168,53 +268,13 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, onAddCategory }
           </button>
         </div>
 
-        {/* Notification Settings */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-            <Bell size={20} className="text-indigo-600" /> Notification Settings
-          </h2>
-          <div className="space-y-6">
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <div className="flex items-center gap-3">
-                <Mail className="text-slate-400" size={20} />
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Email Alerts</p>
-                  <p className="text-xs text-slate-500">Send notifications for low stock events</p>
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer" data-tooltip="Enable or disable email notifications">
-                <input 
-                  type="checkbox" 
-                  className="sr-only peer" 
-                  checked={settings.lowStockEmailAlerts}
-                  onChange={() => onUpdate({ lowStockEmailAlerts: !settings.lowStockEmailAlerts })}
-                />
-                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-              </label>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Alert Email Address</label>
-              <input 
-                type="email" 
-                placeholder="alerts@company.com"
-                data-tooltip="Destination address for automated stock alerts"
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
-                value={notifEmail}
-                onChange={e => setNotifEmail(e.target.value)}
-              />
-              <p className="text-[10px] text-slate-400 mt-1">Leave empty to use your account email.</p>
-            </div>
-          </div>
-        </div>
-
         {/* Categories */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm lg:col-span-2">
           <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
             <Tag size={20} className="text-indigo-600" /> Category Management
           </h2>
           
-          <form onSubmit={handleAddCat} className="flex gap-2 mb-6">
+          <form onSubmit={handleAddCat} className="flex gap-2 mb-6 max-w-md">
             <input 
               type="text" 
               placeholder="Add new category..."

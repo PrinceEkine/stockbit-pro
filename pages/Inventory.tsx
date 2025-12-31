@@ -334,7 +334,12 @@ const Inventory: React.FC<InventoryProps> = ({ products, suppliers, onAdd, onUpd
                 const expiryStatus = getExpiryStatus(product.expiryDate);
 
                 return (
-                  <tr key={product.id} className={`hover:bg-slate-50 transition-colors group ${isCritical ? 'bg-rose-50/40' : ''}`}>
+                  <tr 
+                    key={product.id} 
+                    className={`hover:bg-slate-50 transition-colors group ${
+                      isCritical ? 'bg-rose-50 border-l-4 border-l-rose-500' : 'border-l-4 border-l-transparent'
+                    }`}
+                  >
                     <td className="px-6 py-4">
                       <button 
                         onClick={() => showQr(product.sku)}
@@ -346,7 +351,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, suppliers, onAdd, onUpd
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold shrink-0 ${isCritical ? 'bg-rose-600 text-white' : 'bg-indigo-50 text-indigo-600'}`}>
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold shrink-0 ${isCritical ? 'bg-rose-600 text-white shadow-lg' : 'bg-indigo-50 text-indigo-600'}`}>
                           {product.name.charAt(0)}
                         </div>
                         <div>

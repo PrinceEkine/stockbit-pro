@@ -44,6 +44,7 @@ export interface Product {
   lastUpdated: string;
   batchNumber: string;
   expiryDate: string;
+  createdAt?: string; // For stock aging
 }
 
 export interface SaleItem {
@@ -60,6 +61,9 @@ export interface Sale {
   totalPrice: number;
   totalCost: number;
   date: string;
+  customerName?: string;
+  isChecked?: boolean;
+  isArchived?: boolean;
 }
 
 export interface Supplier {
@@ -94,6 +98,7 @@ export enum View {
   Suppliers = 'suppliers',
   AIInsights = 'ai-insights',
   Stocktake = 'stocktake',
+  Reports = 'reports',
   Settings = 'settings',
   UserManagement = 'user-management',
   LaunchCenter = 'launch-center'

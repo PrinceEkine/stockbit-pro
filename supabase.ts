@@ -1,8 +1,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Environment variables are typically set in the deployment platform (e.g., Netlify, Vercel)
-const supabaseUrl = (process.env.SUPABASE_URL as string) || 'https://YOUR_PROJECT_REF.supabase.co';
-const supabaseAnonKey = (process.env.SUPABASE_ANON_KEY as string) || 'YOUR_ANON_PUBLIC_KEY';
+// Supabase project credentials provided by the user
+const supabaseUrl = 'https://knrpqdehivlprvzjkcgx.supabase.co';
+const supabaseAnonKey = 'sb_publishable_BQ7eX5q41ntXeuIuQ7HvnA_UwKJHSBz';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

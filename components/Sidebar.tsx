@@ -13,7 +13,8 @@ import {
   User,
   ShieldCheck,
   HelpCircle,
-  Rocket
+  Rocket,
+  BarChart3
 } from 'lucide-react';
 import { View, User as UserType } from '../types';
 
@@ -34,7 +35,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange, isOpen, set
     { id: View.Dashboard, icon: LayoutDashboard, label: 'Dashboard', tooltip: 'View overall business performance' },
     { id: View.Inventory, icon: Box, label: 'Inventory', tooltip: 'Manage products and stock levels' },
     { id: View.Stocktake, icon: ClipboardCheck, label: 'Stocktaking', tooltip: 'Audit and reconcile physical inventory' },
-    { id: View.Sales, icon: ShoppingCart, label: 'Sales', tooltip: 'Record transactions and view history' },
+    { id: View.Sales, icon: ShoppingCart, label: 'Sales & POS', tooltip: 'Record transactions and view history' },
+    { id: View.Reports, icon: BarChart3, label: 'Reports', tooltip: 'Deep financial and customer analytics' },
     { id: View.Suppliers, icon: Users, label: 'Suppliers', tooltip: 'Manage procurement contacts' },
     { id: View.AIInsights, icon: Sparkles, label: 'AI Insights', tooltip: 'AI-driven stock optimization tips' },
     { id: View.Settings, icon: Settings, label: 'Settings', tooltip: 'Configure system preferences' },
