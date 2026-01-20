@@ -2,9 +2,11 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   ShoppingCart, Search, Plus, Minus, X, Scan, User, Edit3, ChevronRight, Loader2, Printer, 
-  Trash2, ReceiptText, Banknote, CreditCard, History, Package, ChevronUp, ChevronDown, ShieldCheck
+  Trash2, ReceiptText, Banknote, CreditCard, History, Package, ChevronUp, ChevronDown, ShieldCheck,
+  CheckCircle2
 } from 'lucide-react';
 import { Sale, Product, Settings, SaleItem, User as UserType, PaymentMethod } from '../types';
+import ScannerModal from '../components/ScannerModal';
 
 interface SalesProps {
   sales: Sale[];
@@ -19,6 +21,8 @@ interface CartTab {
   items: SaleItem[];
   customerName: string;
   label: string;
+  date?: string;
+  ref?: string;
 }
 
 const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, settings, currentUser }) => {
@@ -31,6 +35,9 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [lastSaleForPrint, setLastSaleForPrint] = useState<CartTab | null>(null);
+  
+  // Feedback for continuous scanning
+  const [scanFeedback, setScanFeedback] = useState<{name: string, qty: number} | null>(null);
   
   const [carts, setCarts] = useState<CartTab[]>([{ 
     id: '1', 
@@ -73,30 +80,62 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
   };
 
   const handleProductSelection = useCallback((productId: string) => {
-    const p = products.find(prod => prod.id === productId);
-    if (!p || p.quantity <= 0) return;
-    
-    let salePrice = p.price;
-    if (settings.isPromoActive) salePrice *= (1 - (settings.promoDiscount / 100));
+    let finalQty = 0;
+    let productName = '';
 
-    const cartItems = [...currentCart.items];
-    const idx = cartItems.findIndex(item => item.productId === p.id);
-    
-    if (idx > -1) {
-      cartItems[idx] = { ...cartItems[idx], quantity: Math.min(cartItems[idx].quantity + 1, p.quantity) };
-    } else {
-      cartItems.push({ 
-        productId: p.id, 
-        productName: p.name, 
-        quantity: 1, 
-        price: salePrice, 
-        costPrice: p.cost_price 
-      });
+    setCarts(prevCarts => {
+      const newCarts = [...prevCarts];
+      const cart = { ...newCarts[activeCartIndex] };
+      const p = products.find(prod => prod.id === productId);
+      
+      if (!p || p.quantity <= 0) return prevCarts;
+      productName = p.name;
+      
+      let salePrice = p.price;
+      if (settings.isPromoActive) salePrice *= (1 - (settings.promoDiscount / 100));
+
+      const cartItems = [...cart.items];
+      const idx = cartItems.findIndex(item => item.productId === p.id);
+      
+      if (idx > -1) {
+        const nextQty = Math.min(cartItems[idx].quantity + 1, p.quantity);
+        cartItems[idx] = { ...cartItems[idx], quantity: nextQty };
+        finalQty = nextQty;
+      } else {
+        cartItems.push({ 
+          productId: p.id, 
+          productName: p.name, 
+          quantity: 1, 
+          price: salePrice, 
+          costPrice: p.cost_price 
+        });
+        finalQty = 1;
+      }
+      
+      cart.items = cartItems;
+      newCarts[activeCartIndex] = cart;
+      return newCarts;
+    });
+
+    // Provide immediate visual feedback for the scan
+    if (productName) {
+      setScanFeedback({ name: productName, qty: finalQty });
+      setTimeout(() => setScanFeedback(null), 2000);
     }
-    
-    updateActiveCart({ items: cartItems });
+
     if (navigator.vibrate) navigator.vibrate(10);
-  }, [products, settings.isPromoActive, settings.promoDiscount, activeCartIndex, currentCart.items]);
+  }, [products, settings.isPromoActive, settings.promoDiscount, activeCartIndex]);
+
+  const handleScanResult = useCallback((res: any) => {
+    const skuRaw = typeof res === 'string' ? res : res?.sku;
+    if (skuRaw) {
+      const targetSku = skuRaw.trim().toUpperCase();
+      const product = products.find(p => p.sku.trim().toUpperCase() === targetSku);
+      if (product) {
+        handleProductSelection(product.id);
+      }
+    }
+  }, [products, handleProductSelection]);
 
   const handleQuantityChange = (idx: number, val: string) => {
     const updated = [...currentCart.items];
@@ -116,14 +155,16 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
     if (currentCart.items.length === 0 || isProcessing) return;
     setIsProcessing(true);
     
-    // Save state for printing before clearing
-    const saleCopy = JSON.parse(JSON.stringify(currentCart));
+    const saleCopy = {
+      ...JSON.parse(JSON.stringify(currentCart)),
+      ref: `#${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+      date: new Date().toISOString()
+    };
     setLastSaleForPrint(saleCopy);
 
     try {
       const success = await onRecordSale(currentCart.items, currentCart.customerName, 'UNIFIED TERMINAL', paymentMethod, status);
       if (success) {
-        // Trigger thermal print
         setTimeout(() => {
           window.print();
           handleCloseCart(activeCartIndex);
@@ -137,6 +178,21 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleReprint = (sale: Sale) => {
+    const saleData: CartTab = {
+      id: sale.id,
+      items: sale.items,
+      customerName: sale.customer_name || 'Walk-in',
+      label: 'HISTORICAL',
+      date: sale.date,
+      ref: `#${sale.id.slice(0, 8).toUpperCase()}`
+    };
+    setLastSaleForPrint(saleData);
+    setTimeout(() => {
+      window.print();
+    }, 300);
   };
 
   const filteredProducts = useMemo(() => {
@@ -156,6 +212,23 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
   return (
     <div className="h-full flex flex-col bg-[#020617] text-white overflow-hidden">
       
+      {/* SCAN FEEDBACK OVERLAY */}
+      {scanFeedback && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] bg-emerald-600 text-white px-8 py-4 rounded-[2rem] shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-10 duration-300">
+          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+            <CheckCircle2 size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase opacity-80 tracking-widest leading-none mb-1">Product Added</p>
+            <h4 className="text-sm font-black uppercase truncate max-w-[200px]">{scanFeedback.name}</h4>
+          </div>
+          <div className="ml-4 pl-4 border-l border-white/20">
+            <p className="text-[10px] font-black uppercase opacity-80 tracking-widest leading-none mb-1">Cart Qty</p>
+            <h4 className="text-xl font-black">{scanFeedback.qty}</h4>
+          </div>
+        </div>
+      )}
+
       {/* HIDDEN PRINT RECEIPT */}
       {lastSaleForPrint && (
         <div className="print-only">
@@ -167,8 +240,8 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
              </div>
              
              <div className="space-y-1 mb-6 text-[10px] font-mono">
-                <div className="flex justify-between uppercase"><span>REF NO:</span> <span>#{Math.random().toString(36).substr(2, 6).toUpperCase()}</span></div>
-                <div className="flex justify-between uppercase"><span>DATE:</span> <span>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</span></div>
+                <div className="flex justify-between uppercase"><span>REF NO:</span> <span>{lastSaleForPrint.ref}</span></div>
+                <div className="flex justify-between uppercase"><span>DATE:</span> <span>{new Date(lastSaleForPrint.date || Date.now()).toLocaleDateString()} {new Date(lastSaleForPrint.date || Date.now()).toLocaleTimeString()}</span></div>
                 <div className="flex justify-between uppercase"><span>CLIENT:</span> <span>{lastSaleForPrint.customerName || 'WALK-IN'}</span></div>
                 <div className="flex justify-between uppercase"><span>OPERATOR:</span> <span>{currentUser?.name || 'ADMIN'}</span></div>
              </div>
@@ -205,7 +278,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
         </div>
       )}
 
-      {/* INITIAL LANDING / DASHBOARD VIEW */}
       {!isTerminalOpen && (
         <div className="flex-1 p-6 md:p-12 space-y-10 animate-in fade-in duration-500 max-w-7xl mx-auto w-full">
           <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -233,16 +305,24 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                         <th className="px-8 py-5">REF</th>
                         <th className="px-8 py-5">Customer</th>
                         <th className="px-8 py-5">Value</th>
-                        <th className="px-8 py-5 text-right">Print</th>
+                        <th className="px-8 py-5 text-right">Reprint</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
                      {sales.slice(0, 10).map((sale) => (
-                        <tr key={sale.id} className="hover:bg-white/5 transition-colors">
+                        <tr key={sale.id} className="hover:bg-white/5 transition-colors group">
                            <td className="px-8 py-5 font-mono text-[11px] text-slate-500">#{sale.id.slice(0,8)}</td>
                            <td className="px-8 py-5 font-black text-[11px] uppercase">{sale.customer_name || 'Walk-in'}</td>
                            <td className="px-8 py-5 font-black text-[11px] text-indigo-400">{settings.currency}{sale.total_price.toLocaleString()}</td>
-                           <td className="px-8 py-5 text-right"><Printer size={16} className="ml-auto opacity-30" /></td>
+                           <td className="px-8 py-5 text-right">
+                              <button 
+                                onClick={() => handleReprint(sale)}
+                                className="p-2 bg-white/5 hover:bg-indigo-600 rounded-lg text-slate-400 hover:text-white transition-all ml-auto block"
+                                title="Reprint Receipt"
+                              >
+                                <Printer size={16} />
+                              </button>
+                           </td>
                         </tr>
                      ))}
                   </tbody>
@@ -252,11 +332,9 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
         </div>
       )}
 
-      {/* THE UNIFIED TERMINAL */}
       {isTerminalOpen && (
         <div className="fixed inset-0 z-[60] bg-[#020617] flex flex-col animate-in zoom-in-95 duration-300 no-print">
           
-          {/* TABS (Browser-like) */}
           <div className="h-14 bg-[#0a0f1d] flex items-end px-4 gap-1.5 shrink-0 overflow-x-auto scrollbar-hide">
              {carts.map((cart, idx) => (
                <div key={cart.id} className="flex items-center">
@@ -300,10 +378,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
 
           <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-[#0a0f1d] m-2 md:m-4 rounded-[1.5rem] md:rounded-[2.5rem] border border-white/5 shadow-2xl relative">
              
-             {/* LEFT SIDE: MAIN TERMINAL */}
              <div className="flex-1 flex flex-col min-w-0 border-r border-white/5">
-                
-                {/* SEARCH & SCAN */}
                 <div className="p-4 md:p-10 pb-4 md:pb-6 flex flex-col md:flex-row gap-4 shrink-0">
                    <div className="relative flex-1 group">
                       <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400" size={18} />
@@ -323,7 +398,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                    </button>
                 </div>
 
-                {/* CATEGORY BAR */}
                 <div className="px-4 md:px-10 py-2 md:py-4 flex gap-2 overflow-x-auto scrollbar-hide shrink-0 border-b border-white/5">
                    {['ALL', ...settings.categories.slice(0, 12)].map(cat => (
                      <button 
@@ -336,7 +410,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                    ))}
                 </div>
 
-                {/* PRODUCT TILES */}
                 <div className="flex-1 overflow-y-auto p-4 md:p-10 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 scrollbar-hide pb-32">
                    {filteredProducts.map(p => (
                      <button 
@@ -364,7 +437,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                 </div>
              </div>
 
-             {/* RIGHT SIDE: CART (Desktop Only) */}
              <div className="hidden lg:flex w-[460px] flex-col bg-[#0a0f1d] overflow-hidden border-l border-white/5 shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
                 <div className="p-8 space-y-4 bg-[#0a0f1d] border-b border-white/5">
                    <div className="flex items-center gap-4">
@@ -448,7 +520,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                 </div>
              </div>
 
-             {/* MOBILE BOTTOM BAR: ACTION HUB */}
              <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 bg-gradient-to-t from-[#020617] to-transparent">
                 <button 
                   onClick={() => setMobileCartOpen(true)}
@@ -471,11 +542,9 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                 </button>
              </div>
 
-             {/* MOBILE REVIEW CART OVERLAY (Matched Aesthetic) */}
              {mobileCartOpen && (
                <div className="lg:hidden fixed inset-0 z-[70] bg-[#020617]/90 backdrop-blur-xl animate-in fade-in flex items-end">
                   <div className="w-full bg-[#0a0f1d] rounded-t-[3rem] p-8 pb-24 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-10 flex flex-col border-t border-white/5">
-                     
                      <div className="flex justify-between items-center mb-8">
                         <div>
                            <h3 className="text-xl font-black uppercase tracking-tighter">Review Trade</h3>
@@ -483,7 +552,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                         </div>
                         <button onClick={() => setMobileCartOpen(false)} className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center text-slate-400 active:scale-90 transition-all"><X size={20}/></button>
                      </div>
-
                      <div className="space-y-4 mb-8">
                         {currentCart.items.map((item, idx) => (
                            <div key={idx} className="bg-[#0f172a] p-5 rounded-[2rem] border border-white/5">
@@ -504,14 +572,12 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                                        else updated.splice(idx, 1);
                                        updateActiveCart({ items: updated });
                                     }} className="w-8 h-8 flex items-center justify-center text-slate-400"><Minus size={14}/></button>
-                                    
                                     <input 
                                        type="number" 
                                        className="w-12 text-center text-xs font-black p-0 border-none bg-transparent text-white focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                        value={item.quantity}
                                        onChange={(e) => handleQuantityChange(idx, e.target.value)}
                                     />
-                                    
                                     <button onClick={() => {
                                        const updated = [...currentCart.items];
                                        const p = products.find(prod => prod.id === item.productId);
@@ -524,14 +590,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                               </div>
                            </div>
                         ))}
-                        {currentCart.items.length === 0 && (
-                          <div className="py-20 text-center opacity-20 grayscale flex flex-col items-center">
-                             <Package size={64} className="mb-4" />
-                             <p className="text-[10px] font-black uppercase tracking-[0.2em]">Terminal Disengaged</p>
-                          </div>
-                        )}
                      </div>
-
                      <div className="mt-auto space-y-6 pt-6 border-t border-white/5">
                         <div className="flex justify-between items-center">
                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Net Settle Amount</span>
@@ -548,19 +607,23 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                   </div>
                </div>
              )}
-
           </div>
+
+          {isScannerOpen && (
+            <ScannerModal 
+              onScan={handleScanResult} 
+              onClose={() => setIsScannerOpen(false)} 
+            />
+          )}
         </div>
       )}
 
-      {/* PAYMENT PROTOCOL DIALOG */}
       {showConfirmDialog && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#020617]/98 backdrop-blur-3xl no-print">
           <div className="bg-white rounded-[4rem] w-full max-w-lg p-10 md:p-16 shadow-2xl text-center animate-in zoom-in-95 duration-500">
              <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner"><CreditCard size={32} /></div>
              <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 text-slate-900">Checkout Finalization</h3>
              <p className="text-5xl font-black text-[#4f46e5] mb-12 tracking-tighter leading-none">{settings.currency}{total.toLocaleString()}</p>
-             
              <div className="grid grid-cols-2 gap-4 mb-10">
                 <button onClick={() => setPaymentMethod('cash')} className={`py-6 rounded-[2.5rem] border-4 transition-all ${paymentMethod === 'cash' ? 'border-[#4f46e5] bg-indigo-50 text-[#4f46e5] shadow-xl' : 'border-slate-50 text-slate-400 opacity-60'}`}>
                    <Banknote size={32} className="mx-auto mb-2" />
@@ -571,7 +634,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                    <span className="text-[11px] font-black uppercase">Digital Card</span>
                 </button>
              </div>
-
              <div className="space-y-4">
                 <button 
                   disabled={isProcessing} 

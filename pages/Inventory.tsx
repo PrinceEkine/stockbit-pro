@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   Search, 
   Plus, 
@@ -117,7 +117,7 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
     });
   };
 
-  const handleScanResult = (res: any, stayOpen: boolean = false) => {
+  const handleScanResult = useCallback((res: any, stayOpen: boolean = false) => {
     if (scannerMode === 'details' && typeof res === 'object') {
       setFormData(prev => ({
         ...prev,
@@ -131,11 +131,12 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
       setIsModalOpen(true);
       setIsScannerOpen(false);
     } else {
-      const sku = typeof res === 'string' ? res : res?.sku;
-      if (sku) {
-        const found = products.find(p => p.sku === sku);
+      const skuRaw = typeof res === 'string' ? res : res?.sku;
+      if (skuRaw) {
+        const targetSku = skuRaw.trim().toUpperCase();
+        const found = products.find(p => p.sku.trim().toUpperCase() === targetSku);
         if (found) {
-          setSearchTerm(sku);
+          setSearchTerm(found.sku);
           setHighlightedId(found.id);
           setTimeout(() => setHighlightedId(null), 3000);
           if (!stayOpen) setIsScannerOpen(false);
@@ -144,7 +145,7 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
         if (!stayOpen) setIsScannerOpen(false);
       }
     }
-  };
+  }, [products, scannerMode]);
 
   const toggleSelection = (id: string) => {
     const next = new Set(selectedIds);
@@ -233,41 +234,38 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
         </div>
       )}
 
-      {/* PRINT VIEW: ADVANCED QR LABELS */}
+      {/* PRINT VIEW: ADVANCED QR LABELS (Optimized for 50x30mm) */}
       {printMode === 'labels' && (
         <div className="print-only">
-          <div className="flex flex-wrap gap-4 p-4">
-            {printProducts.map(p => (
-              <div key={p.id} className="qr-label-print w-[65mm] h-[40mm] border-2 border-black flex flex-col p-2 bg-white relative">
-                 <div className="flex justify-between items-center border-b border-black pb-1 mb-1">
-                    <span className="text-[8px] font-black uppercase tracking-tighter truncate w-32">{displayCompanyName}</span>
-                    <span className="text-[6px] font-black uppercase border border-black px-1 rounded">Verified Asset</span>
-                 </div>
-                 <div className="flex flex-1 gap-2">
-                    <div className="w-20 h-20 flex items-center justify-center border border-slate-100 p-1">
-                       <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${p.sku}`} alt="QR" className="w-full h-full" />
-                    </div>
-                    <div className="flex-1 flex flex-col justify-between py-0.5">
-                       <div>
-                          <h4 className="text-[10px] font-black uppercase leading-[1.1] line-clamp-2 mb-0.5">{p.name}</h4>
-                          <div className="flex gap-1 items-center">
-                             <span className="text-[6px] font-black uppercase bg-black text-white px-1 rounded-sm">{p.category}</span>
-                             <span className="text-[7px] font-mono font-bold tracking-widest opacity-60">#{p.sku}</span>
-                          </div>
-                       </div>
-                       <div className="flex items-end justify-between">
-                          <div className="flex flex-col">
-                             <span className="text-[5px] font-black uppercase opacity-40 leading-none">Net Value</span>
-                             <span className="text-[14px] font-black tracking-tighter leading-none">{settings.currency}{p.price.toLocaleString()}</span>
-                          </div>
-                          <div className="w-5 h-5 opacity-10"><ShieldCheck size={20} /></div>
-                       </div>
-                    </div>
-                 </div>
-                 <div className="absolute top-0 right-0 h-full w-1.5 bg-slate-900"></div>
-              </div>
-            ))}
-          </div>
+          {printProducts.map(p => (
+            <div key={p.id} className="qr-label-print">
+               <div className="flex justify-between items-center border-b border-black pb-0.5 mb-1">
+                  <span className="text-[8px] font-black uppercase tracking-tight truncate w-32">{displayCompanyName}</span>
+                  <span className="text-[5px] font-black uppercase border border-black px-1 rounded">Asset Tag</span>
+               </div>
+               <div className="flex flex-1 gap-2 overflow-hidden">
+                  <div className="w-14 h-14 flex-shrink-0 flex items-center justify-center border border-slate-100 p-0.5">
+                     <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${p.sku}`} alt="QR" className="w-full h-full object-contain" />
+                  </div>
+                  <div className="flex-1 flex flex-col justify-between overflow-hidden">
+                     <div>
+                        <h4 className="text-[9px] font-black uppercase leading-none line-clamp-2 mb-1">{p.name}</h4>
+                        <div className="flex gap-1 items-center">
+                           <span className="text-[5px] font-black uppercase bg-black text-white px-1 rounded-sm">{p.category}</span>
+                           <span className="text-[6px] font-mono font-bold tracking-widest opacity-60">#{p.sku}</span>
+                        </div>
+                     </div>
+                     <div className="flex items-end justify-between">
+                        <div className="flex flex-col">
+                           <span className="text-[4px] font-black uppercase opacity-40 leading-none">Net Value</span>
+                           <span className="text-[12px] font-black tracking-tight leading-none">{settings.currency}{p.price.toLocaleString()}</span>
+                        </div>
+                        <ShieldCheck size={14} className="opacity-20 mr-1" />
+                     </div>
+                  </div>
+               </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -283,7 +281,7 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
         )}
       </div>
 
-      {/* MOBILE OPTIMIZED LIST (Enhanced Stacked Cards) */}
+      {/* MOBILE OPTIMIZED LIST */}
       <div className="lg:hidden space-y-5 px-4 pb-24 no-print">
         {filteredProducts.map((p) => {
           const isLow = p.quantity <= p.min_threshold;
@@ -294,7 +292,6 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
               className={`bg-[#0f172a] p-6 rounded-[2.5rem] border border-white/5 shadow-2xl space-y-6 transition-all relative overflow-hidden active:scale-[0.99] ${highlightedId === p.id ? 'ring-4 ring-indigo-500/20' : ''}`}
               onClick={() => toggleSelection(p.id)}
             >
-              {/* Card Header: Product Identity */}
               <div className="flex justify-between items-start gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1.5">
@@ -319,9 +316,7 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                 </div>
               </div>
 
-              {/* Card Body: Critical Metrics */}
               <div className="grid grid-cols-2 gap-3">
-                {/* Stock Metric */}
                 <div className="bg-black/20 p-4 rounded-3xl border border-white/5 flex flex-col justify-between h-24">
                   <p className="text-[7px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Stock Position</p>
                   <div className="flex items-end justify-between">
@@ -331,7 +326,6 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                     {isLow && <AlertTriangle size={16} className="text-amber-500 mb-1 animate-pulse" />}
                   </div>
                 </div>
-                {/* Price Metric */}
                 <div className="bg-black/20 p-4 rounded-3xl border border-white/5 flex flex-col justify-between h-24">
                   <p className="text-[7px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Asset Value</p>
                   <span className="text-xl font-black text-white tracking-tighter">
@@ -340,7 +334,6 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                 </div>
               </div>
 
-              {/* Card Footer: Metadata & Quick Ops */}
               <div className="flex items-center justify-between pt-5 border-t border-white/5">
                 <div className="flex items-center gap-2 text-slate-500">
                   <div className="w-8 h-8 bg-white/5 rounded-xl flex items-center justify-center">
@@ -371,15 +364,6 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
             </div>
           );
         })}
-        {filteredProducts.length === 0 && (
-          <div className="py-24 text-center">
-             <div className="w-20 h-20 bg-[#0f172a] rounded-[2rem] flex items-center justify-center mx-auto mb-6 border border-white/5">
-                <Search size={32} className="text-slate-700" />
-             </div>
-             <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.3em]">No Assets Detected</p>
-             <p className="text-slate-600 text-[9px] mt-2 font-bold uppercase">Refine filter protocol</p>
-          </div>
-        )}
       </div>
 
       {/* DESKTOP TABLE VIEW */}

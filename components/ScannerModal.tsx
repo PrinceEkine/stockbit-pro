@@ -64,7 +64,6 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
         osc.start();
         osc.stop(ctx.currentTime + 0.1);
       }
-      // Tactile feedback for mobile
       if (navigator.vibrate) navigator.vibrate(50);
     } catch (e) { console.warn(e); }
   };
@@ -81,6 +80,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
   };
 
   const captureAndScan = useCallback(async () => {
+    // success_feedback and processing block next scan to prevent overlapping
     if (!videoRef.current || !canvasRef.current || status === 'processing' || status === 'success_feedback' || !isMounted.current) return;
 
     const canvas = canvasRef.current;
@@ -113,6 +113,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
           if (mode === 'details') {
             setLastScannedName(result.name || result.sku);
             setStatus('success_feedback');
+            // Longer delay for full detail extraction
             setTimeout(() => { 
               if (isMounted.current) {
                 onScan(result); 
@@ -123,12 +124,13 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
             onScan(result, true);
             setStatus('success_feedback');
             setLastScannedName(typeof result === 'string' ? result : (result.name || result.sku));
+            // Faster recovery for continuous ID scanning
             setTimeout(() => { 
               if (isMounted.current) {
                 setStatus('active'); 
                 setLastScannedName(null); 
               }
-            }, 700);
+            }, 400); 
           }
         } else {
           setStatus('active');
@@ -167,14 +169,20 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
 
   useEffect(() => {
     if (isCameraActive && status === 'active' && isMounted.current) {
-      scanIntervalRef.current = window.setInterval(captureAndScan, 2000);
+      scanIntervalRef.current = window.setInterval(captureAndScan, 3000);
       return () => { if (scanIntervalRef.current) clearInterval(scanIntervalRef.current); };
     }
   }, [isCameraActive, status, captureAndScan]);
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/98 backdrop-blur-3xl no-print">
-      <div className="bg-white dark:bg-slate-900 rounded-[3rem] w-full max-w-xl overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-500">
+    <div 
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/98 backdrop-blur-3xl no-print cursor-pointer"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white dark:bg-slate-900 rounded-[3rem] w-full max-w-xl overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-500 cursor-default"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         <div className="p-6 md:p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -198,7 +206,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
                 <Flashlight size={20} />
               </button>
             )}
-            <button onClick={onClose} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl text-slate-400 hover:text-rose-500">
+            <button onClick={onClose} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl text-slate-400 hover:text-rose-500 transition-colors">
               <X size={20} />
             </button>
           </div>
