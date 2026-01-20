@@ -201,28 +201,28 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
       {/* PRINT VIEW: LEDGER */}
       {printMode === 'ledger' && (
         <div className="print-only">
-          <div className="inventory-ledger-print">
-            <h1 className="text-2xl font-bold mb-4 uppercase">{settings.companyName} - Inventory Ledger</h1>
-            <table>
+          <div className="inventory-ledger-print p-10">
+            <h1 className="text-2xl font-black mb-8 uppercase text-center border-b pb-4">{settings.companyName} - Inventory Ledger</h1>
+            <table className="w-full border-collapse">
               <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Product Name</th>
-                  <th>Category</th>
-                  <th>Price</th>
-                  <th>Quantity</th>
-                  <th>Location</th>
+                <tr className="bg-slate-100 text-[10px] font-black uppercase text-left">
+                  <th className="p-3 border">SKU</th>
+                  <th className="p-3 border">Product Name</th>
+                  <th className="p-3 border">Category</th>
+                  <th className="p-3 border">Price</th>
+                  <th className="p-3 border">Qty</th>
+                  <th className="p-3 border">Location</th>
                 </tr>
               </thead>
               <tbody>
                 {printProducts.map(p => (
-                  <tr key={p.id}>
-                    <td>{p.sku}</td>
-                    <td>{p.name}</td>
-                    <td>{p.category}</td>
-                    <td>{settings.currency}{p.price.toLocaleString()}</td>
-                    <td>{p.quantity}</td>
-                    <td>{p.location}</td>
+                  <tr key={p.id} className="text-[10px] border-b">
+                    <td className="p-3 border font-mono">{p.sku}</td>
+                    <td className="p-3 border font-bold">{p.name}</td>
+                    <td className="p-3 border">{p.category}</td>
+                    <td className="p-3 border font-bold">{settings.currency}{p.price.toLocaleString()}</td>
+                    <td className="p-3 border">{p.quantity}</td>
+                    <td className="p-3 border">{p.location}</td>
                   </tr>
                 ))}
               </tbody>
@@ -231,19 +231,26 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
         </div>
       )}
 
-      {/* PRINT VIEW: QR LABELS */}
+      {/* PRINT VIEW: ADVANCED QR LABELS */}
       {printMode === 'labels' && (
         <div className="print-only">
-          {printProducts.map(p => (
-            <div key={p.id} className="qr-label-print flex flex-col items-center justify-center border-2 border-black p-4 bg-white text-black mb-4" style={{ width: '50mm', height: '30mm', pageBreakAfter: 'always' }}>
-               <h4 className="text-[10px] font-black uppercase mb-1 truncate w-full text-center leading-tight">{p.name}</h4>
-               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${p.sku}`} alt="QR" className="w-16 h-16 mb-1" />
-               <div className="flex flex-col items-center">
-                 <p className="text-[8px] font-black tracking-[0.2em]">{p.sku}</p>
-                 <p className="text-[11px] font-black mt-0.5">{settings.currency}{p.price.toLocaleString()}</p>
-               </div>
-            </div>
-          ))}
+          <div className="flex flex-wrap gap-4">
+            {printProducts.map(p => (
+              <div key={p.id} className="qr-label-print">
+                 <div className="w-full text-center border-b border-black/10 pb-1 mb-1">
+                    <p className="text-[7px] font-black uppercase tracking-tighter truncate opacity-60">{settings.companyName}</p>
+                 </div>
+                 <div className="flex items-center justify-between w-full px-2">
+                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${p.sku}`} alt="QR" className="w-14 h-14" />
+                    <div className="flex-1 pl-2 flex flex-col justify-center min-w-0">
+                       <h4 className="text-[9px] font-black uppercase leading-tight line-clamp-2 mb-1">{p.name}</h4>
+                       <p className="text-[7px] font-bold font-mono tracking-widest text-slate-500 mb-1">{p.sku}</p>
+                       <p className="text-[12px] font-black">{settings.currency}{p.price.toLocaleString()}</p>
+                    </div>
+                 </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -251,16 +258,6 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
           <input type="text" placeholder="Filter Assets..." className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-sm font-bold placeholder:text-slate-400 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-        </div>
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-          <select className="flex-1 md:flex-none px-6 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white outline-none cursor-pointer whitespace-nowrap min-w-[140px]" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
-            <option value="All">Categories</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select className="flex-1 md:flex-none px-6 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white outline-none cursor-pointer whitespace-nowrap min-w-[140px]" value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)}>
-            <option value="All">Locations</option>
-            {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
-          </select>
         </div>
       </div>
 
@@ -328,9 +325,6 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                 <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Inventory Provision</h3>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Synchronizing to Database Node</p>
               </div>
-              <button onClick={() => { setScannerMode('details'); setIsScannerOpen(true); }} className="w-full md:w-auto px-6 py-4 md:py-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
-                <Sparkles size={18} /> Smart Extract
-              </button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-10">
@@ -342,11 +336,11 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">SKU / Barcode</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase ml-1">SKU / Barcode</label>
                       <input required className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-500" placeholder="SKU0000" value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Category</label>
                       <select className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-500" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
                         {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
@@ -359,28 +353,13 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                     <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest ml-1 flex items-center gap-2"><Layers size={12}/> On-Hand Qty</label>
                     <input required type="number" className="w-full px-5 py-3 bg-white dark:bg-slate-900 rounded-xl border-none font-black text-xl text-indigo-600 focus:ring-2 focus:ring-indigo-500" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Min Threshold</label>
-                    <input required type="number" className="w-full px-5 py-3 bg-white dark:bg-slate-900 rounded-xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-500" value={formData.min_threshold} onChange={e => setFormData({...formData, min_threshold: e.target.value})} />
-                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Selling Price ({settings.currency})</label>
                   <input required type="number" step="0.01" className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cost Price ({settings.currency})</label>
-                  <input required type="number" step="0.01" className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white" value={formData.cost_price} onChange={e => setFormData({...formData, cost_price: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sustainability Score (0-100)</label>
-                  <div className="relative">
-                    <Leaf className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500" size={16} />
-                    <input type="number" max="100" className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white" value={formData.sustainability_score} onChange={e => setFormData({...formData, sustainability_score: e.target.value})} />
-                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><MapPin size={12}/> Warehouse Location</label>
@@ -390,28 +369,10 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Batch Number</label>
-                  <input className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white" placeholder="LOT-0000" value={formData.batch_number} onChange={e => setFormData({...formData, batch_number: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><Calendar size={12}/> Expiry Date (Optional)</label>
-                  <input type="date" className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white" value={formData.expiry_date} onChange={e => setFormData({...formData, expiry_date: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Supplier Entity</label>
-                  <select className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white" value={formData.supplier_id} onChange={e => setFormData({...formData, supplier_id: e.target.value})}>
-                    <option value="">No Link</option>
-                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </div>
-              </div>
-
               <div className="flex flex-col-reverse md:flex-row gap-4 pt-10">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-5 font-black uppercase text-[11px] text-slate-400 hover:text-rose-500 transition-colors">Abort Cycle</button>
-                <button type="submit" className="flex-1 py-5 bg-indigo-600 text-white rounded-3xl font-black uppercase text-[11px] shadow-2xl shadow-indigo-600/30 flex items-center justify-center gap-3 active:scale-95 transition-all">
-                  <Zap size={18} className="fill-current"/> Commit to Ledger
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-5 font-black uppercase text-[11px] text-slate-400 hover:text-rose-500 transition-colors">Discard</button>
+                <button type="submit" className="flex-1 py-5 bg-indigo-600 text-white rounded-3xl font-black uppercase text-[11px] shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all">
+                   Save to Ledger
                 </button>
               </div>
             </form>

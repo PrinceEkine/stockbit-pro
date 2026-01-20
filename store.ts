@@ -211,6 +211,7 @@ export const useStore = () => {
   }, [handleInitialDataLoad, isLoggedIn]);
 
   const logout = useCallback(async () => {
+    // 1. Immediately reset state for UI responsiveness
     setIsLoggedIn(false);
     setState(prev => ({ 
       ...prev, 
@@ -222,7 +223,12 @@ export const useStore = () => {
       notifications: [], 
       users: [] 
     }));
-    await supabase.auth.signOut();
+    // 2. Perform the actual signOut
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("Sign out error:", e);
+    }
   }, []);
 
   return {
