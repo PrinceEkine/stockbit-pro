@@ -1,9 +1,27 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { Product, Sale } from "../types";
+import { DEFAULT_CATEGORIES } from "../constants";
 
+const getAIClient = () => {
+  if (!process.env.API_KEY) {
+    console.warn("Gemini API Key missing.");
+    return null;
+  }
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+};
+
+const cleanBase64 = (base64: string) => {
+  return base64.replace(/^data:image\/(png|jpeg|jpg);base64,/, '').replace(/\s/g, '');
+};
+
+/**
+ * HIGH-SPEED SKU IDENTIFIER
+ * Uses Gemini 3 Flash for sub-second SKU/Barcode identification.
+ */
 export const identifyProductFromImage = async (base64Image: string): Promise<string | null> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAIClient();
+  if (!ai) return null;
   
   try {
     const response = await ai.models.generateContent({
@@ -13,41 +31,51 @@ export const identifyProductFromImage = async (base64Image: string): Promise<str
           {
             inlineData: {
               mimeType: 'image/jpeg',
-              data: base64Image,
+              data: cleanBase64(base64Image),
             },
           },
           {
-            text: "Find the barcode, SKU, or product name in this image. Return ONLY the text of the code or name. If you see a barcode, extract its numeric or alphanumeric value. If no product identifier is found, return 'NOT_FOUND'.",
+            text: "STRICT INDUSTRIAL PROTOCOL: Analyze product frame. " +
+                  "Identify SKU, Barcode, or Serial Number alphanumeric string. " +
+                  "IGNORE all other text. ONLY output the raw code. If nothing found, output: NULL.",
           },
         ],
-      },
+      }
     });
 
     const text = response.text?.trim();
-    if (text === 'NOT_FOUND') return null;
-    return text || null;
+    if (text === 'NULL' || !text || text.length < 3) return null;
+    return text;
   } catch (error) {
-    console.error("Gemini Vision Error:", error);
+    console.error("Flash SKU Identification Error:", error);
     return null;
   }
 };
 
+/**
+ * INTELLIGENT PRODUCT EXTRACTION
+ * Uses Gemini 3 Pro for deep extraction of metadata from packaging.
+ */
 export const extractProductDetailsFromImage = async (base64Image: string) => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAIClient();
+  if (!ai) return null;
   
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: {
         parts: [
           {
             inlineData: {
               mimeType: 'image/jpeg',
-              data: base64Image,
+              data: cleanBase64(base64Image),
             },
           },
           {
-            text: "Analyze this product label or barcode. Extract the following details into JSON: name (Product Name), sku (Barcode or Identifier), batchNumber (Batch number if visible), expiryDate (Expiry date in YYYY-MM-DD if visible), price (numeric value if visible, else 0), category (one of Electronics, Appliances, Furniture, Textiles, Stationery, Groceries, Other).",
+            text: `DEEP EXTRACTION PROTOCOL: Extract all inventory metadata. ` +
+                  `VALID CATEGORIES: ${DEFAULT_CATEGORIES.join(', ')}. ` +
+                  `Ensure currency values are extracted as numbers. ` +
+                  `Standardize expiry dates to YYYY-MM-DD.`,
           },
         ],
       },
@@ -56,67 +84,51 @@ export const extractProductDetailsFromImage = async (base64Image: string) => {
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            name: { type: Type.STRING },
-            sku: { type: Type.STRING },
-            batchNumber: { type: Type.STRING },
-            expiryDate: { type: Type.STRING },
-            price: { type: Type.NUMBER },
-            category: { type: Type.STRING }
+            name: { type: Type.STRING, description: "Official product label name" },
+            sku: { type: Type.STRING, description: "Barcode or SKU alphanumeric code" },
+            batchNumber: { type: Type.STRING, description: "Batch/Lot identifier" },
+            expiryDate: { type: Type.STRING, description: "Formatted expiry YYYY-MM-DD" },
+            price: { type: Type.NUMBER, description: "Estimated market price" },
+            category: { type: Type.STRING, description: "Matching inventory category" }
           },
           required: ["name", "sku"]
         }
       }
     });
 
-    return JSON.parse(response.text || '{}');
+    const text = response.text;
+    return text ? JSON.parse(text) : null;
   } catch (error) {
-    console.error("Gemini Extraction Error:", error);
+    console.error("Pro Extraction Error:", error);
     return null;
   }
 };
 
+/**
+ * BUSINESS INTELLIGENCE ENGINE
+ */
 export const getInventoryInsights = async (products: Product[], sales: Sale[]) => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAIClient();
+  if (!ai) return "Intelligence engine unavailable.";
   
-  const inventoryContext = products.map(p => ({
-    name: p.name,
-    stock: p.quantity,
-    min: p.minThreshold,
-    price: p.price,
-    batch: p.batchNumber,
-    expiry: p.expiryDate
-  }));
-
-  const salesContext = sales.slice(0, 20).flatMap(s => 
-    s.items.map(item => ({
-      name: item.productName,
-      qty: item.quantity,
-      date: s.date
-    }))
-  );
-
-  const prompt = `
-    Analyze this inventory data and recent sales to provide 3 actionable insights:
-    Inventory: ${JSON.stringify(inventoryContext)}
-    Recent Sales: ${JSON.stringify(salesContext)}
-    
-    Keep insights concise, professional, and helpful for a warehouse manager. 
-    Identify low stock risks, items nearing expiry, slow-moving items, or revenue opportunities.
-    Format as a bulleted list.
-  `;
+  const ctx = {
+    inventory: products.map(p => ({ n: p.name, q: p.quantity, m: p.min_threshold, p: p.price })),
+    sales: sales.slice(0, 30).map(s => ({ r: s.total_price, d: s.date }))
+  };
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: prompt,
+      contents: `Act as a Top-Tier Retail Consultant. Analyze this operational footprint: ${JSON.stringify(ctx)}. ` +
+                 `Provide 3 concise directives for: 1. Cash Flow, 2. Stock Health, 3. Growth Ops.`,
       config: {
-        systemInstruction: "You are a senior supply chain analyst for a modern retail company. You provide data-driven insights about stock levels, sales trends, and inventory health including expiry monitoring."
+        systemInstruction: "You are StockBit Pro AI. Your tone is professional, strategic, and concise."
       }
     });
 
-    return response.text || "Unable to generate insights at this time.";
+    return response.text || "Analysis complete.";
   } catch (error) {
-    console.error("Gemini Error:", error);
-    return "The AI assistant is temporarily unavailable. Check your internet connection or API key.";
+    console.error("Insight Generation Error:", error);
+    return "Error connecting to strategic logic server.";
   }
 };

@@ -1,174 +1,491 @@
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { View, User as UserType } from './types';
-import { useStore } from './store';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { View, User as UserType, SubscriptionPlan, Product } from './types';
+import { useStore, getTrialStatus } from './store';
+import { supabase } from './supabase';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import AIInsights from './pages/AIInsights';
 import Stocktake from './pages/Stocktake';
 import Sales from './pages/Sales';
+import Returns from './pages/Returns';
 import Reports from './pages/Reports';
 import Suppliers from './pages/Suppliers';
 import SettingsView from './pages/Settings';
+import UserManagement from './pages/UserManagement';
 import LaunchCenter from './pages/LaunchCenter';
 import NotificationPanel from './components/NotificationPanel';
-import OnboardingModal from './components/OnboardingModal';
+import ScannerModal from './components/ScannerModal';
 import { 
-  Menu, 
-  Bell, 
-  Search,
-  Box,
-  AlertCircle,
-  Loader2,
-  Mic
+  Menu, Bell, Box, Loader2, 
+  Eye, EyeOff, ShieldAlert,
+  LogIn, Wifi, WifiOff,
+  CheckCircle2,
+  ShieldCheck,
+  Moon,
+  Sun,
+  ShieldEllipsis,
+  Hash,
+  UserPlus,
+  Link as LinkIcon,
+  Zap,
+  Clock,
+  Scan,
+  MailCheck,
+  ArrowRight,
+  TrendingUp,
+  Layout,
+  ChevronLeft
 } from 'lucide-react';
 
-type AuthStep = 'login' | 'register' | 'forgot' | 'verify-notice';
+type AuthStep = 'login' | 'register' | 'forgot' | 'verify_otp' | 'update_password';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>(View.Dashboard);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [authStep, setAuthStep] = useState('login' as AuthStep);
+  const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
-  const [authStep, setAuthStep] = useState<AuthStep>('login');
-  const [isNigeria, setIsNigeria] = useState<boolean | null>(null);
-  const [isListening, setIsListening] = useState(false);
+  const [authSuccess, setAuthSuccess] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [otpValue, setOtpValue] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [otpPurpose, setOtpPurpose] = useState<'signup' | 'recovery'>('signup');
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [isStaffReg, setIsStaffReg] = useState(false);
+  
+  const [cameraAvailable, setCameraAvailable] = useState(false);
+  const [globalScannerActive, setGlobalScannerActive] = useState(false);
+  const [lastScannedProduct, setLastScannedProduct] = useState<Product | null>(null);
+
   const store = useStore();
   const notificationRef = useRef<HTMLDivElement>(null);
-
-  const unreadCount = useMemo(() => 
-    store.notifications.filter(n => !n.read).length
-  , [store.notifications]);
+  const barcodeBuffer = useRef<string>('');
+  const lastKeyTime = useRef<number>(0);
 
   useEffect(() => {
-    if (store.isLoggedIn && store.products.length === 0) {
-      const hasSeen = localStorage.getItem('stockbit_onboarding_seen');
-      if (!hasSeen) setShowOnboarding(true);
-    }
-  }, [store.isLoggedIn, store.products.length]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const now = Date.now();
+      if (now - lastKeyTime.current > 50) {
+        barcodeBuffer.current = '';
+      }
+      
+      if (e.key === 'Enter') {
+        if (barcodeBuffer.current.length > 2) {
+          handleGlobalScan(barcodeBuffer.current);
+          barcodeBuffer.current = '';
+        }
+      } else if (e.key.length === 1) {
+        barcodeBuffer.current += e.key;
+      }
+      lastKeyTime.current = now;
+    };
 
-  const handleCloseOnboarding = () => {
-    localStorage.setItem('stockbit_onboarding_seen', 'true');
-    setShowOnboarding(false);
-  };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [store.products, activeView]);
 
   useEffect(() => {
-    setIsNigeria(true);
+    const checkCamera = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasVideo = devices.some(device => device.kind === 'videoinput');
+        setCameraAvailable(hasVideo);
+      } catch (e) {
+        setCameraAvailable(false);
+      }
+    };
+    checkCamera();
   }, []);
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
-    const pass = formData.get('password') as string;
-    const res = await store.login(email, pass);
-    if (!res.success) setAuthError(res.error || 'Invalid credentials');
+  const handleGlobalScan = (sku: string) => {
+    const product = store.products.find(p => p.sku === sku);
+    if (product) {
+      setLastScannedProduct(product);
+      setTimeout(() => setLastScannedProduct(null), 3000);
+    }
   };
 
-  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (root) {
+      if (store.settings.theme === 'dark') {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+    }
+  }, [store.settings.theme]);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setIsNotificationOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      document.addEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const trialStatus = useMemo(() => getTrialStatus(store.currentUser), [store.currentUser]);
+
+  useEffect(() => {
+    if (store.currentUser?.role === 'staff') {
+      const allowedViews = [View.Dashboard, View.Sales];
+      if (!allowedViews.includes(activeView)) {
+        setActiveView(View.Dashboard);
+      }
+    }
+  }, [store.currentUser, activeView]);
+
+  const toggleTheme = () => {
+    store.updateSettings({ theme: store.settings.theme === 'light' ? 'dark' : 'light' });
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (otpValue.length !== 6) return;
+    setAuthError('');
+    setIsSubmitting(true);
+    try {
+      const { error } = await store.verifyOtp(pendingEmail, otpValue, otpPurpose);
+      if (error) {
+        setAuthError(error.message);
+        setIsSubmitting(false);
+      } else if (otpPurpose === 'recovery') {
+        setAuthStep('update_password');
+        setIsSubmitting(false);
+      } else {
+        setAuthSuccess('Verification successful!');
+        setAuthStep('login');
+        setIsSubmitting(false);
+      }
+    } catch (err: any) {
+      setAuthError(err.message || 'Verification failed');
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setAuthError('');
+    setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
-    const name = formData.get('name') as string;
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
-    const companyName = formData.get('companyName') as string;
-    const res = await store.register({ name, email, password, companyName });
-    if (!res.success) setAuthError(res.error || 'Registration failed');
+
+    try {
+      const { error } = await store.login(email, password);
+      if (error) {
+        setAuthError(error.message);
+        setIsSubmitting(false);
+      }
+    } catch (err: any) {
+      setAuthError("Auth protocol failure.");
+      setIsSubmitting(false);
+    }
   };
 
-  const handleVoiceSearch = () => {
-    setIsListening(true);
-    setTimeout(() => {
-      setIsListening(false);
-      alert("AI Voice Recognition active. Try saying: 'Show me electronics inventory'");
-    }, 2000);
+  const handleRegisterSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setAuthError('');
+    setIsSubmitting(true);
+    
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const name = formData.get('name') as string;
+    const companyName = formData.get('companyName') as string || '';
+    const inviteId = isStaffReg ? (formData.get('inviteId') as string) : null;
+
+    try {
+      const res = await store.register({
+        email,
+        password,
+        name,
+        companyName,
+        inviteId
+      });
+
+      if (res.error) {
+        setAuthError(res.error.message);
+        setIsSubmitting(false);
+      } else {
+        setPendingEmail(email);
+        setOtpPurpose('signup');
+        setAuthStep('verify_otp');
+        setShowOtpInput(false);
+        setIsSubmitting(false);
+      }
+    } catch (err: any) {
+      setAuthError("Registration failure.");
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      setIsSubmitting(false); 
+      setAuthStep('login');
+      setActiveView(View.Dashboard);
+      await store.logout();
+    } catch (err) {
+      console.warn("Logout clean-up completed with warnings.");
+      setAuthStep('login');
+    }
   };
 
   if (store.loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-4">
-        <Loader2 size={48} className="text-indigo-500 animate-spin" />
-        <p className="text-slate-400 font-bold tracking-widest text-xs uppercase">Initializing StockBit Core...</p>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 gap-6">
+        <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+        <p className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-[0.3em] animate-pulse text-center">Entering StockBit Pro...</p>
       </div>
     );
   }
 
-  if (!store.isLoggedIn) {
+  if (!store.isLoggedIn || authStep === 'update_password' || authStep === 'verify_otp') {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl animate-in zoom-in-95 duration-500">
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-xl"><Box size={32} className="text-white" /></div>
-            <h1 className="text-3xl font-bold text-slate-900">StockBit Pro</h1>
-            <p className="text-slate-500 mt-2 text-center text-sm">Professional Retail Management Suite</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4">
+        <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[3rem] p-8 md:p-20 shadow-2xl animate-in zoom-in-95 duration-500">
+          
+          {/* Logo & Branding */}
+          <div className="flex flex-col items-center mb-12 text-center">
+            <div className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl shadow-indigo-600/20">
+              <Box size={40} className="text-white" />
+            </div>
+            <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase">StockBit Pro</h1>
+            <p className="text-[12px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-[0.3em] mt-2">cloud inventory management</p>
           </div>
-          {authError && <div className="mb-6 bg-rose-50 text-rose-600 p-4 rounded-2xl flex items-center gap-2 text-sm border border-rose-100"><AlertCircle size={18} /> {authError}</div>}
+
+          {authError && (
+            <div className="mb-8 p-4 bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-900 rounded-2xl text-[11px] font-bold text-rose-600 flex items-center gap-3 animate-in slide-in-from-top-2">
+              <ShieldAlert size={18} className="shrink-0" /> {authError}
+            </div>
+          )}
+
           {authStep === 'login' && (
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div className="space-y-2"><label className="text-xs font-bold text-slate-700 uppercase">Email Address</label><input name="email" type="email" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" placeholder="name@company.com" required /></div>
-              <div className="space-y-2"><label className="text-xs font-bold text-slate-700 uppercase">Password</label><input name="password" type="password" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••" required /></div>
-              <button type="submit" className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg transition-all hover:bg-indigo-700">Sign In</button>
-              <p className="text-center text-sm text-slate-500">New business? <button type="button" onClick={() => setAuthStep('register')} className="text-indigo-600 font-bold">Register Now</button></p>
+            <form onSubmit={handleLoginSubmit} className="space-y-8">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">Authorized Email</label>
+                <input name="email" type="email" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 border-none rounded-[1.5rem] font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all text-lg" placeholder="admin@shop.com" />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center px-1">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Password</label>
+                  <button type="button" onClick={() => setAuthStep('forgot')} className="text-[10px] font-black text-indigo-600 hover:text-indigo-700 uppercase tracking-widest">Lost Access?</button>
+                </div>
+                <div className="relative">
+                  <input name="password" type={showPassword ? "text" : "password"} required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 border-none rounded-[1.5rem] font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all text-lg" placeholder="••••••••" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 p-2 hover:text-indigo-600 transition-colors">
+                    {showPassword ? <EyeOff size={24} /> : <Eye size={24} />}
+                  </button>
+                </div>
+              </div>
+              <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-indigo-600 text-white font-black uppercase tracking-widest text-sm rounded-[1.5rem] shadow-2xl shadow-indigo-600/30 active:scale-95 transition-all flex items-center justify-center gap-4">
+                {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <LogIn size={20} />}
+                {isSubmitting ? 'Verifying...' : 'Sign In'}
+              </button>
+              <div className="pt-6 text-center">
+                <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">
+                  New enterprise? <button type="button" onClick={() => setAuthStep('register')} className="text-indigo-600 hover:underline font-black">Register Business</button>
+                </p>
+              </div>
             </form>
           )}
+
           {authStep === 'register' && (
-            <form onSubmit={handleRegister} className="space-y-4">
-               <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Business Name</label><input name="companyName" type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900" placeholder="e.g. Acme Nigerian Ltd" required /></div>
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Your Full Name</label><input name="name" type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900" placeholder="John Doe" required /></div>
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Email Address</label><input name="email" type="email" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900" placeholder="admin@company.com" required /></div>
-              <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Password</label><input name="password" type="password" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900" placeholder="••••••••" required /></div>
-              <button type="submit" className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl mt-4">Create Account</button>
-              <button type="button" onClick={() => setAuthStep('login')} className="w-full py-2 text-slate-400 text-sm font-bold">Back to Login</button>
+            <form onSubmit={handleRegisterSubmit} className="space-y-6">
+              <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl flex mb-6">
+                <button type="button" onClick={() => setIsStaffReg(false)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isStaffReg ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Business Owner</button>
+                <button type="button" onClick={() => setIsStaffReg(true)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isStaffReg ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Staff Member</button>
+              </div>
+              <div className="space-y-4">
+                <input name="name" placeholder="Full Name" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                {isStaffReg ? (
+                  <input name="inviteId" placeholder="Invite ID (from owner)" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                ) : (
+                  <input name="companyName" placeholder="Business Name" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                )}
+                <input name="email" type="email" placeholder="Email Address" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                <input name="password" type="password" placeholder="Password" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+              </div>
+              <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-indigo-600 text-white font-black uppercase tracking-widest text-sm rounded-[1.5rem] shadow-2xl flex items-center justify-center gap-4 active:scale-95 transition-all">
+                {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <UserPlus size={20} />}
+                {isSubmitting ? 'Registering...' : 'Sign Up'}
+              </button>
+              <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[12px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest text-center flex items-center justify-center gap-3">
+                <ChevronLeft size={18} /> Back to Sign In
+              </button>
             </form>
           )}
+
+          {authStep === 'verify_otp' && (
+            <div className="space-y-10 text-center">
+              <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner animate-pulse">
+                <MailCheck size={40} />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Verification Dispatched</h3>
+              <p className="text-[12px] text-slate-500 dark:text-slate-400 font-bold uppercase mt-4 leading-relaxed">
+                We've sent a link to:<br/>
+                <span className="text-slate-900 dark:text-white break-all">{pendingEmail}</span>
+              </p>
+              <div className="bg-slate-50 dark:bg-slate-800 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+                  Please check your email and click the verification link to proceed.
+                </p>
+              </div>
+              <button onClick={() => setAuthStep('login')} className="w-full py-6 bg-indigo-600 text-white font-black uppercase text-sm rounded-[1.5rem] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-4">
+                Proceed to Login <ArrowRight size={20} />
+              </button>
+            </div>
+          )}
+
+          {authStep === 'forgot' && (
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setAuthError('');
+              setIsSubmitting(true);
+              const email = new FormData(e.currentTarget).get('email') as string;
+              const res = await store.resetPassword(email);
+              if (res.error) {
+                setAuthError(res.error.message);
+                setIsSubmitting(false);
+              } else {
+                setPendingEmail(email);
+                setOtpPurpose('recovery');
+                setAuthStep('verify_otp');
+                setShowOtpInput(false);
+                setIsSubmitting(false);
+              }
+            }} className="space-y-8">
+              <div className="text-center mb-8">
+                <ShieldEllipsis size={48} className="mx-auto text-indigo-600 mb-6" />
+                <h3 className="text-2xl font-black uppercase tracking-tighter">Account Recovery</h3>
+              </div>
+              <input name="email" type="email" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all text-lg" placeholder="Registered Email" />
+              <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-indigo-600 text-white font-black uppercase text-sm rounded-[1.5rem] shadow-xl">
+                {isSubmitting ? 'Processing...' : 'Send Recovery Email'}
+              </button>
+              <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[12px] font-black text-slate-400 uppercase tracking-widest text-center">
+                Back to Login
+              </button>
+            </form>
+          )}
+
+          <footer className="mt-16 text-center border-t border-slate-50 dark:border-slate-800 pt-8">
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] opacity-30">Powered by StockBit Intelligence v4.2</p>
+          </footer>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="flex min-h-screen bg-slate-50">
-      <Sidebar activeView={activeView} onViewChange={setActiveView} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} user={store.currentUser} onLogout={store.logout} onShowHelp={() => setShowOnboarding(true)} />
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-20 bg-white border-b border-slate-100 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30 shadow-sm">
-          <div className="flex items-center gap-4">
-            <button className="md:hidden p-2 text-slate-600 hover:bg-slate-50 rounded-lg" onClick={() => setIsSidebarOpen(true)}><Menu size={24} /></button>
-            <div className="hidden md:flex items-center gap-3 bg-slate-50 px-4 py-2.5 rounded-2xl w-64 lg:w-96 border border-slate-200 shadow-inner group transition-all focus-within:ring-2 focus-within:ring-indigo-500">
-              <Search size={18} className="text-slate-400" />
-              <input type="text" placeholder="AI Smart Search..." className="bg-transparent border-none outline-none text-sm w-full text-slate-900" />
-              <button onClick={handleVoiceSearch} className={`p-1.5 rounded-lg transition-colors ${isListening ? 'bg-rose-100 text-rose-600' : 'text-slate-400 hover:text-indigo-600'}`}><Mic size={16} className={isListening ? 'animate-pulse' : ''} /></button>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="relative" ref={notificationRef}>
-              <button onClick={() => setIsNotificationOpen(!isNotificationOpen)} className="relative p-3 text-slate-400 hover:text-indigo-600 rounded-2xl border border-transparent hover:border-slate-100"><Bell size={22} /> {unreadCount > 0 && <span className="absolute top-2 right-2 w-5 h-5 bg-rose-500 rounded-full border-2 border-white text-[10px] text-white flex items-center justify-center font-black">{unreadCount}</span>}</button>
-              {isNotificationOpen && <NotificationPanel notifications={store.notifications} onMarkRead={store.markNotificationRead} onClear={store.clearNotifications} onClose={() => setIsNotificationOpen(false)} />}
-            </div>
-            <div className="flex items-center gap-3 pl-2"><div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black">{store.currentUser?.name?.charAt(0)}</div><div className="hidden lg:flex flex-col text-right"><span className="text-sm font-bold text-slate-900 leading-tight">{store.currentUser?.name}</span><span className="text-[10px] text-slate-400 font-bold uppercase">{store.currentUser?.role}</span></div></div>
-          </div>
-        </header>
-        <div className="p-4 md:p-8 overflow-y-auto flex-1"><div className="max-w-7xl mx-auto pb-12">{renderView()}</div></div>
-      </main>
-      {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
-    </div>
-  );
-
-  function renderView() {
+  const renderView = () => {
     switch (activeView) {
       case View.Dashboard: return <Dashboard state={store} onNavigate={setActiveView} />;
       case View.Inventory: return <Inventory products={store.products} suppliers={store.suppliers} onAdd={store.addProduct} onUpdate={store.updateProduct} onDelete={store.deleteProduct} settings={store.settings} />;
-      case View.Stocktake: return <Stocktake products={store.products} onReconcile={store.reconcileInventory} />;
       case View.AIInsights: return <AIInsights state={store} />;
-      case View.Sales: return <Sales sales={store.sales} products={store.products} onRecordSale={store.recordSale} onDeleteSales={store.deleteSales} onUpdateSalesStatus={store.updateSalesStatus} settings={store.settings} />;
+      case View.Stocktake: return <Stocktake products={store.products} onReconcile={store.reconcileInventory} />;
+      case View.Sales: return <Sales sales={store.sales} products={store.products} onRecordSale={store.recordSale} settings={store.settings} currentUser={store.currentUser} />;
+      case View.Returns: return <Returns returns={store.returns} products={store.products} onRecordReturn={store.recordReturn} settings={store.settings} />;
       case View.Reports: return <Reports state={store} />;
-      case View.Suppliers: return <Suppliers suppliers={store.suppliers} onAdd={store.addSupplier} onUpdate={store.updateSupplier} onDelete={store.deleteSupplier} />;
-      case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} onAddCategory={store.addCategory} />;
-      case View.LaunchCenter: return <LaunchCenter state={store} />;
+      case View.Suppliers: return <Suppliers suppliers={store.suppliers} onAdd={store.addSupplier} onUpdate={() => {}} onDelete={() => {}} />;
+      case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} staff={store.users} currentUser={store.currentUser} onAddStaff={store.addStaffMember} onRemoveStaff={store.removeStaffMember} onActivateSubscription={async (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => { await store.activateSubscription(plan, cycle); }} />;
+      case View.LaunchCenter: return <LaunchCenter state={store} onUpdateSettings={store.updateSettings} />;
+      case View.UserManagement: return <UserManagement users={store.users} onUpdatePlan={async (id, t) => { await store.activateSubscription(t === 'revoke' ? 'beta' : 'mega', t === 'annual' ? 'annual' : 'monthly', id); return true; }} onAssignParent={store.assignParentToUser} />;
       default: return <Dashboard state={store} onNavigate={setActiveView} />;
     }
-  }
+  };
+
+  return (
+    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors overflow-x-hidden">
+      <Sidebar activeView={activeView} onViewChange={setActiveView} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} user={store.currentUser} onLogout={handleLogout} />
+      <main className={`flex-1 flex flex-col min-w-0 relative transition-all duration-500 ease-in-out ${isSidebarOpen ? 'lg:pl-72' : 'pl-0'}`}>
+        <header className="no-print h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 px-3 md:px-10 flex items-center justify-between sticky top-0 z-30 transition-colors">
+          <div className="flex items-center gap-2 md:gap-5 min-w-0">
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 md:p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl transition-transform active:scale-95 shrink-0">
+              <Menu size={20} />
+            </button>
+            <div className="flex flex-col min-w-0">
+              <h1 className="font-black text-slate-900 dark:text-white tracking-tight truncate max-w-[100px] sm:max-w-xs uppercase text-[12px] md:text-base leading-none">{store.currentUser?.companyName}</h1>
+              {!trialStatus.isSubscribed && (
+                 <span className="text-[8px] md:text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1 shrink-0 mt-1">
+                    <Clock size={10} /> {trialStatus.daysLeft}d Trial left
+                 </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 md:gap-4 shrink-0">
+            {cameraAvailable && (
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl mr-2">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Scanner Standby</span>
+                <button onClick={() => setGlobalScannerActive(true)} className="p-1 text-emerald-600 hover:scale-110 transition-transform">
+                  <Scan size={14} />
+                </button>
+              </div>
+            )}
+            <button onClick={toggleTheme} className="p-2 md:p-2.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors rounded-xl">
+              {store.settings.theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
+            <div className="hidden sm:flex items-center gap-3 pl-2 border-l border-slate-200 dark:border-slate-800">
+              <div className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xs">
+                {store.currentUser?.name?.charAt(0)}
+              </div>
+            </div>
+            <div className="relative" ref={notificationRef}>
+              <button onClick={() => setIsNotificationOpen(!isNotificationOpen)} className="p-2 md:p-3 text-slate-400 hover:text-indigo-600 relative transition-colors">
+                <Bell size={20} />
+                {store.notifications.filter(n => !n.read).length > 0 && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-slate-900"></span>}
+              </button>
+              {isNotificationOpen && <NotificationPanel notifications={store.notifications} onClose={() => setIsNotificationOpen(false)} onMarkRead={() => {}} onClear={() => {}} />}
+            </div>
+          </div>
+        </header>
+
+        {lastScannedProduct && (
+          <div className="fixed bottom-10 right-10 z-[100] bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-2xl border border-emerald-100 dark:border-emerald-800 animate-in slide-in-from-right-10 flex items-center gap-4">
+            <div className="w-10 h-10 bg-emerald-500 text-white rounded-xl flex items-center justify-center shadow-lg">
+              <CheckCircle2 size={24} />
+            </div>
+            <div>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detected SKU: {lastScannedProduct.sku}</p>
+              <p className="text-sm font-black text-slate-900 dark:text-white uppercase">{lastScannedProduct.name}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="p-2 md:p-10 flex-1 overflow-x-hidden">
+          {renderView()}
+        </div>
+
+        {globalScannerActive && (
+          <ScannerModal 
+            onScan={(res) => {
+              const sku = typeof res === 'string' ? res : res?.sku;
+              if (sku) handleGlobalScan(sku);
+            }} 
+            onClose={() => setGlobalScannerActive(false)} 
+          />
+        )}
+      </main>
+    </div>
+  );
 };
 
 export default App;

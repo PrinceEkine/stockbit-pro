@@ -12,16 +12,19 @@ import {
   Server,
   Activity,
   ChevronRight,
-  MessageCircle
+  MessageCircle,
+  CreditCard
 } from 'lucide-react';
 import { AppState } from '../types';
 
 interface LaunchCenterProps {
   state: AppState;
+  onUpdateSettings: (updates: any) => void;
 }
 
-const LaunchCenter: React.FC<LaunchCenterProps> = ({ state }) => {
+const LaunchCenter: React.FC<LaunchCenterProps> = ({ state, onUpdateSettings }) => {
   const [isExporting, setIsExporting] = useState(false);
+  const [paystackKey, setPaystackKey] = useState(state.settings.paystackPublicKey || '');
 
   const calculateStorageSize = () => {
     const stringified = JSON.stringify(state);
@@ -93,6 +96,41 @@ const LaunchCenter: React.FC<LaunchCenterProps> = ({ state }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
+          {/* Paystack Infrastructure - Hidden from standard users */}
+          <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-10 border border-slate-800 shadow-2xl">
+             <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white">
+                   <CreditCard size={24} />
+                </div>
+                <div>
+                   <h2 className="text-xl font-black text-white uppercase tracking-tighter">Billing Infrastructure</h2>
+                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Global Platform Payment Gateway</p>
+                </div>
+             </div>
+             
+             <div className="space-y-6">
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Paystack System Public Key (Global)</label>
+                   <div className="flex flex-col sm:flex-row gap-3">
+                      <input 
+                        type="password" 
+                        value={paystackKey} 
+                        onChange={e => setPaystackKey(e.target.value)}
+                        placeholder="pk_live_..."
+                        className="flex-1 px-6 py-4 bg-slate-800 border-none rounded-2xl font-mono text-sm text-indigo-400 focus:ring-2 focus:ring-indigo-600 outline-none"
+                      />
+                      <button 
+                        onClick={() => onUpdateSettings({ paystackPublicKey: paystackKey })}
+                        className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all shadow-lg"
+                      >
+                         Sync Key
+                      </button>
+                   </div>
+                   <p className="text-[8px] text-rose-400 font-bold uppercase mt-2 ml-1">Warning: Changing this key affects subscription renewals for all users.</p>
+                </div>
+             </div>
+          </div>
+
           <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
             <div className="p-8 border-b border-slate-50 flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -119,26 +157,6 @@ const LaunchCenter: React.FC<LaunchCenterProps> = ({ state }) => {
                 </div>
               ))}
             </div>
-          </div>
-
-          <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-600/20">
-            <div className="relative z-10">
-              <h3 className="text-xl font-bold mb-2">Supabase Backend Ready</h3>
-              <p className="text-indigo-100 mb-6 max-w-md">Your database schema is optimized with PostgreSQL triggers and RLS policies. This ensures maximum data integrity and security for your business users.</p>
-              <div className="flex gap-4">
-                <a 
-                  href="https://supabase.com/dashboard" 
-                  target="_blank"
-                  className="bg-white text-indigo-600 px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg flex items-center gap-2"
-                >
-                  Supabase Dashboard
-                </a>
-                <button className="bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-400">
-                  API Documentation
-                </button>
-              </div>
-            </div>
-            <Server size={180} className="absolute -bottom-10 -right-10 text-white/10 rotate-12" />
           </div>
         </div>
 

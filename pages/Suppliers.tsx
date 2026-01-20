@@ -18,7 +18,8 @@ import { DEFAULT_CATEGORIES as CATEGORIES } from '../constants';
 
 interface SuppliersProps {
   suppliers: Supplier[];
-  onAdd: (supplier: Omit<Supplier, 'id'>) => void;
+  // Fix: onAdd signature updated to exclude user_id
+  onAdd: (supplier: Omit<Supplier, 'id' | 'user_id'>) => void;
   onUpdate: (id: string, updates: Partial<Supplier>) => void;
   onDelete: (id: string) => void;
 }

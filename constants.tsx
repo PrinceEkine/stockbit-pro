@@ -6,6 +6,16 @@ export const DEFAULT_CATEGORIES = [
   'Textiles',
   'Stationery',
   'Groceries',
+  'Skin Care',
+  'Makeup',
+  'Detergents',
+  'Pharmacy & Health',
+  'Automotive',
+  'Baby Products',
+  'Fashion & Apparel',
+  'Sports & Outdoors',
+  'Toys & Games',
+  'Building Materials',
   'Other'
 ];
 

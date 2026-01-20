@@ -1,435 +1,315 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Search, 
   Plus, 
-  Edit2, 
   Trash2, 
-  AlertCircle,
-  X,
-  Package,
-  Maximize,
-  QrCode,
-  Download,
+  Package, 
+  Zap,
   Sparkles,
-  AlertTriangle,
-  FileSpreadsheet,
-  RefreshCw,
+  Building2,
+  FileText,
+  Scan,
+  Leaf,
+  MapPin,
   Calendar,
-  Hash,
-  HelpCircle,
-  Filter,
-  ChevronDown,
-  ChevronUp
+  Layers,
+  Tag,
+  QrCode,
+  Printer,
+  X,
+  CheckSquare
 } from 'lucide-react';
 import { Product, Supplier, Settings } from '../types';
 import { DEFAULT_CATEGORIES as CATEGORIES } from '../constants';
 import ScannerModal from '../components/ScannerModal';
-import QRCode from 'qrcode';
 
 interface InventoryProps {
   products: Product[];
   suppliers: Supplier[];
-  onAdd: (product: Omit<Product, 'id' | 'lastUpdated'>) => void;
+  onAdd: (product: Omit<Product, 'id' | 'last_updated' | 'created_at' | 'user_id'>) => void;
   onUpdate: (id: string, updates: Partial<Product>) => void;
   onDelete: (id: string) => void;
   settings: Settings;
 }
 
-const Inventory: React.FC<InventoryProps> = ({ products, suppliers, onAdd, onUpdate, onDelete, settings }) => {
+const BRANCHES = ['Main Branch', 'Jumia Mall Warehouse', 'Lagos Warehouse', 'Abuja Showroom', 'Port Harcourt Hub'];
+
+const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], onAdd, onDelete, settings }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedBranch, setSelectedBranch] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [qrPreview, setQrPreview] = useState<string | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [isGeneratingCSV, setIsGeneratingCSV] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-
-  // Advanced Filters State
-  const [minPrice, setMinPrice] = useState<string>('');
-  const [maxPrice, setMaxPrice] = useState<string>('');
-  const [minQty, setMinQty] = useState<string>('');
-  const [maxQty, setMaxQty] = useState<string>('');
-  const [minExpiry, setMinExpiry] = useState<string>('');
-  const [maxExpiry, setMaxExpiry] = useState<string>('');
-  const [batchFilter, setBatchFilter] = useState<string>('');
+  const [scannerMode, setScannerMode] = useState<'id' | 'details'>('id');
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [printMode, setPrintMode] = useState<'labels' | 'ledger' | null>(null);
+  const [printProducts, setPrintProducts] = useState<Product[]>([]);
+
   const [formData, setFormData] = useState({
-    name: '',
-    sku: '',
-    category: CATEGORIES[0],
-    price: 0,
-    costPrice: 0,
-    quantity: 0,
-    minThreshold: 5,
-    supplierId: suppliers[0]?.id || '',
-    batchNumber: '',
-    expiryDate: ''
+    name: '', 
+    sku: '', 
+    category: CATEGORIES[0], 
+    price: '', 
+    cost_price: '', 
+    quantity: '', 
+    min_threshold: '5', 
+    supplier_id: '', 
+    batch_number: '', 
+    expiry_date: '',
+    location: BRANCHES[0],
+    sustainability_score: '50'
   });
 
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           p.batchNumber?.toLowerCase().includes(searchTerm.toLowerCase());
+    return (products || []).filter(p => {
+      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
-      
-      const priceNum = p.price;
-      const matchesMinPrice = minPrice === '' || priceNum >= parseFloat(minPrice);
-      const matchesMaxPrice = maxPrice === '' || priceNum <= parseFloat(maxPrice);
-      
-      const qtyNum = p.quantity;
-      const matchesMinQty = minQty === '' || qtyNum >= parseInt(minQty);
-      const matchesMaxQty = maxQty === '' || qtyNum <= parseInt(maxQty);
-      
-      const matchesMinExpiry = minExpiry === '' || (p.expiryDate && p.expiryDate >= minExpiry);
-      const matchesMaxExpiry = maxExpiry === '' || (p.expiryDate && p.expiryDate <= maxExpiry);
-      
-      const matchesBatchFilter = batchFilter === '' || (p.batchNumber && p.batchNumber.toLowerCase().includes(batchFilter.toLowerCase()));
-
-      return matchesSearch && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesMinQty && matchesMaxQty && matchesMinExpiry && matchesMaxExpiry && matchesBatchFilter;
+      const matchesBranch = selectedBranch === 'All' || p.location === selectedBranch;
+      return matchesSearch && matchesCategory && matchesBranch;
     });
-  }, [products, searchTerm, selectedCategory, minPrice, maxPrice, minQty, maxQty, minExpiry, maxExpiry, batchFilter]);
+  }, [products, searchTerm, selectedCategory, selectedBranch]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(formData);
+    
+    const submissionData = {
+      name: formData.name,
+      sku: formData.sku,
+      category: formData.category,
+      price: parseFloat(formData.price) || 0,
+      cost_price: parseFloat(formData.cost_price) || 0,
+      quantity: parseInt(formData.quantity) || 0,
+      min_threshold: parseInt(formData.min_threshold) || 0,
+      supplier_id: formData.supplier_id === '' ? null : formData.supplier_id,
+      batch_number: formData.batch_number,
+      expiry_date: formData.expiry_date || null,
+      location: formData.location,
+      sustainability_score: parseInt(formData.sustainability_score) || 0
+    };
+
+    onAdd(submissionData);
     setIsModalOpen(false);
     resetForm();
   };
 
   const resetForm = () => {
-    setFormData({
-      name: '',
-      sku: '',
-      category: CATEGORIES[0],
-      price: 0,
-      costPrice: 0,
-      quantity: 0,
-      minThreshold: 5,
-      supplierId: suppliers[0]?.id || '',
-      batchNumber: '',
-      expiryDate: ''
+    setFormData({ 
+      name: '', 
+      sku: '', 
+      category: CATEGORIES[0], 
+      price: '', 
+      cost_price: '', 
+      quantity: '', 
+      min_threshold: '5', 
+      supplier_id: '', 
+      batch_number: '', 
+      expiry_date: '', 
+      location: BRANCHES[0],
+      sustainability_score: '50'
     });
   };
 
-  const handleScanResult = (result: any) => {
-    if (typeof result === 'object') {
+  const handleScanResult = (res: any, stayOpen: boolean = false) => {
+    if (scannerMode === 'details' && typeof res === 'object') {
       setFormData(prev => ({
         ...prev,
-        name: result.name || prev.name,
-        sku: result.sku || prev.sku,
-        price: result.price || prev.price,
-        category: CATEGORIES.includes(result.category) ? result.category : prev.category,
-        batchNumber: result.batchNumber || prev.batchNumber,
-        expiryDate: result.expiryDate || prev.expiryDate
+        name: res.name || prev.name,
+        sku: res.sku || prev.sku,
+        price: res.price?.toString() || prev.price,
+        category: CATEGORIES.includes(res.category) ? res.category : prev.category,
+        batch_number: res.batchNumber || prev.batch_number,
+        expiry_date: res.expiryDate || prev.expiry_date
       }));
+      setIsModalOpen(true);
+      setIsScannerOpen(false);
     } else {
-      setSearchTerm(result);
+      const sku = typeof res === 'string' ? res : res?.sku;
+      if (sku) {
+        const found = products.find(p => p.sku === sku);
+        if (found) {
+          setSearchTerm(sku);
+          setHighlightedId(found.id);
+          setTimeout(() => setHighlightedId(null), 3000);
+          if (!stayOpen) setIsScannerOpen(false);
+        }
+      } else {
+        if (!stayOpen) setIsScannerOpen(false);
+      }
     }
   };
 
-  const showQr = async (sku: string) => {
-    try {
-      const url = await QRCode.toDataURL(sku, { width: 400 });
-      setQrPreview(url);
-    } catch (err) {
-      console.error(err);
-    }
+  const toggleSelection = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
   };
 
-  const handleDownloadQRCSV = async () => {
-    setIsGeneratingCSV(true);
-    try {
-      const header = "Product Name,SKU,Batch No,Expiry Date,Price,QR_Code_Base64\n";
-      const rows = await Promise.all(products.map(async (p) => {
-        const qrBase64 = await QRCode.toDataURL(p.sku, { width: 300 });
-        const escapedName = p.name.replace(/"/g, '""');
-        const formattedPrice = `${settings.currency}${p.price.toLocaleString()}`;
-        return `"${escapedName}","${p.sku}","${p.batchNumber}","${p.expiryDate}","${formattedPrice}","${qrBase64}"`;
-      }));
-
-      const csvContent = "data:text/csv;charset=utf-8," + header + rows.join("\n");
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `Inventory_QR_Sheet_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err) {
-      console.error("Failed to generate QR CSV:", err);
-    } finally {
-      setIsGeneratingCSV(false);
-    }
+  const handlePrintLedger = () => {
+    setPrintMode('ledger');
+    setPrintProducts(filteredProducts);
+    setTimeout(() => {
+      window.print();
+      setPrintMode(null);
+      setPrintProducts([]);
+    }, 500);
   };
 
-  const confirmDelete = (id: string) => {
-    onDelete(id);
-    setDeleteConfirmId(null);
-  };
-
-  const inputClasses = "w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900";
-  const filterInputClasses = "w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900";
-
-  const getExpiryStatus = (dateString: string) => {
-    if (!dateString) return null;
-    const expiry = new Date(dateString);
-    const now = new Date();
-    const diffDays = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const handlePrintLabels = (selectedProducts?: Product[]) => {
+    const targets = selectedProducts || products.filter(p => selectedIds.has(p.id));
+    if (targets.length === 0) return;
     
-    if (diffDays < 0) return { label: 'Expired', color: 'text-rose-600 bg-rose-50' };
-    if (diffDays <= 30) return { label: 'Expires Soon', color: 'text-amber-600 bg-amber-50' };
-    return null;
-  };
-
-  const resetFilters = () => {
-    setSearchTerm('');
-    setSelectedCategory('All');
-    setMinPrice('');
-    setMaxPrice('');
-    setMinQty('');
-    setMaxQty('');
-    setMinExpiry('');
-    setMaxExpiry('');
-    setBatchFilter('');
+    setPrintMode('labels');
+    setPrintProducts(targets);
+    setTimeout(() => {
+      window.print();
+      setPrintMode(null);
+      setPrintProducts([]);
+    }, 500);
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 no-print">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 md:space-y-10 animate-in fade-in duration-700">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 no-print">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Inventory Management</h1>
-          <p className="text-slate-500">Oversee stock levels, monitor expiry dates, and manage product batches.</p>
+          <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase leading-tight">Inventory Control</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[9px] md:text-[10px] mt-1 flex items-center gap-2">
+            <Building2 size={14} className="text-indigo-600 shrink-0" /> Enterprise Asset Repository
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button 
-            onClick={handleDownloadQRCSV}
-            disabled={isGeneratingCSV || products.length === 0}
-            data-tooltip="Export QR codes and prices to a CSV sheet for printing"
-            className="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl flex items-center gap-2 font-medium hover:bg-slate-50 transition-all shadow-sm disabled:opacity-50 text-sm"
-          >
-            {isGeneratingCSV ? <RefreshCw size={18} className="animate-spin" /> : <FileSpreadsheet size={18} />} 
-            <span className="hidden sm:inline">Download QR Sheet</span>
-            <span className="sm:hidden">Export</span>
-          </button>
-          <button 
-            onClick={() => setIsScannerOpen(true)}
-            data-tooltip="Quickly check price and stock by scanning a barcode"
-            className="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl flex items-center gap-2 font-medium hover:bg-slate-50 transition-all shadow-sm text-sm"
-          >
-            <Maximize size={18} /> <span className="hidden sm:inline">Price Check</span>
-          </button>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            data-tooltip="Manually add a new item to your stock"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-medium transition-colors shadow-lg shadow-indigo-600/20 text-sm"
-          >
-            <Plus size={18} /> <span>Add Product</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search by name, SKU, or batch..." 
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none text-slate-900"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-2">
-            <select 
-              data-tooltip="Filter inventory by product category"
-              className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              <option value="All">All Categories</option>
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <button 
-              onClick={() => setShowFilters(!showFilters)}
-              className={`px-4 py-2 rounded-xl border flex items-center gap-2 text-sm font-medium transition-all ${showFilters ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
-            >
-              <Filter size={16} /> 
-              Advanced Filters
-              {showFilters ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        <div className="flex flex-wrap gap-2 sm:gap-3">
+          {selectedIds.size > 0 && (
+            <button onClick={() => handlePrintLabels()} className="px-5 py-3 bg-indigo-600 text-white rounded-2xl flex items-center justify-center gap-3 font-black text-[9px] uppercase tracking-widest shadow-xl active:scale-95 transition-all animate-in slide-in-from-right-2">
+              <QrCode size={16} /> Print {selectedIds.size} Labels
             </button>
+          )}
+          <button onClick={handlePrintLedger} className="px-5 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl flex items-center justify-center gap-3 font-black text-[9px] uppercase tracking-widest shadow-sm active:scale-95 transition-all">
+            <FileText size={16} /> Print List
+          </button>
+          <button onClick={() => { setScannerMode('id'); setIsScannerOpen(true); }} className="px-5 py-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest shadow-sm transition-all active:scale-95">
+            <Scan size={18} /> Strict Sensor
+          </button>
+          <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="px-5 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+            <Plus size={18} /> Add Product
+          </button>
+        </div>
+      </header>
+
+      {/* PRINT VIEW: LEDGER */}
+      {printMode === 'ledger' && (
+        <div className="print-only">
+          <div className="inventory-ledger-print">
+            <h1 className="text-2xl font-bold mb-4 uppercase">{settings.companyName} - Inventory Ledger</h1>
+            <table>
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Product Name</th>
+                  <th>Category</th>
+                  <th>Price</th>
+                  <th>Quantity</th>
+                  <th>Location</th>
+                </tr>
+              </thead>
+              <tbody>
+                {printProducts.map(p => (
+                  <tr key={p.id}>
+                    <td>{p.sku}</td>
+                    <td>{p.name}</td>
+                    <td>{p.category}</td>
+                    <td>{settings.currency}{p.price.toLocaleString()}</td>
+                    <td>{p.quantity}</td>
+                    <td>{p.location}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
+      )}
 
-        {showFilters && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 animate-in slide-in-from-top-2">
-            <div className="space-y-3">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Price Range ({settings.currency})</label>
-              <div className="flex items-center gap-2">
-                <input type="number" placeholder="Min" className={filterInputClasses} value={minPrice} onChange={e => setMinPrice(e.target.value)} />
-                <span className="text-slate-400">-</span>
-                <input type="number" placeholder="Max" className={filterInputClasses} value={maxPrice} onChange={e => setMaxPrice(e.target.value)} />
-              </div>
+      {/* PRINT VIEW: QR LABELS */}
+      {printMode === 'labels' && (
+        <div className="print-only">
+          {printProducts.map(p => (
+            <div key={p.id} className="qr-label-print flex flex-col items-center justify-center border-2 border-black p-4 bg-white text-black mb-4" style={{ width: '50mm', height: '30mm', pageBreakAfter: 'always' }}>
+               <h4 className="text-[10px] font-black uppercase mb-1 truncate w-full text-center leading-tight">{p.name}</h4>
+               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${p.sku}`} alt="QR" className="w-16 h-16 mb-1" />
+               <div className="flex flex-col items-center">
+                 <p className="text-[8px] font-black tracking-[0.2em]">{p.sku}</p>
+                 <p className="text-[11px] font-black mt-0.5">{settings.currency}{p.price.toLocaleString()}</p>
+               </div>
             </div>
-            <div className="space-y-3">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Stock Qty Range</label>
-              <div className="flex items-center gap-2">
-                <input type="number" placeholder="Min" className={filterInputClasses} value={minQty} onChange={e => setMinQty(e.target.value)} />
-                <span className="text-slate-400">-</span>
-                <input type="number" placeholder="Max" className={filterInputClasses} value={maxQty} onChange={e => setMaxQty(e.target.value)} />
-              </div>
-            </div>
-            <div className="space-y-3">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Expiry Range</label>
-              <div className="flex items-center gap-2">
-                <input type="date" className={filterInputClasses} value={minExpiry} onChange={e => setMinExpiry(e.target.value)} />
-                <span className="text-slate-400">-</span>
-                <input type="date" className={filterInputClasses} value={maxExpiry} onChange={e => setMaxExpiry(e.target.value)} />
-              </div>
-            </div>
-            <div className="space-y-3">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Specific Batch</label>
-              <input 
-                type="text" 
-                placeholder="Batch Number..." 
-                className={filterInputClasses} 
-                value={batchFilter} 
-                onChange={e => setBatchFilter(e.target.value)} 
-              />
-            </div>
-            <div className="flex items-end pb-0.5">
-              <button 
-                onClick={resetFilters}
-                className="w-full py-1.5 bg-white border border-slate-200 text-slate-500 text-xs font-bold rounded-lg hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
-              >
-                <X size={14} /> Clear All
-              </button>
-            </div>
-          </div>
-        )}
+          ))}
+        </div>
+      )}
+
+      <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-4 no-print shadow-sm">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+          <input type="text" placeholder="Filter Assets..." className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-sm font-bold placeholder:text-slate-400 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        </div>
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+          <select className="flex-1 md:flex-none px-6 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white outline-none cursor-pointer whitespace-nowrap min-w-[140px]" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+            <option value="All">Categories</option>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="flex-1 md:flex-none px-6 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white outline-none cursor-pointer whitespace-nowrap min-w-[140px]" value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)}>
+            <option value="All">Locations</option>
+            {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden no-print mx-2">
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-[800px]">
-            <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-bold tracking-wider">
+            <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-slate-500 text-[10px] uppercase font-black tracking-widest">
               <tr>
-                <th className="px-6 py-4">QR</th>
-                <th className="px-6 py-4">Product Info</th>
-                <th className="px-6 py-4">Batch/Expiry</th>
-                <th className="px-6 py-4">Category</th>
-                <th className="px-6 py-4">Price</th>
-                <th className="px-6 py-4">Stock Level</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="pl-10 py-6 w-10">
+                  <input type="checkbox" className="rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500" onChange={(e) => {
+                    if (e.target.checked) setSelectedIds(new Set(filteredProducts.map(p => p.id)));
+                    else setSelectedIds(new Set());
+                  }} checked={selectedIds.size === filteredProducts.length && filteredProducts.length > 0} />
+                </th>
+                <th className="px-10 py-6">Asset Intelligence</th>
+                <th className="px-10 py-6 text-center">Location</th>
+                <th className="px-10 py-6 text-center">Health</th>
+                <th className="px-10 py-6 text-center">Price</th>
+                <th className="px-10 py-6 text-right">Ops</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredProducts.map((product) => {
-                const isCritical = product.quantity <= product.minThreshold;
-                const isWarning = !isCritical && product.quantity <= product.minThreshold * 2;
-                const stockPercentage = Math.min(100, (product.quantity / (product.minThreshold * 3)) * 100);
-                const expiryStatus = getExpiryStatus(product.expiryDate);
-
+            <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+              {filteredProducts.map((p) => {
+                const isLow = p.quantity <= p.min_threshold;
+                const isOut = p.quantity === 0;
                 return (
-                  <tr 
-                    key={product.id} 
-                    className={`hover:bg-slate-50 transition-colors group ${
-                      isCritical ? 'bg-rose-50 border-l-4 border-l-rose-500' : 'border-l-4 border-l-transparent'
-                    }`}
-                  >
-                    <td className="px-6 py-4">
-                      <button 
-                        onClick={() => showQr(product.sku)}
-                        data-tooltip="View and print QR label for this SKU"
-                        className={`p-2 rounded-lg transition-all ${isCritical ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-400'} hover:text-indigo-600 hover:bg-indigo-50`}
-                      >
-                        <QrCode size={18} />
-                      </button>
+                  <tr key={p.id} id={`prod-${p.id}`} className={`transition-all duration-500 ${highlightedId === p.id ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-4 ring-indigo-500/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+                    <td className="pl-10 py-6">
+                      <input type="checkbox" className="rounded-md border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 bg-transparent" checked={selectedIds.has(p.id)} onChange={() => toggleSelection(p.id)} />
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold shrink-0 ${isCritical ? 'bg-rose-600 text-white shadow-lg' : 'bg-indigo-50 text-indigo-600'}`}>
-                          {product.name.charAt(0)}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-sm font-semibold text-slate-900">{product.name}</p>
-                            {isCritical && <AlertCircle size={14} className="text-rose-500 animate-pulse" />}
-                          </div>
-                          <p className="text-xs text-slate-500 font-mono">{product.sku}</p>
-                        </div>
+                    <td className="px-10 py-6">
+                      <div className="min-w-0">
+                        <p className={`font-black uppercase tracking-tight truncate max-w-[200px] transition-colors ${highlightedId === p.id ? 'text-indigo-600' : 'text-slate-900 dark:text-white'}`}>{p.name}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{p.sku}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                          <Hash size={12} className="text-slate-400" />
-                          <span>{product.batchNumber || 'N/A'}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                          <Calendar size={12} className="text-slate-400" />
-                          <span>{product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : 'N/A'}</span>
-                        </div>
-                        {expiryStatus && (
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter ${expiryStatus.color}`}>
-                            {expiryStatus.label}
-                          </span>
-                        )}
+                    <td className="px-10 py-6 text-center">
+                      <span className="text-[9px] font-black uppercase tracking-widest px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-full">{p.location}</span>
+                    </td>
+                    <td className="px-10 py-6 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <p className={`font-black text-sm ${isOut ? 'text-rose-600' : isLow ? 'text-amber-600' : 'text-slate-900 dark:text-white'}`}>{p.quantity} Units</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="text-xs font-medium px-2 py-1 bg-slate-100 text-slate-600 rounded-lg">
-                        {product.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-slate-900">
-                      {settings.currency}{product.price.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 min-w-[140px]">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className={`font-bold ${isCritical ? 'text-rose-600' : isWarning ? 'text-amber-600' : 'text-emerald-600'}`}>
-                            {product.quantity}
-                          </span>
-                          <span className="text-slate-400 font-medium">Goal: {product.minThreshold * 3}</span>
-                        </div>
-                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full transition-all duration-700 ease-out ${
-                              isCritical ? 'bg-rose-500' : isWarning ? 'bg-amber-500' : 'bg-emerald-500'
-                            }`}
-                            style={{ width: `${stockPercentage}%` }}
-                          ></div>
-                        </div>
-                        {isCritical && (
-                          <span className="text-[9px] text-rose-600 font-bold uppercase tracking-tighter flex items-center gap-1">
-                            <AlertTriangle size={10} /> Critical Stock
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button 
-                          className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
-                          data-tooltip="Modify product details"
-                          onClick={() => {
-                            setFormData({...product});
-                            setIsModalOpen(true);
-                          }}
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button 
-                          onClick={() => setDeleteConfirmId(product.id)}
-                          className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
-                          data-tooltip="Permanently remove from inventory"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                    <td className="px-10 py-6 text-center font-black text-indigo-600">{settings.currency}{(p.price || 0).toLocaleString()}</td>
+                    <td className="px-10 py-6 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => handlePrintLabels([p])} className="p-3 text-slate-300 hover:text-indigo-600 transition-colors" title="Print QR Label"><QrCode size={18} /></button>
+                        <button onClick={() => onDelete(p.id)} className="p-3 text-slate-300 hover:text-rose-600 transition-colors" title="Delete Product"><Trash2 size={18} /></button>
                       </div>
                     </td>
                   </tr>
@@ -438,221 +318,113 @@ const Inventory: React.FC<InventoryProps> = ({ products, suppliers, onAdd, onUpd
             </tbody>
           </table>
         </div>
-        {filteredProducts.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <Package size={48} className="mb-4 opacity-20" />
-            <p className="text-lg">No products found matching filters</p>
-          </div>
-        )}
       </div>
 
-      {isScannerOpen && (
-        <ScannerModal 
-          onScan={handleScanResult} 
-          onClose={() => setIsScannerOpen(false)} 
-          mode="price_check"
-        />
-      )}
-
-      {deleteConfirmId && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full animate-in zoom-in-95">
-            <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center">
-              <AlertTriangle size={32} />
-            </div>
-            <div className="text-center">
-              <h3 className="text-xl font-bold text-slate-900">Are you sure?</h3>
-              <p className="text-sm text-slate-500 mt-2">
-                This will permanently delete <strong>{products.find(p => p.id === deleteConfirmId)?.name}</strong>. This action cannot be undone.
-              </p>
-            </div>
-            <div className="flex gap-3 w-full">
-              <button 
-                onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={() => confirmDelete(deleteConfirmId)}
-                className="flex-1 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 shadow-lg shadow-rose-600/20 transition-all"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {qrPreview && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full animate-in zoom-in-95">
-            <h3 className="text-xl font-bold text-slate-900">Product QR Label</h3>
-            <img src={qrPreview} alt="QR Code" className="w-full h-auto border-8 border-slate-50 rounded-2xl shadow-inner" />
-            <div className="text-center">
-              <p className="font-bold text-slate-900">Label Generated</p>
-              <p className="text-sm text-slate-500">Print or scan to identify items</p>
-            </div>
-            <div className="flex gap-3 w-full">
-              <button 
-                onClick={() => setQrPreview(null)}
-                className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200"
-              >
-                Close
-              </button>
-              <button 
-                onClick={() => window.print()}
-                className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 flex items-center justify-center gap-2"
-              >
-                <Download size={18} /> Print Label
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {isModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
-          <div className="bg-white rounded-3xl w-full max-w-lg relative z-10 shadow-2xl animate-in zoom-in-95 duration-200 my-8">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl no-print">
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] md:rounded-[3.5rem] w-full max-w-4xl p-6 md:p-12 shadow-2xl animate-in zoom-in-95 overflow-y-auto max-h-[95vh] border border-white/5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">Product Details</h3>
-                <p className="text-xs text-slate-400">Configure core product properties and tracking info.</p>
+                <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Inventory Provision</h3>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Synchronizing to Database Node</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X size={24} />
+              <button onClick={() => { setScannerMode('details'); setIsScannerOpen(true); }} className="w-full md:w-auto px-6 py-4 md:py-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
+                <Sparkles size={18} /> Smart Extract
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="flex justify-center">
-                <button 
-                  type="button"
-                  onClick={() => setIsScannerOpen(true)}
-                  className="bg-indigo-50 text-indigo-600 px-6 py-3 rounded-2xl flex items-center gap-2 font-bold hover:bg-indigo-100 transition-all border border-indigo-100 w-full justify-center group"
-                >
-                  <Sparkles size={20} className="group-hover:animate-pulse" /> AI Scanner Auto-fill
-                </button>
+
+            <form onSubmit={handleSubmit} className="space-y-10">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2 space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><Tag size={12}/> Product Identity</label>
+                    <input required className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-500" placeholder="Product Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">SKU / Barcode</label>
+                      <input required className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-500" placeholder="SKU0000" value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label>
+                      <select className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-500" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest ml-1 flex items-center gap-2"><Layers size={12}/> On-Hand Qty</label>
+                    <input required type="number" className="w-full px-5 py-3 bg-white dark:bg-slate-900 rounded-xl border-none font-black text-xl text-indigo-600 focus:ring-2 focus:ring-indigo-500" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Min Threshold</label>
+                    <input required type="number" className="w-full px-5 py-3 bg-white dark:bg-slate-900 rounded-xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-500" value={formData.min_threshold} onChange={e => setFormData({...formData, min_threshold: e.target.value})} />
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Product Name</label>
-                  <input 
-                    required 
-                    type="text" 
-                    className={inputClasses}
-                    value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Selling Price ({settings.currency})</label>
+                  <input required type="number" step="0.01" className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">SKU / Barcode</label>
-                  <input 
-                    required 
-                    type="text" 
-                    className={inputClasses}
-                    value={formData.sku}
-                    onChange={e => setFormData({...formData, sku: e.target.value})}
-                  />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cost Price ({settings.currency})</label>
+                  <input required type="number" step="0.01" className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white" value={formData.cost_price} onChange={e => setFormData({...formData, cost_price: e.target.value})} />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
-                  <select 
-                    className={inputClasses}
-                    value={formData.category}
-                    onChange={e => setFormData({...formData, category: e.target.value})}
-                  >
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sustainability Score (0-100)</label>
+                  <div className="relative">
+                    <Leaf className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500" size={16} />
+                    <input type="number" max="100" className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white" value={formData.sustainability_score} onChange={e => setFormData({...formData, sustainability_score: e.target.value})} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><MapPin size={12}/> Warehouse Location</label>
+                  <select className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})}>
+                    {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </div>
-                
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Batch Number</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. B-1234"
-                    className={inputClasses}
-                    value={formData.batchNumber}
-                    onChange={e => setFormData({...formData, batchNumber: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Expiry Date</label>
-                  <input 
-                    type="date" 
-                    className={inputClasses}
-                    value={formData.expiryDate}
-                    onChange={e => setFormData({...formData, expiryDate: e.target.value})}
-                  />
-                </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Selling Price ({settings.currency})</label>
-                  <input 
-                    required 
-                    type="number" 
-                    step="0.01"
-                    className={inputClasses}
-                    value={formData.price}
-                    onChange={e => setFormData({...formData, price: Number(e.target.value)})}
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Batch Number</label>
+                  <input className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white" placeholder="LOT-0000" value={formData.batch_number} onChange={e => setFormData({...formData, batch_number: e.target.value})} />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1 flex items-center gap-1">
-                    Cost Price ({settings.currency})
-                    <div className="cursor-help text-indigo-400" data-tooltip="The purchase cost per unit. Used to calculate gross profit (Selling Price - Cost Price).">
-                      <HelpCircle size={12} />
-                    </div>
-                  </label>
-                  <input 
-                    required 
-                    type="number" 
-                    step="0.01"
-                    className={inputClasses}
-                    value={formData.costPrice}
-                    onChange={e => setFormData({...formData, costPrice: Number(e.target.value)})}
-                  />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><Calendar size={12}/> Expiry Date (Optional)</label>
+                  <input type="date" className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white" value={formData.expiry_date} onChange={e => setFormData({...formData, expiry_date: e.target.value})} />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Initial Qty</label>
-                  <input 
-                    required 
-                    type="number" 
-                    className={inputClasses}
-                    value={formData.quantity}
-                    onChange={e => setFormData({...formData, quantity: Number(e.target.value)})}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Min. Alert Level</label>
-                  <input 
-                    required 
-                    type="number" 
-                    className={inputClasses}
-                    value={formData.minThreshold}
-                    onChange={e => setFormData({...formData, minThreshold: Number(e.target.value)})}
-                  />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Supplier Entity</label>
+                  <select className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white" value={formData.supplier_id} onChange={e => setFormData({...formData, supplier_id: e.target.value})}>
+                    <option value="">No Link</option>
+                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
                 </div>
               </div>
-              <div className="pt-4 flex gap-3">
-                <button 
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-3 text-slate-600 font-semibold hover:bg-slate-100 rounded-xl transition-colors"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  className="flex-1 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all"
-                >
-                  Save to Inventory
+
+              <div className="flex flex-col-reverse md:flex-row gap-4 pt-10">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-5 font-black uppercase text-[11px] text-slate-400 hover:text-rose-500 transition-colors">Abort Cycle</button>
+                <button type="submit" className="flex-1 py-5 bg-indigo-600 text-white rounded-3xl font-black uppercase text-[11px] shadow-2xl shadow-indigo-600/30 flex items-center justify-center gap-3 active:scale-95 transition-all">
+                  <Zap size={18} className="fill-current"/> Commit to Ledger
                 </button>
               </div>
             </form>
           </div>
         </div>
+      )}
+
+      {isScannerOpen && (
+        <ScannerModal 
+          mode={scannerMode}
+          onScan={handleScanResult} 
+          onClose={() => setIsScannerOpen(false)} 
+        />
       )}
     </div>
   );

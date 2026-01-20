@@ -3,6 +3,7 @@
   "description": "A high-performance inventory management dashboard with AI-powered stock insights, sales tracking, and subscription management for Nigerian businesses.",
   "requestFramePermissions": [
     "camera",
+    "microphone",
     "geolocation"
   ]
 }

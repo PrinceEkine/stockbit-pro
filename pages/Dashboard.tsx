@@ -1,29 +1,13 @@
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
-  Package, 
-  DollarSign, 
-  TrendingUp, 
-  AlertTriangle,
-  ArrowRight,
-  ShoppingCart,
-  FileText
+  DollarSign, TrendingUp, AlertTriangle, ShoppingCart, Plus, ArrowRight, ShoppingBag
 } from 'lucide-react';
 import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  AreaChart,
-  Area
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { AppState, View } from '../types';
-import StatsCard from '../components/StatsCard';
+import { getTrialStatus } from '../store';
 
 interface DashboardProps {
   state: AppState;
@@ -31,147 +15,139 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
-  const totalStockValue = state.products.reduce((acc, p) => acc + (p.price * p.quantity), 0);
-  const totalSalesRevenue = state.sales.reduce((acc, s) => acc + s.totalPrice, 0);
-  const totalSalesCost = state.sales.reduce((acc, s) => acc + s.totalCost, 0);
-  const lowStockItems = state.products.filter(p => p.quantity <= p.minThreshold).length;
-  const recentSales = state.sales.slice(0, 5);
+  const [timeFrame, setTimeFrame] = useState<'day' | 'week' | 'month'>('day');
+  const totalStockValue = (state.products || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
+  const totalSalesRevenue = (state.sales || []).reduce((acc, s) => acc + (s.total_price || 0), 0);
+  const lowStockItems = (state.products || []).filter(p => p.quantity <= (p.min_threshold || 5));
+  
+  const trialStatus = useMemo(() => getTrialStatus(state.currentUser), [state.currentUser]);
 
-  const formatCurrency = (val: number) => {
-    return `${state.settings.currency}${val.toLocaleString()}`;
-  };
-
-  const chartData = [
-    { name: 'Mon', sales: totalSalesRevenue * 0.1 },
-    { name: 'Tue', sales: totalSalesRevenue * 0.15 },
-    { name: 'Wed', sales: totalSalesRevenue * 0.12 },
-    { name: 'Thu', sales: totalSalesRevenue * 0.18 },
-    { name: 'Fri', sales: totalSalesRevenue * 0.22 },
-    { name: 'Sat', sales: totalSalesRevenue * 0.13 },
-    { name: 'Sun', sales: totalSalesRevenue * 0.10 },
-  ];
+  const chartData = useMemo(() => {
+    const now = new Date();
+    const data: { name: string, sales: number }[] = [];
+    const sales = state.sales || [];
+    if (timeFrame === 'day') {
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        const dayTotal = sales.filter(s => s.date.startsWith(dateStr)).reduce((sum, s) => sum + (s.total_price || 0), 0);
+        data.push({ name: date.toLocaleDateString('en-US', { weekday: 'short' }), sales: dayTotal });
+      }
+    } else {
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthTotal = sales.filter(s => {
+          const sDate = new Date(s.date);
+          return sDate.getMonth() === date.getMonth() && sDate.getFullYear() === date.getFullYear();
+        }).reduce((sum, s) => sum + (s.total_price || 0), 0);
+        data.push({ name: date.toLocaleDateString('en-US', { month: 'short' }), sales: monthTotal });
+      }
+    }
+    return data;
+  }, [state.sales, timeFrame]);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-900">Dashboard Overview</h1>
-        <p className="text-slate-500">Welcome back! Here's what's happening today.</p>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div data-tooltip="Estimated total value of items currently in stock">
-          <StatsCard 
-            title="Total Stock Value" 
-            value={formatCurrency(totalStockValue)} 
-            icon={DollarSign} 
-            color="bg-indigo-600"
-            trend="+12.5%"
-            trendUp={true}
-          />
+    <div className="space-y-4 md:space-y-8 animate-in fade-in duration-500 px-1">
+      {state.error && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 p-3 rounded-2xl flex items-center gap-3 text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">
+           <AlertTriangle size={14} className="shrink-0" /> {state.error}
         </div>
-        <div data-tooltip="Gross revenue from all recorded sales">
-          <StatsCard 
-            title="Total Revenue" 
-            value={formatCurrency(totalSalesRevenue)} 
-            icon={TrendingUp} 
-            color="bg-emerald-600"
-            trend={formatCurrency(totalSalesRevenue - totalSalesCost)}
-            trendUp={true}
-          />
-        </div>
-        <div data-tooltip="Total number of unique products in inventory">
-          <StatsCard 
-            title="Total Products" 
-            value={state.products.length} 
-            icon={Package} 
-            color="bg-blue-600"
-          />
-        </div>
-        <div data-tooltip="Number of products currently below minimum stock thresholds">
-          <StatsCard 
-            title="Low Stock Alerts" 
-            value={lowStockItems} 
-            icon={AlertTriangle} 
-            color="bg-amber-500"
-            trend={lowStockItems > 0 ? "Action Required" : "All Good"}
-            trendUp={lowStockItems === 0}
-          />
-        </div>
+      )}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+        <StatsCard title="Stock Value" value={totalStockValue} symbol={state.settings.currency} icon={DollarSign} color="bg-indigo-600" />
+        <StatsCard title="Revenue" value={totalSalesRevenue} symbol={state.settings.currency} icon={TrendingUp} color="bg-emerald-600" />
+        <StatsCard title="Volume" value={state.sales.length} icon={ShoppingCart} color="bg-amber-600" />
+        <StatsCard title="Risk Alert" value={lowStockItems.length} icon={AlertTriangle} color="bg-rose-600" isAlert={lowStockItems.length > 0} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-slate-900">Weekly Revenue</h2>
-            <select 
-              className="text-sm border-slate-200 rounded-lg px-2 py-1 outline-none"
-              data-tooltip="Select the time period for revenue visualization"
-            >
-              <option>Last 7 Days</option>
-              <option>Last 30 Days</option>
-            </select>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
+        <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm relative min-h-[350px]">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+            <div>
+              <h3 className="text-sm md:text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Performance Matrix</h3>
+              <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5 tracking-widest">Real-time Financial Flow</p>
+            </div>
+            <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto overflow-x-auto scrollbar-hide">
+              {(['day', 'month'] as const).map((t) => (
+                <button key={t} onClick={() => setTimeFrame(t)} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${timeFrame === t ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
+                  {t}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
+          
+          <div className="w-full h-[250px] md:h-[350px]">
+            <ResponsiveContainer width="100%" height="100%" aspect={window.innerWidth < 768 ? 1.4 : 2.5}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/><stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
-                <Tooltip 
-                  formatter={(value: number) => [formatCurrency(value), 'Sales']}
-                  contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                />
-                <Area type="monotone" dataKey="sales" stroke="#4f46e5" fillOpacity={1} fill="url(#colorSales)" strokeWidth={2} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 8, fill: '#94a3b8', fontWeight: 800}} dy={10} />
+                <YAxis hide />
+                <Tooltip content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="bg-slate-900 text-white px-3 py-1.5 rounded-xl text-[9px] font-black shadow-2xl">
+                        {state.settings.currency}&nbsp;{(payload[0].value as number).toLocaleString()}
+                      </div>
+                    );
+                  }
+                  return null;
+                }} />
+                <Area type="monotone" dataKey="sales" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-slate-900">Recent Transactions</h2>
-            <button 
-              onClick={() => onNavigate(View.Sales)}
-              className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
-              data-tooltip="Go to sales history page"
-            >
-              View All <ArrowRight size={14} />
-            </button>
+        <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm h-fit">
+          <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Core Protocols</h3>
+          <div className="space-y-3">
+            <ActionBtn onClick={() => onNavigate(View.Sales)} label="Launch POS" sub="Record Sale" icon={Plus} />
+            <ActionBtn onClick={() => onNavigate(View.Inventory)} label="Inventory" sub="Audit Grid" icon={ArrowRight} />
           </div>
-          <div className="space-y-4">
-            {recentSales.length > 0 ? recentSales.map((sale) => (
-              <div key={sale.id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-colors border-b border-slate-50 last:border-0">
-                <div className="flex items-center gap-3 text-slate-900">
-                  <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
-                    <FileText size={20} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-mono font-bold">{sale.id}</p>
-                    <p className="text-xs text-slate-500">{new Date(sale.date).toLocaleDateString()}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-slate-900">{formatCurrency(sale.totalPrice)}</p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{sale.items.length} unique items</p>
-                </div>
-              </div>
-            )) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400 py-10">
-                <ShoppingCart size={40} className="mb-2 opacity-20" />
-                <p>No transactions recorded yet</p>
-              </div>
-            )}
+          <div className="mt-8 p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2rem] border border-indigo-100 dark:border-indigo-800">
+             <div className="flex items-center gap-3 mb-2">
+                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse" />
+                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Trial Active</p>
+             </div>
+             <p className="text-[14px] font-black text-slate-900 dark:text-white uppercase">{trialStatus.daysLeft} Days Remain</p>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
+const StatsCard = ({ title, value, symbol, icon: Icon, color, isAlert }: any) => (
+  <div className="bg-white dark:bg-slate-900 p-3 md:p-6 rounded-[1.2rem] md:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm group">
+    <div className={`w-8 h-8 md:w-12 md:h-12 ${color} rounded-[0.8rem] md:rounded-2xl flex items-center justify-center text-white mb-3 md:mb-6 shadow-lg`}>
+      <Icon size={window.innerWidth < 768 ? 16 : 24} />
+    </div>
+    <p className="text-[7px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate">{title}</p>
+    <div className="flex items-baseline gap-0.5 overflow-hidden">
+      {symbol && <span className="text-[10px] md:text-xs font-black text-slate-300 mb-1">{symbol}&nbsp;</span>}
+      <h4 className={`text-[13px] md:text-2xl font-black tracking-tighter truncate ${isAlert ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}>
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </h4>
+    </div>
+  </div>
+);
+
+const ActionBtn = ({ label, sub, icon: Icon, onClick }: any) => (
+  <button onClick={onClick} className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-between group transition-all text-left active:scale-95">
+    <div>
+      <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase">{label}</p>
+      <p className="text-[8px] text-slate-400 font-bold uppercase">{sub}</p>
+    </div>
+    <div className="w-8 h-8 bg-white dark:bg-slate-700 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-indigo-600 shadow-sm">
+      <Icon size={14} />
+    </div>
+  </button>
+);
 
 export default Dashboard;
