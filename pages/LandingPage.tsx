@@ -77,7 +77,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
     try {
       const apiKey = process.env.API_KEY;
       if (!apiKey) {
-        throw new Error("Missing system credentials.");
+        throw new Error("Missing credentials. Please set API_KEY in Netlify environment variables.");
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -85,7 +85,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
         model: 'gemini-3-flash-preview',
         contents: userMsg,
         config: {
-          systemInstruction: "You are StockBot, the official enterprise assistant for StockBit Pro. StockBit Pro is a high-performance cloud inventory and POS system. When explaining Multi-Staff Management, use professional terminology: Role-Based Access Control (RBAC) for granular permissions (Cashier, Supervisor, Admin), Immutable Audit Trails for real-time activity logs and absolute accountability, Productivity Intelligence for tracking individual terminal output, and Secure Terminal Sync for concurrent operations across mobile and desktop. Professional contact: Call: 07010698264, WhatsApp: 0707217949, Twitter: @StockBitpro.",
+          systemInstruction: "You are StockBot, the official enterprise assistant for StockBit Pro. StockBit Pro is a high-performance cloud inventory and POS system. When explaining Multi-Staff Management, use professional terminology: Role-Based Access Control (RBAC) for granular permissions (Cashier, Supervisor, Admin), Immutable Audit Trails for real-time activity logs and absolute accountability, Productivity Intelligence for tracking individual terminal output, and Secure Terminal Sync for concurrent operations across mobile and desktop. Professional contact: Call: 07010698264, WhatsApp: 07072127949, Twitter: @StockBitpro.",
         }
       });
       
@@ -96,10 +96,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
     } catch (error: any) {
       if (isMounted.current) {
         console.error("Chat Error:", error);
-        const errorDetail = error.message?.includes("credentials") 
-          ? "System key not synchronized." 
+        const errorDetail = error.message?.includes("Netlify") 
+          ? "System key not synchronized in Netlify dashboard." 
           : "Protocol link interrupted.";
-        setChatMessages(prev => [...prev, { role: 'bot', text: `${errorDetail} Please use our direct support lines below.` }]);
+        setChatMessages(prev => [...prev, { role: 'bot', text: `${errorDetail} Please use our direct support lines below or contact us on WhatsApp.` }]);
       }
     } finally {
       if (isMounted.current) {
@@ -344,7 +344,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
                    <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg text-emerald-600"><MessageCircle size={14} /></div>
                    <div className="flex flex-col">
                       <span className="text-[9px] font-black text-slate-400 uppercase">WhatsApp Ops</span>
-                      <a href="https://wa.me/234707217949" className="text-xs font-bold">0707217949</a>
+                      <a href="https://wa.me/2347072127949" className="text-xs font-bold">07072127949</a>
                    </div>
                 </li>
              </ul>

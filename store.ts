@@ -4,8 +4,6 @@ import { supabase } from './supabase';
 import { Product, Sale, Supplier, AppState, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod } from './types';
 import { DEFAULT_CATEGORIES } from './constants';
 
-const SETTINGS_KEY = 'stockbit_local_settings';
-
 const mapProfile = (dbProfile: any, authUser: any): User => ({
   id: dbProfile.id,
   email: authUser?.email || dbProfile.email || '',
@@ -75,18 +73,23 @@ export const useStore = () => {
     if (!userId) return;
     try {
       const targetId = parentId || userId;
-      const [p, s, ret, sup, n] = await Promise.all([
+      const [p, s, ret, sup, n, prof] = await Promise.all([
         supabase.from('products').select('*').eq('user_id', targetId),
         supabase.from('sales').select('*').eq('user_id', targetId).order('date', { ascending: false }),
         supabase.from('returns').select('*').eq('user_id', targetId).order('date', { ascending: false }),
         supabase.from('suppliers').select('*').eq('user_id', targetId),
-        supabase.from('notifications').select('*').eq('user_id', targetId).order('date', { ascending: false })
+        supabase.from('notifications').select('*').eq('user_id', targetId).order('date', { ascending: false }),
+        supabase.from('profiles').select('settings').eq('id', userId).maybeSingle()
       ]);
 
       const { data: usersData } = await supabase
         .from('profiles')
         .select('*')
         .or(`id.eq.${targetId},parent_id.eq.${targetId}`);
+
+      if (prof.data?.settings) {
+        setState(prev => ({ ...prev, settings: { ...prev.settings, ...prof.data.settings } }));
+      }
 
       setState(prev => ({
         ...prev,
@@ -184,7 +187,7 @@ export const useStore = () => {
     setIsLoggedIn(false);
     setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [] }));
     await supabase.auth.signOut();
-    window.location.reload(); // Force hard refresh to clear any lingering sensitive state
+    window.location.reload(); 
   }, []);
 
   return {
@@ -229,9 +232,14 @@ export const useStore = () => {
       await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
       return true;
     },
-    updateSettings: (updates: Partial<Settings>) => {
+    updateSettings: async (updates: Partial<Settings>) => {
       const newSettings = { ...state.settings, ...updates };
       setState(prev => ({ ...prev, settings: newSettings }));
+      
+      if (state.currentUser) {
+        // Persist to Supabase so it survives redeployment
+        await supabase.from('profiles').update({ settings: newSettings }).eq('id', state.currentUser.id);
+      }
     },
     activateSubscription: async (plan: SubscriptionPlan, cycle: 'monthly' | 'annual' = 'monthly', userId?: string): Promise<boolean> => {
       const targetId = userId || state.currentUser?.id;

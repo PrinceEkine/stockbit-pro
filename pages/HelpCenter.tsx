@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { HelpCircle, Search, MessageCircle, Phone, FileText } from 'lucide-react';
+import { Box, Zap, CreditCard, ShieldCheck } from 'lucide-react';
 
 const HelpCenter: React.FC = () => {
   return (
@@ -43,7 +44,7 @@ const HelpCenter: React.FC = () => {
            </div>
            <div className="flex flex-wrap gap-4">
               <a href="tel:07010698264" className="flex items-center gap-3 px-8 py-4 bg-white dark:bg-slate-800 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-sm hover:scale-105 transition-transform dark:text-white"><Phone size={16}/> Voice</a>
-              <a href="https://wa.me/234707217949" className="flex items-center gap-3 px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 transition-transform"><MessageCircle size={16}/> WhatsApp</a>
+              <a href="https://wa.me/2347072127949" className="flex items-center gap-3 px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 transition-transform"><MessageCircle size={16}/> WhatsApp</a>
            </div>
         </div>
       </div>
@@ -61,5 +62,4 @@ const HelpItem = ({ title, desc, icon }: any) => (
   </div>
 );
 
-import { Box, Zap, CreditCard, ShieldCheck } from 'lucide-react';
 export default HelpCenter;
