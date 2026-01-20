@@ -77,7 +77,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
     try {
       const apiKey = process.env.API_KEY;
       if (!apiKey) {
-        throw new Error("Missing credentials. Please set API_KEY in Netlify environment variables.");
+        throw new Error("Missing credentials. After adding API_KEY to Netlify, you MUST trigger a NEW DEPLOYMENT manually for it to sync.");
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -96,10 +96,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
     } catch (error: any) {
       if (isMounted.current) {
         console.error("Chat Error:", error);
-        const errorDetail = error.message?.includes("Netlify") 
-          ? "System key not synchronized in Netlify dashboard." 
-          : "Protocol link interrupted.";
-        setChatMessages(prev => [...prev, { role: 'bot', text: `${errorDetail} Please use our direct support lines below or contact us on WhatsApp.` }]);
+        const errorDetail = error.message?.includes("NEW DEPLOYMENT") 
+          ? error.message
+          : "System key not synchronized in Netlify dashboard. Note: After saving keys, a RE-DEPLOY is required.";
+        setChatMessages(prev => [...prev, { role: 'bot', text: `${errorDetail} Contact support on WhatsApp: 07072127949 if issue persists.` }]);
       }
     } finally {
       if (isMounted.current) {
@@ -341,7 +341,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
                    </div>
                 </li>
                 <li className="flex items-center gap-3">
-                   <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg text-emerald-600"><MessageCircle size={14} /></div>
+                   <div className="p-2 bg-emerald-50 dark:bg-indigo-900/30 rounded-lg text-emerald-600"><MessageCircle size={14} /></div>
                    <div className="flex flex-col">
                       <span className="text-[9px] font-black text-slate-400 uppercase">WhatsApp Ops</span>
                       <a href="https://wa.me/2347072127949" className="text-xs font-bold">07072127949</a>
