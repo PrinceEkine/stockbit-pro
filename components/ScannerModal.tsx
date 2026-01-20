@@ -27,6 +27,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const scanIntervalRef = useRef<number | null>(null);
+  const isMounted = useRef(true);
   
   const [status, setStatus] = useState<ScannerStatus>('initializing');
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -34,6 +35,15 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
   const [lastScannedName, setLastScannedName] = useState<string | null>(null);
   const [torchOn, setTorchOn] = useState(false);
   const [hasTorch, setHasTorch] = useState(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+      if (stream) stream.getTracks().forEach(t => t.stop());
+    };
+  }, [stream]);
 
   const playBeep = (type: 'success' | 'fail') => {
     try {
@@ -66,12 +76,12 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
     if (capabilities.torch) {
       const next = !torchOn;
       await track.applyConstraints({ advanced: [{ torch: next }] } as any);
-      setTorchOn(next);
+      if (isMounted.current) setTorchOn(next);
     }
   };
 
   const captureAndScan = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current || status === 'processing' || status === 'success_feedback') return;
+    if (!videoRef.current || !canvasRef.current || status === 'processing' || status === 'success_feedback' || !isMounted.current) return;
 
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -96,23 +106,35 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
           ? await extractProductDetailsFromImage(base64Image)
           : await identifyProductFromImage(base64Image);
 
+        if (!isMounted.current) return;
+
         if (result) {
           playBeep('success');
           if (mode === 'details') {
             setLastScannedName(result.name || result.sku);
             setStatus('success_feedback');
-            setTimeout(() => { onScan(result); onClose(); }, 600);
+            setTimeout(() => { 
+              if (isMounted.current) {
+                onScan(result); 
+                onClose(); 
+              }
+            }, 600);
           } else {
             onScan(result, true);
             setStatus('success_feedback');
             setLastScannedName(typeof result === 'string' ? result : (result.name || result.sku));
-            setTimeout(() => { setStatus('active'); setLastScannedName(null); }, 700);
+            setTimeout(() => { 
+              if (isMounted.current) {
+                setStatus('active'); 
+                setLastScannedName(null); 
+              }
+            }, 700);
           }
         } else {
           setStatus('active');
         }
       } catch (e) { 
-        setStatus('active');
+        if (isMounted.current) setStatus('active');
       }
     }
   }, [status, mode, onScan, onClose]);
@@ -123,6 +145,10 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
         const mediaStream = await navigator.mediaDevices.getUserMedia({ 
           video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } 
         });
+        if (!isMounted.current) {
+          mediaStream.getTracks().forEach(t => t.stop());
+          return;
+        }
         setStream(mediaStream);
         if (videoRef.current) videoRef.current.srcObject = mediaStream;
         
@@ -133,15 +159,14 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
         setIsCameraActive(true);
         setStatus('active');
       } catch (err) {
-        setStatus('error');
+        if (isMounted.current) setStatus('error');
       }
     };
     startCamera();
-    return () => stream?.getTracks().forEach(t => t.stop());
   }, []);
 
   useEffect(() => {
-    if (isCameraActive && status === 'active') {
+    if (isCameraActive && status === 'active' && isMounted.current) {
       scanIntervalRef.current = window.setInterval(captureAndScan, 2000);
       return () => { if (scanIntervalRef.current) clearInterval(scanIntervalRef.current); };
     }

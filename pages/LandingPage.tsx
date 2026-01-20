@@ -38,6 +38,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth }) => {
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -57,7 +65,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth }) => {
     setIsTyping(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: userMsg,
@@ -66,12 +74,23 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth }) => {
         }
       });
       
-      const botText = response.text || "I'm sorry, I'm having trouble connecting to my logic server. Please try again or contact support!";
-      setChatMessages(prev => [...prev, { role: 'bot', text: botText }]);
-    } catch (error) {
-      setChatMessages(prev => [...prev, { role: 'bot', text: "Protocol error. Please use our direct support lines below." }]);
+      if (isMounted.current) {
+        const botText = response.text || "I'm sorry, I'm having trouble connecting to my logic server. Please try again or contact support!";
+        setChatMessages(prev => [...prev, { role: 'bot', text: botText }]);
+      }
+    } catch (error: any) {
+      if (isMounted.current) {
+        console.error("ChatBot Error:", error);
+        // Specifically catch AbortError or signals
+        const errorMessage = error?.message?.includes("aborted") 
+          ? "The request was interrupted. Please try sending your message again."
+          : "Protocol error. Please use our direct support lines below.";
+        setChatMessages(prev => [...prev, { role: 'bot', text: errorMessage }]);
+      }
     } finally {
-      setIsTyping(false);
+      if (isMounted.current) {
+        setIsTyping(false);
+      }
     }
   };
 
