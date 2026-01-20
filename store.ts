@@ -72,10 +72,6 @@ export const useStore = () => {
   const loadInitialBatch = useCallback(async (userId: string, parentId?: string) => {
     if (!userId) return;
     
-    // Safety Timeout: 10 seconds to fetch data or skip
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
     try {
       const targetId = parentId || userId;
       const [p, s, ret, sup, n, prof] = await Promise.all([
@@ -127,22 +123,19 @@ export const useStore = () => {
         }))
       }));
     } catch (e: any) {
-      console.error("Batch synchronization error. Project might be paused or network restricted.", e);
-      setState(prev => ({ ...prev, error: "Database sync delayed. Operations may be restricted." }));
-    } finally {
-      clearTimeout(timeoutId);
+      console.error("Batch sync error:", e);
     }
   }, []);
 
   const handleInitialDataLoad = useCallback(async (authUser: any) => {
     try {
       setIsLoggedIn(true);
-      const { data: profile, error: profileErr } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
       
       const metadata = authUser.user_metadata || {};
       let user: User;
 
-      if (!profile || profileErr) {
+      if (!profile) {
         const trialExpiry = new Date();
         trialExpiry.setMonth(trialExpiry.getMonth() + 2);
         const repairData = {
@@ -157,8 +150,8 @@ export const useStore = () => {
           subscription_expiry: trialExpiry.toISOString(),
           is_subscribed: false
         };
-        const { data: upserted } = await supabase.from('profiles').upsert(repairData).select().single();
-        user = mapProfile(upserted || repairData, authUser);
+        await supabase.from('profiles').upsert(repairData);
+        user = mapProfile(repairData, authUser);
       } else {
         user = mapProfile(profile, authUser);
       }
@@ -176,17 +169,10 @@ export const useStore = () => {
     let isMounted = true;
 
     const checkSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        
-        if (isMounted) {
-          if (session) await handleInitialDataLoad(session.user);
-          else setLoading(false);
-        }
-      } catch (err) {
-        console.error("Session check failed. Likely network issue.", err);
-        if (isMounted) setLoading(false);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (isMounted) {
+        if (session) await handleInitialDataLoad(session.user);
+        else setLoading(false);
       }
     };
 
@@ -213,13 +199,11 @@ export const useStore = () => {
     setIsLoggedIn(false);
     setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [] }));
     await supabase.auth.signOut();
-    window.location.reload(); 
   }, []);
 
   return {
     ...state,
     loading,
-    forceSetLoading: (val: boolean) => setLoading(val),
     isLoggedIn,
     login: (email: string, pass: string) => supabase.auth.signInWithPassword({ email, password: pass }),
     logout,
