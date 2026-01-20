@@ -75,11 +75,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
     setIsTyping(true);
 
     try {
-      // Safe check for process.env.API_KEY
-      const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : undefined;
+      // Safe check for process and process.env
+      const apiKey = typeof process !== 'undefined' && process.env ? process.env.API_KEY : undefined;
       
       if (!apiKey) {
-        throw new Error("Missing credentials. Please ensure API_KEY is set in Netlify Environment Variables (NOT Emails) and you have triggered a NEW DEPLOYMENT.");
+        throw new Error("Logic core unavailable. Contact administration.");
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -87,7 +87,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
         model: 'gemini-3-flash-preview',
         contents: userMsg,
         config: {
-          systemInstruction: "You are StockBot, the official enterprise assistant for StockBit Pro. StockBit Pro is a high-performance cloud inventory and POS system. When explaining Multi-Staff Management, use professional terminology: Role-Based Access Control (RBAC) for granular permissions (Cashier, Supervisor, Admin), Immutable Audit Trails for real-time activity logs and absolute accountability, Productivity Intelligence for tracking individual terminal output, and Secure Terminal Sync for concurrent operations across mobile and desktop. Professional contact: Call: 07010698264, WhatsApp: 07072127949, Twitter: @StockBitpro.",
+          systemInstruction: "You are StockBot, the official enterprise assistant for StockBit Pro. Professional contact: Call: 07010698264, WhatsApp: 07072127949.",
         }
       });
       
@@ -97,8 +97,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
       }
     } catch (error: any) {
       if (isMounted.current) {
-        console.error("Chat Error:", error);
-        setChatMessages(prev => [...prev, { role: 'bot', text: error.message }]);
+        setChatMessages(prev => [...prev, { role: 'bot', text: "Support logic delayed. Please call 07010698264 for immediate help." }]);
       }
     } finally {
       if (isMounted.current) {

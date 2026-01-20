@@ -8,7 +8,7 @@ const mapProfile = (dbProfile: any, authUser: any): User => ({
   id: dbProfile.id,
   email: authUser?.email || dbProfile.email || '',
   name: dbProfile.name || '',
-  companyName: (dbProfile.company_name || '').trim(),
+  companyName: (dbProfile.company_name || '').trim() || 'StockBit Enterprise',
   role: dbProfile.role || 'user',
   trialStartDate: dbProfile.trial_start_date || new Date().toISOString(),
   isSubscribed: dbProfile.is_subscribed || false,
@@ -123,15 +123,17 @@ export const useStore = () => {
         }))
       }));
     } catch (e: any) {
-      console.error("Batch sync error:", e);
+      console.error("Data fetch error:", e);
     }
   }, []);
 
   const handleInitialDataLoad = useCallback(async (authUser: any) => {
     try {
       setIsLoggedIn(true);
-      const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
+      const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
       
+      if (error) throw error;
+
       const metadata = authUser.user_metadata || {};
       let user: User;
 
@@ -159,7 +161,7 @@ export const useStore = () => {
       setState(prev => ({ ...prev, currentUser: user }));
       await loadInitialBatch(user.id, user.parentId);
     } catch (e: any) {
-      console.error("Auth init failure:", e);
+      console.error("Auth profile load failure:", e);
     } finally {
       setLoading(false);
     }
@@ -169,14 +171,29 @@ export const useStore = () => {
     let isMounted = true;
 
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (isMounted) {
-        if (session) await handleInitialDataLoad(session.user);
-        else setLoading(false);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        if (isMounted) {
+          if (session) await handleInitialDataLoad(session.user);
+          else setLoading(false);
+        }
+      } catch (err) {
+        console.error("Session check failed:", err);
+        if (isMounted) setLoading(false);
       }
     };
 
     checkSession();
+
+    // Safety timeout: stop loading after 10 seconds no matter what
+    const safetyTimer = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn("Loading safety timeout triggered.");
+        setLoading(false);
+      }
+    }, 10000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
@@ -191,9 +208,10 @@ export const useStore = () => {
 
     return () => {
       isMounted = false;
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
-  }, [handleInitialDataLoad, isLoggedIn]);
+  }, [handleInitialDataLoad, isLoggedIn, loading]);
 
   const logout = useCallback(async () => {
     setIsLoggedIn(false);
