@@ -15,6 +15,7 @@ import Suppliers from './pages/Suppliers';
 import SettingsView from './pages/Settings';
 import UserManagement from './pages/UserManagement';
 import LaunchCenter from './pages/LaunchCenter';
+import LandingPage from './pages/LandingPage';
 import NotificationPanel from './components/NotificationPanel';
 import ScannerModal from './components/ScannerModal';
 import { 
@@ -39,13 +40,13 @@ import {
   ChevronLeft
 } from 'lucide-react';
 
-type AuthStep = 'login' | 'register' | 'forgot' | 'verify_otp' | 'update_password';
+type AuthStep = 'landing' | 'login' | 'register' | 'forgot' | 'verify_otp' | 'update_password';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>(View.Dashboard);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [authStep, setAuthStep] = useState('login' as AuthStep);
+  const [authStep, setAuthStep] = useState<AuthStep>('landing');
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
   const [authSuccess, setAuthSuccess] = useState('');
@@ -239,12 +240,12 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     try {
       setIsSubmitting(false); 
-      setAuthStep('login');
+      setAuthStep('landing');
       setActiveView(View.Dashboard);
       await store.logout();
     } catch (err) {
       console.warn("Logout clean-up completed with warnings.");
-      setAuthStep('login');
+      setAuthStep('landing');
     }
   };
 
@@ -257,16 +258,20 @@ const App: React.FC = () => {
     );
   }
 
-  if (!store.isLoggedIn || authStep === 'update_password' || authStep === 'verify_otp') {
+  if (!store.isLoggedIn) {
+    if (authStep === 'landing') {
+      return <LandingPage onAuth={(step) => setAuthStep(step)} />;
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4">
         <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[3rem] p-8 md:p-20 shadow-2xl animate-in zoom-in-95 duration-500">
           
           {/* Logo & Branding */}
           <div className="flex flex-col items-center mb-12 text-center">
-            <div className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl shadow-indigo-600/20">
+            <button onClick={() => setAuthStep('landing')} className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl shadow-indigo-600/20 active:scale-95 transition-all">
               <Box size={40} className="text-white" />
-            </div>
+            </button>
             <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase">StockBit Pro</h1>
             <p className="text-[12px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-[0.3em] mt-2">cloud inventory management</p>
           </div>
