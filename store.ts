@@ -90,27 +90,19 @@ export const useStore = () => {
 
       setState(prev => ({
         ...prev,
-        error: null,
         products: (p.data || []).map(item => ({
           ...item,
           price: Number(item.price) || 0,
           cost_price: Number(item.cost_price) || 0,
           quantity: Number(item.quantity) || 0,
           min_threshold: Number(item.min_threshold) || 0,
-          sustainability_score: Number(item.sustainability_score) || 0
         })),
         sales: (s.data || []).map(sale => ({
           ...sale,
           total_price: Number(sale.total_price) || 0,
-          total_cost: Number(sale.total_cost) || 0,
           tax_amount: Number(sale.tax_amount) || 0,
-          payment_method: (sale.payment_method as PaymentMethod) || 'cash'
         })),
-        returns: (ret.data || []).map(r => ({
-          ...r,
-          product_id: r.product_id,
-          product_name: r.product_name
-        })),
+        returns: (ret.data || []),
         suppliers: (sup.data || []),
         notifications: (n.data || []),
         users: (usersData || []).map(p => ({
@@ -139,10 +131,9 @@ export const useStore = () => {
       const metadata = authUser.user_metadata || {};
       let user: User;
 
-      if (!profile || profileErr || (metadata.parentId && !profile.parent_id)) {
+      if (!profile || profileErr) {
         const trialExpiry = new Date();
         trialExpiry.setMonth(trialExpiry.getMonth() + 2);
-
         const repairData = {
           id: authUser.id,
           name: metadata.name || authUser.email.split('@')[0],
@@ -155,18 +146,16 @@ export const useStore = () => {
           subscription_expiry: trialExpiry.toISOString(),
           is_subscribed: false
         };
-
         const { data: upserted } = await supabase.from('profiles').upsert(repairData).select().single();
         user = mapProfile(upserted || repairData, authUser);
       } else {
         user = mapProfile(profile, authUser);
       }
 
-      setState(prev => ({ ...prev, currentUser: user, error: null }));
+      setState(prev => ({ ...prev, currentUser: user }));
       await loadInitialBatch(user.id, user.parentId);
     } catch (e: any) {
-      console.error("Auth init sync failure:", e);
-      setState(prev => ({ ...prev, error: "Cloud protocol handshake failed. Please refresh." }));
+      console.error("Auth init failure:", e);
     } finally {
       setLoading(false);
     }
@@ -174,18 +163,10 @@ export const useStore = () => {
 
   useEffect(() => {
     const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          await handleInitialDataLoad(session.user);
-        } else {
-          setLoading(false);
-        }
-      } catch (e) {
-        setLoading(false);
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) await handleInitialDataLoad(session.user);
+      else setLoading(false);
     };
-    
     checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -193,42 +174,17 @@ export const useStore = () => {
         if (!isLoggedIn) await handleInitialDataLoad(session.user);
       } else {
         setIsLoggedIn(false);
-        setState(prev => ({ 
-          ...prev, 
-          currentUser: null, 
-          products: [], 
-          sales: [], 
-          suppliers: [],
-          returns: [],
-          notifications: [],
-          error: null 
-        }));
-        setLoading(false);
+        setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [] }));
       }
     });
-    
     return () => subscription.unsubscribe();
   }, [handleInitialDataLoad, isLoggedIn]);
 
   const logout = useCallback(async () => {
-    // 1. Immediately reset state for UI responsiveness
     setIsLoggedIn(false);
-    setState(prev => ({ 
-      ...prev, 
-      currentUser: null, 
-      products: [], 
-      sales: [], 
-      returns: [], 
-      suppliers: [], 
-      notifications: [], 
-      users: [] 
-    }));
-    // 2. Perform the actual signOut
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.error("Sign out error:", e);
-    }
+    setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [] }));
+    await supabase.auth.signOut();
+    window.location.reload(); // Force hard refresh to clear any lingering sensitive state
   }, []);
 
   return {
@@ -238,90 +194,25 @@ export const useStore = () => {
     login: (email: string, pass: string) => supabase.auth.signInWithPassword({ email, password: pass }),
     logout,
     register: async (userData: any) => {
-      const { inviteId } = userData;
-      let role = 'admin';
-      let parentId = null;
-      let companyName = userData.companyName;
-
-      if (inviteId) {
-        const { data: parent, error: pErr } = await supabase.from('profiles').select('id, company_name').eq('id', inviteId).maybeSingle();
-        if (pErr || !parent) return { error: { message: "CRITICAL: Invalid Invite ID. Business not found." } };
-        
-        role = 'staff';
-        parentId = parent.id;
-        companyName = parent.company_name; 
-      }
-
       const { data, error } = await supabase.auth.signUp({
-        email: userData.email, 
-        password: userData.password,
-        options: { 
-          data: { 
-            name: userData.name, 
-            companyName: companyName,
-            role: role,
-            parentId: parentId
-          } 
-        }
+        email: userData.email, password: userData.password,
+        options: { data: { name: userData.name, companyName: userData.companyName, role: userData.inviteId ? 'staff' : 'admin', parentId: userData.inviteId || null } }
       });
-      
       if (error) return { error };
-      
       if (data.user) {
-        const trialExpiry = new Date();
-        trialExpiry.setMonth(trialExpiry.getMonth() + 2);
-
-        await supabase.from('profiles').upsert({ 
-          id: data.user.id, 
-          name: userData.name, 
-          email: userData.email, 
-          role: role,
-          company_name: companyName, 
-          parent_id: parentId, 
-          trial_start_date: new Date().toISOString(), 
-          plan: 'beta',
-          subscription_expiry: trialExpiry.toISOString(),
-          is_subscribed: false
-        });
+        await supabase.from('profiles').upsert({ id: data.user.id, name: userData.name, email: userData.email, role: userData.inviteId ? 'staff' : 'admin', company_name: userData.companyName, parent_id: userData.inviteId || null, trial_start_date: new Date().toISOString(), plan: 'beta', is_subscribed: false });
       }
       return { success: true };
     },
-    verifyOtp: (email: string, token: string, type: 'signup' | 'recovery') => supabase.auth.verifyOtp({ email, token, type }),
-    resetPassword: (email: string) => supabase.auth.resetPasswordForEmail(email),
-    updatePassword: (newPassword: string) => supabase.auth.updateUser({ password: newPassword }),
-    
     updateProduct: async (id: string, updates: Partial<Product>) => {
       if (!state.currentUser) return;
       await supabase.from('products').update({ ...updates, last_updated: new Date().toISOString() }).eq('id', id);
       await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
     },
-    deleteProduct: async (id: string) => {
-      if (!state.currentUser) return;
-      await supabase.from('products').delete().eq('id', id);
-      await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
-    },
     addProduct: async (data: any) => {
       if (!state.currentUser) return;
       const ownerId = state.currentUser.parentId || state.currentUser.id;
-      
-      const { error } = await supabase.from('products').insert({
-        ...data,
-        user_id: ownerId,
-        last_updated: new Date().toISOString()
-      });
-      
-      if (error) {
-        console.error("Supabase Insert Error:", error);
-        throw error;
-      }
-      
-      await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
-    },
-    reconcileInventory: async (items: StocktakeItem[]) => {
-      if (!state.currentUser) return;
-      for (const item of items) {
-        await supabase.from('products').update({ quantity: item.physicalQty, last_updated: new Date().toISOString() }).eq('id', item.productId);
-      }
+      await supabase.from('products').insert({ ...data, user_id: ownerId, last_updated: new Date().toISOString() });
       await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
     },
     recordSale: async (items: SaleItem[], customerName?: string, location: string = 'Main Branch', paymentMethod: PaymentMethod = 'cash', status: 'completed' | 'pending' = 'completed') => {
@@ -329,101 +220,18 @@ export const useStore = () => {
       const ownerId = state.currentUser.parentId || state.currentUser.id;
       const subtotal = items.reduce((acc, i) => acc + (i.price * i.quantity), 0);
       const tax = subtotal * (state.settings.taxRate / 100);
-      
-      const { error } = await supabase.from('sales').insert({
-        user_id: ownerId, 
-        items: items, 
-        total_price: subtotal + tax,
-        total_cost: items.reduce((acc, i) => acc + (i.costPrice * i.quantity), 0),
-        date: new Date().toISOString(), 
-        customer_name: customerName || 'Walk-in',
-        location: location, 
-        tax_amount: tax, 
-        payment_method: paymentMethod
-      });
-      
+      const { error } = await supabase.from('sales').insert({ user_id: ownerId, items, total_price: subtotal + tax, total_cost: items.reduce((acc, i) => acc + (i.costPrice * i.quantity), 0), date: new Date().toISOString(), customer_name: customerName || 'Walk-in', location, tax_amount: tax, payment_method: paymentMethod });
       if (error) return false;
-
       for (const i of items) {
         const prod = state.products.find(p => p.id === i.productId);
-        if (prod) {
-          await supabase.from('products')
-            .update({ quantity: Math.max(0, prod.quantity - i.quantity) })
-            .eq('id', prod.id);
-        }
+        if (prod) await supabase.from('products').update({ quantity: Math.max(0, prod.quantity - i.quantity) }).eq('id', prod.id);
       }
-      
       await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
       return true;
-    },
-    recordReturn: async (data: Omit<ProductReturn, 'id' | 'date' | 'user_id'>) => {
-      if (!state.currentUser) return;
-      const ownerId = state.currentUser.parentId || state.currentUser.id;
-      await supabase.from('returns').insert({
-        user_id: ownerId,
-        product_id: data.product_id,
-        product_name: data.product_name,
-        quantity: data.quantity,
-        reason: data.reason,
-        refunded: data.refunded,
-        location: data.location,
-        date: new Date().toISOString()
-      });
-      const prod = state.products.find(p => p.id === data.product_id);
-      if (prod) await supabase.from('products').update({ quantity: prod.quantity + data.quantity }).eq('id', prod.id);
-      await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
     },
     updateSettings: (updates: Partial<Settings>) => {
       const newSettings = { ...state.settings, ...updates };
       setState(prev => ({ ...prev, settings: newSettings }));
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
-      if (state.currentUser) {
-        supabase.from('profiles').update({ settings: newSettings }).eq('id', state.currentUser.id);
-      }
-    },
-    addSupplier: async (data: any) => {
-      if (!state.currentUser) return;
-      const ownerId = state.currentUser.parentId || state.currentUser.id;
-      await supabase.from('suppliers').insert({
-        ...data,
-        user_id: ownerId
-      });
-      await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
-    },
-    addStaffMember: async (userData: any) => {
-      if (!state.currentUser) return;
-      const parentId = state.currentUser.id;
-      const { data, error } = await supabase.auth.signUp({
-        email: userData.email, password: userData.password,
-        options: { 
-          data: { 
-            name: userData.name, 
-            companyName: state.currentUser.companyName,
-            role: 'staff',
-            parentId: parentId
-          } 
-        }
-      });
-      if (error) throw error;
-      if (data.user) {
-        await supabase.from('profiles').upsert({ 
-          id: data.user.id, name: userData.name, email: userData.email, role: 'staff',
-          company_name: state.currentUser.companyName, parent_id: parentId, 
-          trial_start_date: new Date().toISOString(), plan: 'beta', is_subscribed: false
-        });
-      }
-      await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
-    },
-    removeStaffMember: async (id: string) => {
-      if (!state.currentUser) return;
-      await supabase.from('profiles').delete().eq('id', id);
-      await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
-    },
-    assignParentToUser: async (userId: string, parentId: string) => {
-      if (!state.currentUser) return;
-      const { data: parent } = await supabase.from('profiles').select('company_name').eq('id', parentId).maybeSingle();
-      await supabase.from('profiles').update({ parent_id: parentId, role: 'staff', company_name: parent?.company_name }).eq('id', userId);
-      await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
     },
     activateSubscription: async (plan: SubscriptionPlan, cycle: 'monthly' | 'annual' = 'monthly', userId?: string): Promise<boolean> => {
       const targetId = userId || state.currentUser?.id;

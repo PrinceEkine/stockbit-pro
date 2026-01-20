@@ -18,6 +18,11 @@ import LaunchCenter from './pages/LaunchCenter';
 import LandingPage from './pages/LandingPage';
 import NotificationPanel from './components/NotificationPanel';
 import ScannerModal from './components/ScannerModal';
+import AboutUs from './pages/AboutUs';
+import HelpCenter from './pages/HelpCenter';
+import TermsOfService from './pages/TermsOfService';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import Governance from './pages/Governance';
 import { 
   Menu, Bell, Box, Loader2, 
   Eye, EyeOff, ShieldAlert,
@@ -37,7 +42,8 @@ import {
   ArrowRight,
   TrendingUp,
   Layout,
-  ChevronLeft
+  ChevronLeft,
+  ArrowLeft
 } from 'lucide-react';
 
 type AuthStep = 'landing' | 'login' | 'register' | 'forgot' | 'verify_otp' | 'update_password';
@@ -66,6 +72,21 @@ const App: React.FC = () => {
   const notificationRef = useRef<HTMLDivElement>(null);
   const barcodeBuffer = useRef<string>('');
   const lastKeyTime = useRef<number>(0);
+
+  // Hash-based direct view navigation
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '').toLowerCase();
+      if (hash === 'about') setActiveView(View.AboutUs);
+      else if (hash === 'help') setActiveView(View.HelpCenter);
+      else if (hash === 'legal') setActiveView(View.TermsOfService);
+      else if (hash === 'privacy') setActiveView(View.PrivacyPolicy);
+      else if (hash === 'governance') setActiveView(View.Governance);
+    };
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -145,7 +166,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (store.currentUser?.role === 'staff') {
-      const allowedViews = [View.Dashboard, View.Sales];
+      const allowedViews = [View.Dashboard, View.Sales, View.AboutUs, View.HelpCenter, View.TermsOfService, View.PrivacyPolicy, View.Governance];
       if (!allowedViews.includes(activeView)) {
         setActiveView(View.Dashboard);
       }
@@ -252,9 +273,36 @@ const App: React.FC = () => {
     );
   }
 
+  const isInfoView = [View.AboutUs, View.HelpCenter, View.TermsOfService, View.PrivacyPolicy, View.Governance].includes(activeView);
+
   if (!store.isLoggedIn) {
-    if (authStep === 'landing') {
-      return <LandingPage onAuth={(step) => setAuthStep(step)} />;
+    if (authStep === 'landing' && !isInfoView) {
+      return <LandingPage onAuth={(step) => setAuthStep(step)} onNavigateInfo={setActiveView} />;
+    }
+
+    if (isInfoView) {
+      return (
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+           <nav className="fixed top-0 w-full z-50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800">
+            <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+              <button onClick={() => { setActiveView(View.Dashboard); setAuthStep('landing'); window.location.hash = ''; }} className="flex items-center gap-3 group">
+                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform">
+                  <Box size={24} className="text-white" />
+                </div>
+                <span className="font-black text-xl tracking-tighter uppercase dark:text-white">StockBit Pro</span>
+              </button>
+              <button onClick={() => setAuthStep('login')} className="px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Portal Access</button>
+            </div>
+          </nav>
+          <div className="pt-32 pb-20 px-6 max-w-4xl mx-auto">
+             {activeView === View.AboutUs && <AboutUs />}
+             {activeView === View.HelpCenter && <HelpCenter />}
+             {activeView === View.TermsOfService && <TermsOfService />}
+             {activeView === View.PrivacyPolicy && <PrivacyPolicy />}
+             {activeView === View.Governance && <Governance />}
+          </div>
+        </div>
+      );
     }
 
     return (
@@ -405,6 +453,11 @@ const App: React.FC = () => {
       case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} staff={store.users} currentUser={store.currentUser} onAddStaff={store.addStaffMember} onRemoveStaff={store.removeStaffMember} onActivateSubscription={async (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => { await store.activateSubscription(plan, cycle); }} />;
       case View.LaunchCenter: return <LaunchCenter state={store} onUpdateSettings={store.updateSettings} />;
       case View.UserManagement: return <UserManagement users={store.users} onUpdatePlan={async (id, t) => { await store.activateSubscription(t === 'revoke' ? 'beta' : 'mega', t === 'annual' ? 'annual' : 'monthly', id); return true; }} onAssignParent={store.assignParentToUser} />;
+      case View.AboutUs: return <AboutUs />;
+      case View.HelpCenter: return <HelpCenter />;
+      case View.TermsOfService: return <TermsOfService />;
+      case View.PrivacyPolicy: return <PrivacyPolicy />;
+      case View.Governance: return <Governance />;
       default: return <Dashboard state={store} onNavigate={setActiveView} />;
     }
   };
@@ -419,17 +472,28 @@ const App: React.FC = () => {
               <Menu size={20} />
             </button>
             <div className="flex flex-col min-w-0">
-              <h1 className="font-black text-slate-900 dark:text-white tracking-tight truncate max-w-[100px] sm:max-w-xs uppercase text-[12px] md:text-base leading-none">{store.currentUser?.companyName}</h1>
-              {!trialStatus.isSubscribed && (
-                 <span className="text-[8px] md:text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1 shrink-0 mt-1">
-                    <Clock size={10} /> {trialStatus.daysLeft}d Trial left
-                 </span>
+              {isInfoView ? (
+                <button 
+                  onClick={() => setActiveView(View.Dashboard)}
+                  className="flex items-center gap-2 text-indigo-600 font-black uppercase text-[10px] tracking-widest hover:translate-x-[-4px] transition-transform"
+                >
+                  <ArrowLeft size={14} /> Back to Terminal
+                </button>
+              ) : (
+                <>
+                  <h1 className="font-black text-slate-900 dark:text-white tracking-tight truncate max-w-[100px] sm:max-w-xs uppercase text-[12px] md:text-base leading-none">{store.currentUser?.companyName}</h1>
+                  {!trialStatus.isSubscribed && (
+                     <span className="text-[8px] md:text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1 shrink-0 mt-1">
+                        <Clock size={10} /> {trialStatus.daysLeft}d Trial left
+                     </span>
+                  )}
+                </>
               )}
             </div>
           </div>
 
           <div className="flex items-center gap-1 md:gap-4 shrink-0">
-            {cameraAvailable && (
+            {cameraAvailable && !isInfoView && (
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl mr-2">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                 <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Scanner Standby</span>

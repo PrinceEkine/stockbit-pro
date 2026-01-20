@@ -14,7 +14,11 @@ import {
   Rocket,
   ArrowLeftRight,
   Leaf,
-  ChevronRight
+  ChevronRight,
+  HelpCircle,
+  ShieldAlert,
+  Info,
+  Scale
 } from 'lucide-react';
 import { View, User as UserType } from '../types';
 
@@ -60,6 +64,15 @@ const Sidebar: React.FC<SidebarProps> = ({
       items: [
         { id: View.Stocktake, icon: ClipboardCheck, label: 'Stocktake', hidden: isStaff },
         { id: View.Suppliers, icon: Users, label: 'Suppliers', hidden: isStaff },
+      ]
+    },
+    {
+      label: 'Resources',
+      items: [
+        { id: View.AboutUs, icon: Info, label: 'About Us' },
+        { id: View.HelpCenter, icon: HelpCircle, label: 'Help Center' },
+        { id: View.Governance, icon: Scale, label: 'Governance' },
+        { id: View.TermsOfService, icon: ShieldAlert, label: 'Legal Doctrine' },
       ]
     },
     {

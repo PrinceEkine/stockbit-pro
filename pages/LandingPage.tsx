@@ -28,12 +28,14 @@ import {
   Activity
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
+import { View } from '../types';
 
 interface LandingPageProps {
   onAuth: (step: 'login' | 'register') => void;
+  onNavigateInfo: (view: View) => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onAuth }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<{role: 'user' | 'bot', text: string}[]>([
@@ -52,6 +54,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth }) => {
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const scrollToEnterprise = () => {
+    const el = document.getElementById('staff');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
@@ -112,12 +119,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth }) => {
             </div>
             <span className="font-black text-xl tracking-tighter uppercase">StockBit Pro</span>
           </div>
-          <div className="flex items-center gap-4">
-            <a href="#about" className="hidden md:block text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 transition-colors">About</a>
-            <a href="#staff" className="hidden md:block text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 transition-colors px-4">Enterprise</a>
+          <div className="flex items-center gap-2 md:gap-4">
+            <button 
+              onClick={() => onNavigateInfo(View.AboutUs)} 
+              className="hidden md:block text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 transition-colors px-3 py-2"
+            >
+              About
+            </button>
+            <button 
+              onClick={scrollToEnterprise}
+              className="hidden md:block text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 transition-colors px-3 py-2"
+            >
+              Enterprise
+            </button>
             <button 
               onClick={() => onAuth('login')}
-              className="px-6 py-2.5 text-sm font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 hover:text-indigo-600 transition-colors"
+              className="px-4 md:px-6 py-2.5 text-sm font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 hover:text-indigo-600 transition-colors"
             >
               Login
             </button>
@@ -299,16 +316,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth }) => {
           <div className="space-y-6">
              <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Navigation</h4>
              <ul className="space-y-3">
-                <li><a href="#about" className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">About Us</a></li>
-                <li><a href="#help" className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">Help Center</a></li>
+                <li><button onClick={() => onNavigateInfo(View.AboutUs)} className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">About Us</button></li>
+                <li><button onClick={() => onNavigateInfo(View.HelpCenter)} className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">Help Center</button></li>
              </ul>
           </div>
 
           <div className="space-y-6">
              <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Governance</h4>
              <ul className="space-y-3">
-                <li><a href="#" className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">Terms of Service</a></li>
-                <li><a href="#" className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">Privacy Policy</a></li>
+                <li><button onClick={() => onNavigateInfo(View.Governance)} className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">Governance</button></li>
+                <li><button onClick={() => onNavigateInfo(View.TermsOfService)} className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">Terms of Service</button></li>
+                <li><button onClick={() => onNavigateInfo(View.PrivacyPolicy)} className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">Privacy Policy</button></li>
              </ul>
           </div>
 
@@ -420,16 +438,6 @@ const FeatureCard = ({ icon, title, desc }: { icon: React.ReactNode, title: stri
     <h3 className="text-lg font-black uppercase tracking-tighter mb-2">{title}</h3>
     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{desc}</p>
   </div>
-);
-
-const HelpCard = ({ title, desc, link }: { title: string, desc: string, link: string }) => (
-  <a href={link} className="p-8 bg-slate-50 dark:bg-slate-800/50 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 hover:border-indigo-500 transition-all group">
-    <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center mb-6 shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-all">
-      <HelpCircle size={20} />
-    </div>
-    <h3 className="text-sm font-black uppercase tracking-widest mb-2">{title}</h3>
-    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{desc}</p>
-  </a>
 );
 
 export default LandingPage;

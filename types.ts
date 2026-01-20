@@ -141,5 +141,10 @@ export enum View {
   Reports = 'reports',
   Settings = 'settings',
   UserManagement = 'user-management',
-  LaunchCenter = 'launch-center'
+  LaunchCenter = 'launch-center',
+  AboutUs = 'about-us',
+  HelpCenter = 'help-center',
+  TermsOfService = 'terms-of-service',
+  PrivacyPolicy = 'privacy-policy',
+  Governance = 'governance'
 }
