@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Box, 
   Zap, 
@@ -12,14 +12,69 @@ import {
   CheckCircle2,
   ArrowRight,
   BarChart3,
-  Layers
+  Layers,
+  HelpCircle,
+  MessageSquare,
+  Twitter,
+  Phone,
+  MessageCircle,
+  Info,
+  Lock,
+  X,
+  Send,
+  Loader2
 } from 'lucide-react';
+import { GoogleGenAI } from "@google/genai";
 
 interface LandingPageProps {
   onAuth: (step: 'login' | 'register') => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onAuth }) => {
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState<{role: 'user' | 'bot', text: string}[]>([
+    { role: 'bot', text: 'Hi! I am StockBot. How can I help you scale your business today?' }
+  ]);
+  const [isTyping, setIsTyping] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || isTyping) return;
+
+    const userMsg = chatInput;
+    setChatInput('');
+    setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setIsTyping(true);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: userMsg,
+        config: {
+          systemInstruction: "You are StockBot, the official AI assistant for StockBit Pro. StockBit Pro is a high-performance cloud inventory and POS system for African enterprises, featuring AI scanning, marketplace sync (Jumia/Konga/WhatsApp), and multi-staff management. You are professional, helpful, and concise. If asked about contact, mention Call: 07010698264 or WhatsApp: 0707217949 or Twitter: @StockBitpro.",
+        }
+      });
+      
+      const botText = response.text || "I'm sorry, I'm having trouble connecting to my logic server. Please try again or contact support!";
+      setChatMessages(prev => [...prev, { role: 'bot', text: botText }]);
+    } catch (error) {
+      setChatMessages(prev => [...prev, { role: 'bot', text: "Protocol error. Please use our direct support lines below." }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans selection:bg-indigo-500 selection:text-white">
       {/* Navigation */}
@@ -32,6 +87,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth }) => {
             <span className="font-black text-xl tracking-tighter uppercase">StockBit Pro</span>
           </div>
           <div className="flex items-center gap-4">
+            <a href="#about" className="hidden md:block text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 transition-colors">About</a>
+            <a href="#help" className="hidden md:block text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 transition-colors px-4">Help</a>
             <button 
               onClick={() => onAuth('login')}
               className="px-6 py-2.5 text-sm font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 hover:text-indigo-600 transition-colors"
@@ -107,34 +164,85 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth }) => {
         </div>
       </section>
 
-      {/* Social Proof / Stats */}
-      <section className="py-24 px-6 overflow-hidden">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <div className="space-y-8">
-            <h2 className="text-4xl font-black uppercase tracking-tighter">Designed for Growth.</h2>
-            <div className="space-y-6">
-              <StatItem title="99.9% Uptime" desc="Built on high-availability cloud architecture for zero downtime." />
-              <StatItem title="Multi-Staff" desc="Deploy terminals for cashiers and warehouse managers instantly." />
-              <StatItem title="Marketplace Sync" desc="Connect directly to Jumia, Konga, and WhatsApp catalogs." />
-            </div>
-          </div>
-          <div className="relative">
-            <div className="bg-indigo-600 rounded-[3rem] p-12 text-white shadow-2xl relative z-10 overflow-hidden">
-              <BarChart3 size={120} className="absolute -bottom-10 -right-10 text-white/10" />
-              <h3 className="text-2xl font-black uppercase mb-4 italic">"Transformative."</h3>
-              <p className="text-lg font-medium text-indigo-100 mb-8 leading-relaxed">
-                "StockBit Pro cut our inventory leakage by 40% in the first month. 
-                The AI scanner makes restocking actually enjoyable."
+      {/* About Section */}
+      <section id="about" className="py-24 px-6 bg-slate-50 dark:bg-slate-950">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col lg:flex-row items-center gap-16">
+            <div className="lg:w-1/2 space-y-8">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-600 rounded-lg">
+                <Info size={14} className="text-white" />
+                <span className="text-[9px] font-black text-white uppercase tracking-widest">Our Mission</span>
+              </div>
+              <h2 className="text-4xl font-black uppercase tracking-tighter leading-tight">Empowering Nigeria's <br/>Retail Infrastructure.</h2>
+              <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                StockBit Pro was born in the heart of Lagos with a single vision: to provide African business owners with the same level of technological sophistication as global retail giants. We combine advanced AI with local market insights to build tools that work where you are.
               </p>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center font-black">OE</div>
+              <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <p className="font-black uppercase text-sm">Olabisi E.</p>
-                  <p className="text-[10px] font-bold uppercase text-indigo-300">CEO, Apex Electronics</p>
+                  <h4 className="text-indigo-600 font-black text-2xl tracking-tighter">10k+</h4>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">SKUs Tracked Hourly</p>
+                </div>
+                <div>
+                  <h4 className="text-indigo-600 font-black text-2xl tracking-tighter">99.9%</h4>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Uptime Record</p>
                 </div>
               </div>
             </div>
-            <div className="absolute inset-0 bg-indigo-600 blur-[100px] opacity-20 -z-10"></div>
+            <div className="lg:w-1/2 grid grid-cols-2 gap-4">
+              <div className="space-y-4 pt-12">
+                <div className="h-48 bg-indigo-600 rounded-[2.5rem] shadow-2xl"></div>
+                <div className="h-48 bg-slate-200 dark:bg-slate-800 rounded-[2.5rem]"></div>
+              </div>
+              <div className="space-y-4">
+                <div className="h-48 bg-slate-300 dark:bg-slate-700 rounded-[2.5rem]"></div>
+                <div className="h-48 bg-indigo-400 rounded-[2.5rem] shadow-xl"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Help Desk Section */}
+      <section id="help" className="py-24 px-6 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16 space-y-4">
+            <h2 className="text-4xl font-black uppercase tracking-tighter">Help Desk & Resources</h2>
+            <p className="text-slate-500 dark:text-slate-400 font-medium">Everything you need to master your inventory protocol.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <HelpCard 
+              title="Onboarding Guide" 
+              desc="Learn how to sync your first warehouse in under 5 minutes." 
+              link="#"
+            />
+            <HelpCard 
+              title="API Documentation" 
+              desc="Connect your existing software to our high-speed cloud ledger." 
+              link="#"
+            />
+            <HelpCard 
+              title="Video Tutorials" 
+              desc="Watch how our AI scanner identifies SKUs in real-time." 
+              link="#"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Privacy Disclosure */}
+      <section className="py-24 px-6 bg-slate-50 dark:bg-slate-950">
+        <div className="max-w-4xl mx-auto bg-white dark:bg-slate-900 p-12 rounded-[3rem] border border-slate-100 dark:border-slate-800 text-center space-y-8">
+          <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+            <Lock size={32} />
+          </div>
+          <h2 className="text-3xl font-black uppercase tracking-tighter">Privacy & Security Disclosure</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+            Your business data is your most valuable asset. StockBit Pro employs end-to-end military-grade encryption. We never sell your sales data or supplier lists. All operational logs are stored in secure cloud nodes with multi-region redundancy. Your privacy is hard-coded into our system architecture.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-full text-[9px] font-black uppercase tracking-widest border border-slate-100 dark:border-slate-700">ISO 27001 Standard</div>
+            <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-full text-[9px] font-black uppercase tracking-widest border border-slate-100 dark:border-slate-700">NDPR Compliant</div>
+            <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-full text-[9px] font-black uppercase tracking-widest border border-slate-100 dark:border-slate-700">AES-256 Encryption</div>
           </div>
         </div>
       </section>
@@ -160,19 +268,149 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth }) => {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-slate-200 dark:border-slate-800 text-center">
-        <div className="flex flex-col items-center gap-6">
-          <div className="flex items-center gap-3 grayscale opacity-50">
-            <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
-              <Box size={18} className="text-white" />
+      <footer className="py-24 px-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
+                <Box size={18} className="text-white" />
+              </div>
+              <span className="font-black text-sm uppercase tracking-widest">StockBit Pro</span>
             </div>
-            <span className="font-black text-sm uppercase tracking-widest">StockBit Pro</span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+              Industrial-grade retail management for the next generation of African commerce.
+            </p>
+            <div className="flex gap-4">
+               <a href="https://x.com/StockBitpro" target="_blank" className="p-2 bg-slate-100 dark:bg-slate-900 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">
+                  <Twitter size={18} />
+               </a>
+            </div>
           </div>
+
+          <div className="space-y-6">
+             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Navigation</h4>
+             <ul className="space-y-3">
+                <li><a href="#about" className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">About Us</a></li>
+                <li><a href="#help" className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">Help Center</a></li>
+                <li><button onClick={() => onAuth('register')} className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">Deploy Terminal</button></li>
+             </ul>
+          </div>
+
+          <div className="space-y-6">
+             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Legal</h4>
+             <ul className="space-y-3">
+                <li><a href="#" className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">Terms of Service</a></li>
+                <li><a href="#" className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">Privacy Policy</a></li>
+                <li><a href="#" className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600">Cookie Protocol</a></li>
+             </ul>
+          </div>
+
+          <div className="space-y-6">
+             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Contact Control</h4>
+             <ul className="space-y-4">
+                <li className="flex items-center gap-3">
+                   <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-indigo-600"><Phone size={14} /></div>
+                   <div className="flex flex-col">
+                      <span className="text-[9px] font-black text-slate-400 uppercase">Direct Call</span>
+                      <a href="tel:07010698264" className="text-xs font-bold">07010698264</a>
+                   </div>
+                </li>
+                <li className="flex items-center gap-3">
+                   <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg text-emerald-600"><MessageCircle size={14} /></div>
+                   <div className="flex flex-col">
+                      <span className="text-[9px] font-black text-slate-400 uppercase">WhatsApp Ops</span>
+                      <a href="https://wa.me/234707217949" className="text-xs font-bold">0707217949</a>
+                   </div>
+                </li>
+                <li className="flex items-center gap-3">
+                   <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-400"><Twitter size={14} /></div>
+                   <div className="flex flex-col">
+                      <span className="text-[9px] font-black text-slate-400 uppercase">Twitter Handle</span>
+                      <a href="https://x.com/StockBitpro" target="_blank" className="text-xs font-bold">@StockBitpro</a>
+                   </div>
+                </li>
+             </ul>
+          </div>
+        </div>
+        
+        <div className="max-w-7xl mx-auto mt-20 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">
             © 2025 STOCKBIT TECHNOLOGIES LTD. MADE IN LAGOS.
           </p>
         </div>
       </footer>
+
+      {/* AI Chat Bot UI */}
+      <div className="fixed bottom-8 right-8 z-[60]">
+         {isChatOpen ? (
+            <div className="w-80 md:w-96 h-[500px] bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10">
+               {/* Chat Header */}
+               <div className="p-6 bg-indigo-600 text-white flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                     <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                        <Sparkles size={20} className="text-white" />
+                     </div>
+                     <div>
+                        <p className="text-xs font-black uppercase tracking-tighter">StockBot AI</p>
+                        <p className="text-[8px] font-bold uppercase text-indigo-200">Terminal Assistant</p>
+                     </div>
+                  </div>
+                  <button onClick={() => setIsChatOpen(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                     <X size={20} />
+                  </button>
+               </div>
+
+               {/* Chat Messages */}
+               <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide">
+                  {chatMessages.map((msg, idx) => (
+                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] p-4 rounded-2xl text-[11px] font-medium leading-relaxed ${
+                           msg.role === 'user' 
+                           ? 'bg-indigo-600 text-white rounded-br-none' 
+                           : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-none'
+                        }`}>
+                           {msg.text}
+                        </div>
+                     </div>
+                  ))}
+                  {isTyping && (
+                     <div className="flex justify-start">
+                        <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl rounded-bl-none flex gap-1">
+                           <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></div>
+                           <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce delay-100"></div>
+                           <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce delay-200"></div>
+                        </div>
+                     </div>
+                  )}
+                  <div ref={chatEndRef} />
+               </div>
+
+               {/* Chat Input */}
+               <form onSubmit={handleSendMessage} className="p-6 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex gap-2">
+                  <input 
+                     type="text" 
+                     placeholder="Type message..." 
+                     className="flex-1 bg-white dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-600 dark:text-white"
+                     value={chatInput}
+                     onChange={e => setChatInput(e.target.value)}
+                  />
+                  <button type="submit" className="p-3 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">
+                     <Send size={18} />
+                  </button>
+               </form>
+            </div>
+         ) : (
+            <button 
+               onClick={() => setIsChatOpen(true)}
+               className="w-16 h-16 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-2xl shadow-indigo-600/40 hover:scale-110 active:scale-95 transition-all group"
+            >
+               <MessageSquare size={24} className="group-hover:rotate-12 transition-transform" />
+               <div className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 rounded-full border-4 border-slate-50 dark:border-slate-950 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div>
+               </div>
+            </button>
+         )}
+      </div>
     </div>
   );
 };
@@ -197,6 +435,16 @@ const StatItem = ({ title, desc }: { title: string, desc: string }) => (
       <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{desc}</p>
     </div>
   </div>
+);
+
+const HelpCard = ({ title, desc, link }: { title: string, desc: string, link: string }) => (
+  <a href={link} className="p-8 bg-slate-50 dark:bg-slate-800/50 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 hover:border-indigo-500 transition-all group">
+    <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center mb-6 shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-all">
+      <HelpCircle size={20} />
+    </div>
+    <h3 className="text-sm font-black uppercase tracking-widest mb-2">{title}</h3>
+    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{desc}</p>
+  </a>
 );
 
 export default LandingPage;
