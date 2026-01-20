@@ -75,9 +75,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
     setIsTyping(true);
 
     try {
-      const apiKey = process.env.API_KEY;
+      // Safe check for process.env.API_KEY
+      const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : undefined;
+      
       if (!apiKey) {
-        throw new Error("Missing credentials. After adding API_KEY to Netlify, you MUST trigger a NEW DEPLOYMENT manually for it to sync.");
+        throw new Error("Missing credentials. Please ensure API_KEY is set in Netlify Environment Variables (NOT Emails) and you have triggered a NEW DEPLOYMENT.");
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -96,10 +98,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
     } catch (error: any) {
       if (isMounted.current) {
         console.error("Chat Error:", error);
-        const errorDetail = error.message?.includes("NEW DEPLOYMENT") 
-          ? error.message
-          : "System key not synchronized in Netlify dashboard. Note: After saving keys, a RE-DEPLOY is required.";
-        setChatMessages(prev => [...prev, { role: 'bot', text: `${errorDetail} Contact support on WhatsApp: 07072127949 if issue persists.` }]);
+        setChatMessages(prev => [...prev, { role: 'bot', text: error.message }]);
       }
     } finally {
       if (isMounted.current) {

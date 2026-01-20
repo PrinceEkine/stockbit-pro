@@ -151,6 +151,8 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
   const tax = subtotal * (settings.taxRate / 100);
   const total = subtotal + tax;
 
+  const displayCompanyName = currentUser?.companyName || settings.companyName;
+
   return (
     <div className="h-full flex flex-col bg-[#020617] text-white overflow-hidden">
       
@@ -159,7 +161,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
         <div className="print-only">
           <div className="receipt-print p-8 text-black bg-white max-w-[80mm] mx-auto border border-dashed border-black">
              <div className="text-center mb-6">
-                <h2 className="text-xl font-black uppercase tracking-tight leading-none mb-1">{settings.companyName}</h2>
+                <h2 className="text-xl font-black uppercase tracking-tight leading-none mb-1">{displayCompanyName}</h2>
                 <p className="text-[10px] font-bold uppercase opacity-60">Professional Retail Receipt</p>
                 <div className="w-full border-b border-black border-dashed my-4"></div>
              </div>

@@ -24,7 +24,7 @@ import {
   ChevronRight,
   AlertTriangle
 } from 'lucide-react';
-import { Product, Supplier, Settings } from '../types';
+import { Product, Supplier, Settings, User as UserType } from '../types';
 import { DEFAULT_CATEGORIES as CATEGORIES } from '../constants';
 import ScannerModal from '../components/ScannerModal';
 
@@ -35,11 +35,12 @@ interface InventoryProps {
   onUpdate: (id: string, updates: Partial<Product>) => void;
   onDelete: (id: string) => void;
   settings: Settings;
+  currentUser: UserType | null;
 }
 
 const BRANCHES = ['Main Branch', 'Jumia Mall Warehouse', 'Lagos Warehouse', 'Abuja Showroom', 'Port Harcourt Hub'];
 
-const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], onAdd, onDelete, settings }) => {
+const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], onAdd, onDelete, settings, currentUser }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedBranch, setSelectedBranch] = useState('All');
@@ -175,6 +176,8 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
     }, 500);
   };
 
+  const displayCompanyName = currentUser?.companyName || settings.companyName;
+
   return (
     <div className="space-y-6 md:space-y-10 animate-in fade-in duration-700 max-w-full overflow-x-hidden">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 no-print px-4">
@@ -201,7 +204,7 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
       {printMode === 'ledger' && (
         <div className="print-only">
           <div className="inventory-ledger-print p-10">
-            <h1 className="text-2xl font-black mb-8 uppercase text-center border-b-2 border-slate-900 pb-4">{settings.companyName} - Inventory Ledger</h1>
+            <h1 className="text-2xl font-black mb-8 uppercase text-center border-b-2 border-slate-900 pb-4">{displayCompanyName} - Inventory Ledger</h1>
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-slate-100 text-[10px] font-black uppercase text-left">
@@ -237,7 +240,7 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
             {printProducts.map(p => (
               <div key={p.id} className="qr-label-print w-[65mm] h-[40mm] border-2 border-black flex flex-col p-2 bg-white relative">
                  <div className="flex justify-between items-center border-b border-black pb-1 mb-1">
-                    <span className="text-[8px] font-black uppercase tracking-tighter truncate w-32">{settings.companyName}</span>
+                    <span className="text-[8px] font-black uppercase tracking-tighter truncate w-32">{displayCompanyName}</span>
                     <span className="text-[6px] font-black uppercase border border-black px-1 rounded">Verified Asset</span>
                  </div>
                  <div className="flex flex-1 gap-2">

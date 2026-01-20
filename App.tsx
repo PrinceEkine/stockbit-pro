@@ -443,7 +443,7 @@ const App: React.FC = () => {
   const renderView = () => {
     switch (activeView) {
       case View.Dashboard: return <Dashboard state={store} onNavigate={setActiveView} />;
-      case View.Inventory: return <Inventory products={store.products} suppliers={store.suppliers} onAdd={store.addProduct} onUpdate={store.updateProduct} onDelete={store.deleteProduct} settings={store.settings} />;
+      case View.Inventory: return <Inventory products={store.products} suppliers={store.suppliers} onAdd={store.addProduct} onUpdate={store.updateProduct} onDelete={store.deleteProduct} settings={store.settings} currentUser={store.currentUser} />;
       case View.AIInsights: return <AIInsights state={store} />;
       case View.Stocktake: return <Stocktake products={store.products} onReconcile={store.reconcileInventory} />;
       case View.Sales: return <Sales sales={store.sales} products={store.products} onRecordSale={store.recordSale} settings={store.settings} currentUser={store.currentUser} />;

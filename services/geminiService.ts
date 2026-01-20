@@ -4,9 +4,11 @@ import { Product, Sale } from "../types";
 import { DEFAULT_CATEGORIES } from "../constants";
 
 const getAIClient = () => {
-  const apiKey = process.env.API_KEY;
+  // Use a safe check for the process object which Vite will now populate
+  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : undefined;
+  
   if (!apiKey) {
-    console.warn("Gemini API Key missing.");
+    console.warn("Gemini API Key missing. Ensure API_KEY is set in Netlify and a re-deployment was triggered.");
     return null;
   }
   return new GoogleGenAI({ apiKey });
@@ -18,7 +20,6 @@ const cleanBase64 = (base64: string) => {
 
 /**
  * HIGH-SPEED SKU IDENTIFIER
- * Uses Gemini 3 Flash for sub-second SKU/Barcode identification.
  */
 export const identifyProductFromImage = async (base64Image: string): Promise<string | null> => {
   const ai = getAIClient();
@@ -55,7 +56,6 @@ export const identifyProductFromImage = async (base64Image: string): Promise<str
 
 /**
  * INTELLIGENT PRODUCT EXTRACTION
- * Uses Gemini 3 Pro for deep extraction of metadata from packaging.
  */
 export const extractProductDetailsFromImage = async (base64Image: string) => {
   const ai = getAIClient();
@@ -110,7 +110,7 @@ export const extractProductDetailsFromImage = async (base64Image: string) => {
  */
 export const getInventoryInsights = async (products: Product[], sales: Sale[]) => {
   const ai = getAIClient();
-  if (!ai) return "Intelligence engine unavailable.";
+  if (!ai) return "Intelligence engine unavailable. Please check API credentials.";
   
   const ctx = {
     inventory: products.map(p => ({ n: p.name, q: p.quantity, m: p.min_threshold, p: p.price })),
