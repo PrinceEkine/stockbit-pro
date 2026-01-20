@@ -237,17 +237,11 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      setIsSubmitting(false); 
-      setAuthStep('landing');
-      setActiveView(View.Dashboard);
-      await store.logout();
-    } catch (err) {
-      console.warn("Logout clean-up completed with warnings.");
-      setAuthStep('landing');
-    }
-  };
+  const handleLogout = useCallback(async () => {
+    setAuthStep('landing');
+    await store.logout();
+    setActiveView(View.Dashboard);
+  }, [store.logout]);
 
   if (store.loading) {
     return (
@@ -267,7 +261,6 @@ const App: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4">
         <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[3rem] p-8 md:p-20 shadow-2xl animate-in zoom-in-95 duration-500">
           
-          {/* Logo & Branding */}
           <div className="flex flex-col items-center mb-12 text-center">
             <button onClick={() => setAuthStep('landing')} className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl shadow-indigo-600/20 active:scale-95 transition-all">
               <Box size={40} className="text-white" />

@@ -338,7 +338,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth }) => {
                    <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg text-emerald-600"><MessageCircle size={14} /></div>
                    <div className="flex flex-col">
                       <span className="text-[9px] font-black text-slate-400 uppercase">WhatsApp Ops</span>
-                      <a href="https://wa.me/234707217949" className="text-xs font-bold">07072127949</a>
+                      <a href="https://wa.me/234707217949" className="text-xs font-bold">0707217949</a>
                    </div>
                 </li>
                 <li className="flex items-center gap-3">

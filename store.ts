@@ -173,7 +173,6 @@ export const useStore = () => {
   }, [loadInitialBatch]);
 
   useEffect(() => {
-    // Jumpstart check to avoid hanging on splash screen
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -200,6 +199,8 @@ export const useStore = () => {
           products: [], 
           sales: [], 
           suppliers: [],
+          returns: [],
+          notifications: [],
           error: null 
         }));
         setLoading(false);
@@ -209,16 +210,27 @@ export const useStore = () => {
     return () => subscription.unsubscribe();
   }, [handleInitialDataLoad, isLoggedIn]);
 
+  const logout = useCallback(async () => {
+    setIsLoggedIn(false);
+    setState(prev => ({ 
+      ...prev, 
+      currentUser: null, 
+      products: [], 
+      sales: [], 
+      returns: [], 
+      suppliers: [], 
+      notifications: [], 
+      users: [] 
+    }));
+    await supabase.auth.signOut();
+  }, []);
+
   return {
     ...state,
     loading,
     isLoggedIn,
     login: (email: string, pass: string) => supabase.auth.signInWithPassword({ email, password: pass }),
-    logout: async () => {
-      setIsLoggedIn(false);
-      setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [] }));
-      return supabase.auth.signOut();
-    },
+    logout,
     register: async (userData: any) => {
       const { inviteId } = userData;
       let role = 'admin';
