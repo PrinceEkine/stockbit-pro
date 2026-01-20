@@ -233,12 +233,31 @@ export const useStore = () => {
     logout,
     register: async (userData: any) => {
       const { data, error } = await supabase.auth.signUp({
-        email: userData.email, password: userData.password,
-        options: { data: { name: userData.name, companyName: userData.companyName, role: userData.inviteId ? 'staff' : 'admin', parentId: userData.inviteId || null } }
+        email: userData.email, 
+        password: userData.password,
+        options: { 
+          emailRedirectTo: window.location.origin,
+          data: { 
+            name: userData.name, 
+            companyName: userData.companyName, 
+            role: userData.inviteId ? 'staff' : 'admin', 
+            parentId: userData.inviteId || null 
+          } 
+        }
       });
       if (error) return { error };
       if (data.user) {
-        await supabase.from('profiles').upsert({ id: data.user.id, name: userData.name, email: userData.email, role: userData.inviteId ? 'staff' : 'admin', company_name: userData.companyName, parent_id: userData.inviteId || null, trial_start_date: new Date().toISOString(), plan: 'beta', is_subscribed: false });
+        await supabase.from('profiles').upsert({ 
+          id: data.user.id, 
+          name: userData.name, 
+          email: userData.email, 
+          role: userData.inviteId ? 'staff' : 'admin', 
+          company_name: userData.companyName, 
+          parent_id: userData.inviteId || null, 
+          trial_start_date: new Date().toISOString(), 
+          plan: 'beta', 
+          is_subscribed: false 
+        });
       }
       return { success: true };
     },
@@ -299,7 +318,10 @@ export const useStore = () => {
       if (!state.currentUser) return;
       const { data, error } = await supabase.auth.signUp({
         email: userData.email, password: userData.password,
-        options: { data: { name: userData.name, companyName: state.currentUser.companyName, role: 'staff', parentId: state.currentUser.id } }
+        options: { 
+          emailRedirectTo: window.location.origin,
+          data: { name: userData.name, companyName: state.currentUser.companyName, role: 'staff', parentId: state.currentUser.id } 
+        }
       });
       if (error) throw error;
       if (data.user) {
