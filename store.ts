@@ -71,6 +71,11 @@ export const useStore = () => {
 
   const loadInitialBatch = useCallback(async (userId: string, parentId?: string) => {
     if (!userId) return;
+    
+    // Safety Timeout: 10 seconds to fetch data or skip
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     try {
       const targetId = parentId || userId;
       const [p, s, ret, sup, n, prof] = await Promise.all([
@@ -122,7 +127,10 @@ export const useStore = () => {
         }))
       }));
     } catch (e: any) {
-      console.error("Batch synchronization error:", e);
+      console.error("Batch synchronization error. Project might be paused or network restricted.", e);
+      setState(prev => ({ ...prev, error: "Database sync delayed. Operations may be restricted." }));
+    } finally {
+      clearTimeout(timeoutId);
     }
   }, []);
 
@@ -165,22 +173,40 @@ export const useStore = () => {
   }, [loadInitialBatch]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) await handleInitialDataLoad(session.user);
-      else setLoading(false);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        
+        if (isMounted) {
+          if (session) await handleInitialDataLoad(session.user);
+          else setLoading(false);
+        }
+      } catch (err) {
+        console.error("Session check failed. Likely network issue.", err);
+        if (isMounted) setLoading(false);
+      }
     };
+
     checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
         if (!isLoggedIn) await handleInitialDataLoad(session.user);
       } else {
-        setIsLoggedIn(false);
-        setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [] }));
+        if (isMounted) {
+          setIsLoggedIn(false);
+          setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [] }));
+        }
       }
     });
-    return () => subscription.unsubscribe();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [handleInitialDataLoad, isLoggedIn]);
 
   const logout = useCallback(async () => {
@@ -193,6 +219,7 @@ export const useStore = () => {
   return {
     ...state,
     loading,
+    forceSetLoading: (val: boolean) => setLoading(val),
     isLoggedIn,
     login: (email: string, pass: string) => supabase.auth.signInWithPassword({ email, password: pass }),
     logout,
@@ -237,7 +264,6 @@ export const useStore = () => {
       setState(prev => ({ ...prev, settings: newSettings }));
       
       if (state.currentUser) {
-        // Persist to Supabase so it survives redeployment
         await supabase.from('profiles').update({ settings: newSettings }).eq('id', state.currentUser.id);
       }
     },

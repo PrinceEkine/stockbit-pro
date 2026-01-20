@@ -43,7 +43,9 @@ import {
   TrendingUp,
   Layout,
   ChevronLeft,
-  ArrowLeft
+  ArrowLeft,
+  RefreshCcw,
+  ExternalLink
 } from 'lucide-react';
 
 type AuthStep = 'landing' | 'login' | 'register' | 'forgot' | 'verify_otp' | 'update_password';
@@ -63,6 +65,7 @@ const App: React.FC = () => {
   const [otpPurpose, setOtpPurpose] = useState<'signup' | 'recovery'>('signup');
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [isStaffReg, setIsStaffReg] = useState(false);
+  const [showTroubleshooting, setShowTroubleshooting] = useState(false);
   
   const [cameraAvailable, setCameraAvailable] = useState(false);
   const [globalScannerActive, setGlobalScannerActive] = useState(false);
@@ -72,6 +75,16 @@ const App: React.FC = () => {
   const notificationRef = useRef<HTMLDivElement>(null);
   const barcodeBuffer = useRef<string>('');
   const lastKeyTime = useRef<number>(0);
+
+  // Watch for long loading times
+  useEffect(() => {
+    if (store.loading) {
+      const timer = setTimeout(() => setShowTroubleshooting(true), 8000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowTroubleshooting(false);
+    }
+  }, [store.loading]);
 
   // Hash-based direct view navigation
   useEffect(() => {
@@ -266,9 +279,38 @@ const App: React.FC = () => {
 
   if (store.loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 gap-6">
-        <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
-        <p className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-[0.3em] animate-pulse text-center">Entering StockBit Pro...</p>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-8 gap-10">
+        <div className="relative">
+           <div className="w-20 h-20 border-4 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin"></div>
+           <div className="absolute inset-0 flex items-center justify-center">
+              <Box size={24} className="text-indigo-500/20" />
+           </div>
+        </div>
+        
+        <div className="space-y-3 text-center">
+           <p className="text-slate-400 dark:text-slate-500 font-black text-[10px] uppercase tracking-[0.4em] animate-pulse">Entering StockBit Pro...</p>
+           {showTroubleshooting && (
+             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest animate-in fade-in duration-1000">Database node sequence is delayed...</p>
+           )}
+        </div>
+
+        {showTroubleshooting && (
+           <div className="flex flex-col items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-xs">
+              <button 
+                onClick={() => (store as any).forceSetLoading(false)}
+                className="px-8 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-[10px] font-black uppercase tracking-widest text-indigo-600 shadow-sm hover:shadow-md transition-all active:scale-95 flex items-center gap-2"
+              >
+                 <RefreshCcw size={14} /> Force Entry Mode
+              </button>
+              <a 
+                href="https://status.supabase.com/" 
+                target="_blank" 
+                className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 hover:text-indigo-500"
+              >
+                Cloud Infrastructure Status <ExternalLink size={10} />
+              </a>
+           </div>
+        )}
       </div>
     );
   }

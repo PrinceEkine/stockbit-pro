@@ -20,5 +20,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     autoRefreshToken: true,
     flowType: 'pkce'
+  },
+  global: {
+    // Add a reasonable timeout for fetch requests to prevent indefinite hanging
+    fetch: (url, options) => {
+      return fetch(url, { ...options, cache: 'no-store' });
+    }
   }
 });
