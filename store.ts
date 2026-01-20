@@ -61,6 +61,8 @@ export const useStore = () => {
       taxRate: 7.5,
       language: 'en',
       isDynamicPricingActive: false,
+      // Priority 1: Built-in Env Var for permanent deployments
+      paystackPublicKey: (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || undefined,
       marketplaces: {
         jumia: true,
         konga: false,
@@ -83,13 +85,21 @@ export const useStore = () => {
         supabase.from('profiles').select('settings').eq('id', userId).maybeSingle()
       ]);
 
-      const { data: usersData, error: usersError } = await supabase
+      const { data: usersData } = await supabase
         .from('profiles')
         .select('*')
         .or(`id.eq.${targetId},parent_id.eq.${targetId}`);
 
       if (prof.data?.settings) {
-        setState(prev => ({ ...prev, settings: { ...prev.settings, ...prof.data.settings } }));
+        setState(prev => ({ 
+          ...prev, 
+          settings: { 
+            ...prev.settings, 
+            ...prof.data.settings,
+            // Only use DB key if Env Var is missing
+            paystackPublicKey: (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || prof.data.settings.paystackPublicKey || prev.settings.paystackPublicKey
+          } 
+        }));
       }
 
       setState(prev => ({
@@ -186,17 +196,14 @@ export const useStore = () => {
         console.error("Session check failed:", err);
         if (isMounted) {
           setLoading(false);
-          setState(prev => ({ ...prev, error: "Session validation failure." }));
         }
       }
     };
 
     checkSession();
 
-    // Safety timeout: stop loading after 10 seconds no matter what
     const safetyTimer = setTimeout(() => {
       if (isMounted && loading) {
-        console.warn("Loading safety timeout triggered.");
         setLoading(false);
       }
     }, 10000);

@@ -49,12 +49,8 @@ const App: React.FC = () => {
   const [authStep, setAuthStep] = useState<AuthStep>('landing');
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
-  const [authSuccess, setAuthSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingEmail, setPendingEmail] = useState('');
-  const [otpPurpose, setOtpPurpose] = useState<'signup' | 'recovery'>('signup');
-  const [isStaffReg, setIsStaffReg] = useState(false);
   
   const [cameraAvailable, setCameraAvailable] = useState(false);
   const [globalScannerActive, setGlobalScannerActive] = useState(false);
@@ -73,18 +69,22 @@ const App: React.FC = () => {
     View.Governance
   ].includes(activeView), [activeView]);
 
-  // Handle auto-redirection to dashboard for logged in users
+  // Handle auto-redirection only if specifically landing at root without intent to see info views
   useEffect(() => {
-    if (store.isLoggedIn && activeView === View.Landing && authStep === 'landing') {
+    if (!store.loading && store.isLoggedIn && activeView === View.Landing && authStep === 'landing') {
       const hash = window.location.hash.replace('#', '').toLowerCase();
-      // Only redirect if not explicitly visiting an info view via hash
-      if (!['about', 'help', 'legal', 'privacy', 'governance'].includes(hash)) {
+      if (!hash || hash === 'dashboard') {
         setActiveView(View.Dashboard);
       }
     }
-  }, [store.isLoggedIn, activeView, authStep]);
+  }, [store.isLoggedIn, store.loading, activeView, authStep]);
 
-  // Hash-based direct view navigation
+  // Reset submitting state when switching auth forms to prevent stuck UI
+  useEffect(() => {
+    setIsSubmitting(false);
+    setAuthError('');
+  }, [authStep]);
+
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace('#', '').toLowerCase();
@@ -103,13 +103,15 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const now = Date.now();
-      if (now - lastKeyTime.current > 50) {
-        barcodeBuffer.current = '';
-      }
-      
+      if (now - lastKeyTime.current > 50) barcodeBuffer.current = '';
       if (e.key === 'Enter') {
         if (barcodeBuffer.current.length > 2) {
-          handleGlobalScan(barcodeBuffer.current);
+          const sku = barcodeBuffer.current;
+          const product = store.products.find(p => p.sku === sku);
+          if (product) {
+            setLastScannedProduct(product);
+            setTimeout(() => setLastScannedProduct(null), 3000);
+          }
           barcodeBuffer.current = '';
         }
       } else if (e.key.length === 1) {
@@ -117,73 +119,39 @@ const App: React.FC = () => {
       }
       lastKeyTime.current = now;
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [store.products, activeView]);
+  }, [store.products]);
 
   useEffect(() => {
     const checkCamera = async () => {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
-        const hasVideo = devices.some(device => device.kind === 'videoinput');
-        setCameraAvailable(hasVideo);
-      } catch (e) {
-        setCameraAvailable(false);
-      }
+        setCameraAvailable(devices.some(device => device.kind === 'videoinput'));
+      } catch (e) { setCameraAvailable(false); }
     };
     checkCamera();
   }, []);
 
-  const handleGlobalScan = (sku: string) => {
-    const product = store.products.find(p => p.sku === sku);
-    if (product) {
-      setLastScannedProduct(product);
-      setTimeout(() => setLastScannedProduct(null), 3000);
-    }
-  };
-
   useEffect(() => {
     const root = window.document.documentElement;
     if (root) {
-      if (store.settings.theme === 'dark') {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-      }
+      if (store.settings.theme === 'dark') root.classList.add('dark');
+      else root.classList.remove('dark');
     }
   }, [store.settings.theme]);
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
     const handleClickOutside = (event: MouseEvent) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
         setIsNotificationOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      document.addEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const trialStatus = useMemo(() => getTrialStatus(store.currentUser), [store.currentUser]);
-
-  useEffect(() => {
-    if (store.currentUser?.role === 'staff') {
-      const allowedViews = [View.Dashboard, View.Sales, View.AboutUs, View.HelpCenter, View.TermsOfService, View.PrivacyPolicy, View.Governance, View.Landing];
-      if (!allowedViews.includes(activeView)) {
-        setActiveView(View.Dashboard);
-      }
-    }
-  }, [store.currentUser, activeView]);
 
   const toggleTheme = () => {
     store.updateSettings({ theme: store.settings.theme === 'light' ? 'dark' : 'light' });
@@ -199,14 +167,11 @@ const App: React.FC = () => {
 
     try {
       const { error } = await store.login(email, password);
-      if (error) {
-        setAuthError(error.message);
-        setIsSubmitting(false);
-      } else {
-        setActiveView(View.Dashboard);
-      }
+      if (error) setAuthError(error.message);
+      else setActiveView(View.Dashboard);
     } catch (err: any) {
       setAuthError("Auth protocol failure.");
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -221,28 +186,18 @@ const App: React.FC = () => {
     const password = formData.get('password') as string;
     const name = formData.get('name') as string;
     const companyName = formData.get('companyName') as string || '';
-    const inviteId = isStaffReg ? (formData.get('inviteId') as string) : null;
+    const inviteId = formData.get('inviteId') as string || null;
 
     try {
-      const res = await store.register({
-        email,
-        password,
-        name,
-        companyName,
-        inviteId
-      });
-
-      if (res.error) {
-        setAuthError(res.error.message);
-        setIsSubmitting(false);
-      } else {
+      const res = await store.register({ email, password, name, companyName, inviteId });
+      if (res.error) setAuthError(res.error.message);
+      else {
         setPendingEmail(email);
-        setOtpPurpose('signup');
         setAuthStep('verify_otp');
-        setIsSubmitting(false);
       }
     } catch (err: any) {
       setAuthError("Registration failure.");
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -262,7 +217,6 @@ const App: React.FC = () => {
     );
   }
 
-  // CLEAN FULL PAGE LAYOUT (Landing & Info Views)
   if (!store.isLoggedIn || activeView === View.Landing || isInfoView) {
     if (activeView === View.Landing && authStep === 'landing') {
       return <LandingPage onAuth={(step) => { setAuthStep(step); setActiveView(View.Landing); }} onNavigateInfo={setActiveView} />;
@@ -301,7 +255,6 @@ const App: React.FC = () => {
       );
     }
 
-    // Login/Register modals for unauthenticated users
     if (!store.isLoggedIn) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4">
@@ -352,17 +305,9 @@ const App: React.FC = () => {
 
             {authStep === 'register' && (
               <form onSubmit={handleRegisterSubmit} className="space-y-6">
-                <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl flex mb-6">
-                  <button type="button" onClick={() => setIsStaffReg(false)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isStaffReg ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Business Owner</button>
-                  <button type="button" onClick={() => setIsStaffReg(true)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isStaffReg ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Staff Member</button>
-                </div>
                 <div className="space-y-4">
                   <input name="name" placeholder="Full Name" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
-                  {isStaffReg ? (
-                    <input name="inviteId" placeholder="Invite ID (from owner)" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
-                  ) : (
-                    <input name="companyName" placeholder="Business Name" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
-                  )}
+                  <input name="companyName" placeholder="Business Name" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
                   <input name="email" type="email" placeholder="Email Address" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
                   <input name="password" type="password" placeholder="Password" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
                 </div>
@@ -382,45 +327,9 @@ const App: React.FC = () => {
                   <MailCheck size={40} />
                 </div>
                 <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Verification Dispatched</h3>
-                <p className="text-[12px] text-slate-500 dark:text-slate-400 font-bold uppercase mt-4 leading-relaxed">
-                  We've sent a link to:<br/>
-                  <span className="text-slate-900 dark:text-white break-all">{pendingEmail}</span>
-                </p>
-                <button onClick={() => setAuthStep('login')} className="w-full py-6 bg-indigo-600 text-white font-black uppercase text-sm rounded-[1.5rem] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-4">
-                  Proceed to Login <ArrowRight size={20} />
-                </button>
+                <p className="text-[12px] text-slate-500 dark:text-slate-400 font-bold uppercase mt-4 leading-relaxed"> sent to <span className="text-slate-900 dark:text-white break-all">{pendingEmail}</span></p>
+                <button onClick={() => setAuthStep('login')} className="w-full py-6 bg-indigo-600 text-white font-black uppercase text-sm rounded-[1.5rem] shadow-xl active:scale-95 transition-all">Proceed to Login <ArrowRight size={20} /></button>
               </div>
-            )}
-
-            {authStep === 'forgot' && (
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                setAuthError('');
-                setIsSubmitting(true);
-                const email = new FormData(e.currentTarget).get('email') as string;
-                const res = await store.resetPassword(email);
-                if (res.error) {
-                  setAuthError(res.error.message);
-                  setIsSubmitting(false);
-                } else {
-                  setPendingEmail(email);
-                  setOtpPurpose('recovery');
-                  setAuthStep('verify_otp');
-                  setIsSubmitting(false);
-                }
-              }} className="space-y-8">
-                <div className="text-center mb-8">
-                  <ShieldEllipsis size={48} className="mx-auto text-indigo-600 mb-6" />
-                  <h3 className="text-2xl font-black uppercase tracking-tighter">Account Recovery</h3>
-                </div>
-                <input name="email" type="email" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all text-lg" placeholder="Registered Email" />
-                <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-indigo-600 text-white font-black uppercase text-sm rounded-[1.5rem] shadow-xl">
-                  {isSubmitting ? 'Processing...' : 'Send Recovery Email'}
-                </button>
-                <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[12px] font-black text-slate-400 uppercase tracking-widest text-center">
-                  Back to Login
-                </button>
-              </form>
             )}
 
             <footer className="mt-16 text-center border-t border-slate-50 dark:border-slate-800 pt-8">
@@ -436,15 +345,14 @@ const App: React.FC = () => {
     switch (activeView) {
       case View.Dashboard: return <Dashboard state={store} onNavigate={setActiveView} />;
       case View.Inventory: return <Inventory products={store.products} suppliers={store.suppliers} onAdd={store.addProduct} onUpdate={store.updateProduct} onDelete={store.deleteProduct} settings={store.settings} currentUser={store.currentUser} />;
+      case View.Sales: return <Sales sales={store.sales} products={store.products} onRecordSale={store.recordSale} settings={store.settings} currentUser={store.currentUser} />;
       case View.AIInsights: return <AIInsights state={store} />;
       case View.Stocktake: return <Stocktake products={store.products} onReconcile={store.reconcileInventory} />;
-      case View.Sales: return <Sales sales={store.sales} products={store.products} onRecordSale={store.recordSale} settings={store.settings} currentUser={store.currentUser} />;
       case View.Returns: return <Returns returns={store.returns} products={store.products} onRecordReturn={store.recordReturn} settings={store.settings} />;
       case View.Reports: return <Reports state={store} />;
       case View.Suppliers: return <Suppliers suppliers={store.suppliers} onAdd={store.addSupplier} onUpdate={() => {}} onDelete={() => {}} />;
       case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} staff={store.users} currentUser={store.currentUser} onAddStaff={store.addStaffMember} onRemoveStaff={store.removeStaffMember} onActivateSubscription={async (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => { await store.activateSubscription(plan, cycle); }} />;
       case View.LaunchCenter: return <LaunchCenter state={store} onUpdateSettings={store.updateSettings} />;
-      case View.UserManagement: return <UserManagement users={store.users} onUpdatePlan={async (id, t) => { await store.activateSubscription(t === 'revoke' ? 'beta' : 'mega', t === 'annual' ? 'annual' : 'monthly', id); return true; }} onAssignParent={store.assignParentToUser} />;
       case View.AboutUs: return <AboutUs />;
       case View.HelpCenter: return <HelpCenter />;
       case View.TermsOfService: return <TermsOfService />;
@@ -477,20 +385,13 @@ const App: React.FC = () => {
             {cameraAvailable && (
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl mr-2">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Scanner Standby</span>
-                <button onClick={() => setGlobalScannerActive(true)} className="p-1 text-emerald-600 hover:scale-110 transition-transform">
-                  <Scan size={14} />
-                </button>
+                <span className="text-[10px] font-black text-emerald-600 dark:text-amber-400 uppercase tracking-widest">Scanner Standby</span>
+                <button onClick={() => setGlobalScannerActive(true)} className="p-1 text-emerald-600 hover:scale-110 transition-transform"><Scan size={14} /></button>
               </div>
             )}
             <button onClick={toggleTheme} className="p-2 md:p-2.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors rounded-xl">
               {store.settings.theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
             </button>
-            <div className="hidden sm:flex items-center gap-3 pl-2 border-l border-slate-200 dark:border-slate-800">
-              <div className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xs">
-                {store.currentUser?.name?.charAt(0)}
-              </div>
-            </div>
             <div className="relative" ref={notificationRef}>
               <button onClick={() => setIsNotificationOpen(!isNotificationOpen)} className="p-2 md:p-3 text-slate-400 hover:text-indigo-600 relative transition-colors">
                 <Bell size={20} />
@@ -501,18 +402,6 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {lastScannedProduct && (
-          <div className="fixed bottom-10 right-10 z-[100] bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-2xl border border-emerald-100 dark:border-emerald-800 animate-in slide-in-from-right-10 flex items-center gap-4">
-            <div className="w-10 h-10 bg-emerald-500 text-white rounded-xl flex items-center justify-center shadow-lg">
-              <CheckCircle2 size={24} />
-            </div>
-            <div>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Detected SKU: {lastScannedProduct.sku}</p>
-              <p className="text-sm font-black text-slate-900 dark:text-white uppercase">{lastScannedProduct.name}</p>
-            </div>
-          </div>
-        )}
-
         <div className="p-2 md:p-10 flex-1 overflow-x-hidden min-h-0">
           {renderView()}
         </div>
@@ -521,7 +410,11 @@ const App: React.FC = () => {
           <ScannerModal 
             onScan={(res) => {
               const sku = typeof res === 'string' ? res : res?.sku;
-              if (sku) handleGlobalScan(sku);
+              if (sku) {
+                 const product = store.products.find(p => p.sku === sku);
+                 if (product) setLastScannedProduct(product);
+                 setTimeout(() => setLastScannedProduct(null), 3000);
+              }
             }} 
             onClose={() => setGlobalScannerActive(false)} 
           />
