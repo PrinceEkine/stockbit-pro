@@ -3,13 +3,9 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Product, Sale } from "../types";
 import { DEFAULT_CATEGORIES } from "../constants";
 
+// Fix: Strictly follow Gemini API initialization guidelines
 const getAIClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    console.warn("Gemini API Key missing.");
-    return null;
-  }
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 const cleanBase64 = (base64: string) => {

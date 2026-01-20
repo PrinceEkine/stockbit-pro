@@ -83,7 +83,7 @@ export const useStore = () => {
         supabase.from('profiles').select('settings').eq('id', userId).maybeSingle()
       ]);
 
-      const { data: usersData } = await supabase
+      const { data: usersData, error: usersError } = await supabase
         .from('profiles')
         .select('*')
         .or(`id.eq.${targetId},parent_id.eq.${targetId}`);
@@ -94,6 +94,7 @@ export const useStore = () => {
 
       setState(prev => ({
         ...prev,
+        error: null,
         products: (p.data || []).map(item => ({
           ...item,
           price: Number(item.price) || 0,
@@ -124,6 +125,7 @@ export const useStore = () => {
       }));
     } catch (e: any) {
       console.error("Data fetch error:", e);
+      setState(prev => ({ ...prev, error: "Network Protocol Error. Please check connectivity." }));
     }
   }, []);
 
@@ -158,10 +160,11 @@ export const useStore = () => {
         user = mapProfile(profile, authUser);
       }
 
-      setState(prev => ({ ...prev, currentUser: user }));
+      setState(prev => ({ ...prev, currentUser: user, error: null }));
       await loadInitialBatch(user.id, user.parentId);
     } catch (e: any) {
       console.error("Auth profile load failure:", e);
+      setState(prev => ({ ...prev, error: "Authentication Sync Failed." }));
     } finally {
       setLoading(false);
     }
@@ -181,7 +184,10 @@ export const useStore = () => {
         }
       } catch (err) {
         console.error("Session check failed:", err);
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+          setState(prev => ({ ...prev, error: "Session validation failure." }));
+        }
       }
     };
 
@@ -215,7 +221,7 @@ export const useStore = () => {
 
   const logout = useCallback(async () => {
     setIsLoggedIn(false);
-    setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [] }));
+    setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [], error: null }));
     await supabase.auth.signOut();
   }, []);
 
@@ -247,6 +253,11 @@ export const useStore = () => {
       await supabase.from('products').insert({ ...data, user_id: ownerId, last_updated: new Date().toISOString() });
       await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
     },
+    deleteProduct: async (id: string) => {
+      if (!state.currentUser) return;
+      await supabase.from('products').delete().eq('id', id);
+      await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
+    },
     recordSale: async (items: SaleItem[], customerName?: string, location: string = 'Main Branch', paymentMethod: PaymentMethod = 'cash', status: 'completed' | 'pending' = 'completed') => {
       if (!state.currentUser) return false;
       const ownerId = state.currentUser.parentId || state.currentUser.id;
@@ -260,6 +271,53 @@ export const useStore = () => {
       }
       await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
       return true;
+    },
+    reconcileInventory: async (items: StocktakeItem[]) => {
+      if (!state.currentUser) return;
+      for (const item of items) {
+        await supabase.from('products').update({ quantity: item.physicalQty }).eq('id', item.productId);
+      }
+      await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
+    },
+    recordReturn: async (data: Omit<ProductReturn, 'id' | 'date' | 'user_id'>) => {
+      if (!state.currentUser) return;
+      const ownerId = state.currentUser.parentId || state.currentUser.id;
+      await supabase.from('returns').insert({ ...data, user_id: ownerId, date: new Date().toISOString() });
+      const prod = state.products.find(p => p.id === data.product_id);
+      if (prod) {
+        await supabase.from('products').update({ quantity: prod.quantity + data.quantity }).eq('id', prod.id);
+      }
+      await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
+    },
+    addSupplier: async (data: Omit<Supplier, 'id' | 'user_id'>) => {
+      if (!state.currentUser) return;
+      const ownerId = state.currentUser.parentId || state.currentUser.id;
+      await supabase.from('suppliers').insert({ ...data, user_id: ownerId });
+      await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
+    },
+    addStaffMember: async (userData: any) => {
+      if (!state.currentUser) return;
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email, password: userData.password,
+        options: { data: { name: userData.name, companyName: state.currentUser.companyName, role: 'staff', parentId: state.currentUser.id } }
+      });
+      if (error) throw error;
+      if (data.user) {
+        await supabase.from('profiles').upsert({ id: data.user.id, name: userData.name, email: userData.email, role: 'staff', company_name: state.currentUser.companyName, parent_id: state.currentUser.id, trial_start_date: new Date().toISOString(), plan: 'beta', is_subscribed: false });
+      }
+      await loadInitialBatch(state.currentUser.id);
+    },
+    removeStaffMember: async (id: string) => {
+      if (!state.currentUser) return;
+      await supabase.from('profiles').delete().eq('id', id);
+      await loadInitialBatch(state.currentUser.id);
+    },
+    resetPassword: async (email: string) => {
+      return await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/#update_password` });
+    },
+    assignParentToUser: async (userId: string, parentId: string) => {
+      await supabase.from('profiles').update({ parent_id: parentId, role: 'staff' }).eq('id', userId);
+      if (state.currentUser) await loadInitialBatch(state.currentUser.id);
     },
     updateSettings: async (updates: Partial<Settings>) => {
       const newSettings = { ...state.settings, ...updates };

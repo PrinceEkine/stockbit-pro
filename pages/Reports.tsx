@@ -117,8 +117,8 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
           </div>
         </div>
         
-        <div className="w-full min-h-[400px] overflow-hidden">
-          <ResponsiveContainer width="100%" height="100%" aspect={2.5}>
+        <div className="w-full min-h-[400px] overflow-hidden min-w-0" style={{ minHeight: '400px' }}>
+          <ResponsiveContainer width="100%" height="100%" aspect={window.innerWidth < 1024 ? 1.5 : 2.5}>
             <AreaChart data={revenueTrendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="reportsSales" x1="0" y1="0" x2="0" y2="1">
@@ -174,7 +174,7 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center">
-          <div className="w-full h-[350px] min-w-0">
+          <div className="w-full h-[350px] min-w-0" style={{ minHeight: '350px' }}>
             <ResponsiveContainer width="100%" height="100%" aspect={1.5}>
               <PieChart>
                 <Pie

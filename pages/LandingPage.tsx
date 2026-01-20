@@ -75,14 +75,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
     setIsTyping(true);
 
     try {
-      // Safe check for process and process.env
-      const apiKey = typeof process !== 'undefined' && process.env ? process.env.API_KEY : undefined;
-      
-      if (!apiKey) {
-        throw new Error("Logic core unavailable. Contact administration.");
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
+      // Fix: Strictly follow Gemini API initialization guidelines
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: userMsg,
@@ -431,7 +425,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
 const FeatureCard = ({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) => (
   <div className="p-8 bg-slate-50 dark:bg-slate-800/50 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 hover:border-indigo-500/30 transition-all group">
     <div className="w-14 h-14 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition-transform">
-      {React.cloneElement(icon as React.ReactElement, { size: 28 })}
+      {/* Fix: Added explicit generic type parameter to cloneElement for TypeScript compatibility */}
+      {React.cloneElement(icon as React.ReactElement<any>, { size: 28 })}
     </div>
     <h3 className="text-lg font-black uppercase tracking-tighter mb-2">{title}</h3>
     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{desc}</p>

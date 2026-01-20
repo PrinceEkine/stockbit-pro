@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { View, User as UserType, SubscriptionPlan, Product } from './types';
 import { useStore, getTrialStatus } from './store';
-import { supabase } from './supabase';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
@@ -32,16 +31,11 @@ import {
   Moon,
   Sun,
   ShieldEllipsis,
-  Hash,
   UserPlus,
-  Link as LinkIcon,
-  Zap,
   Clock,
   Scan,
   MailCheck,
   ArrowRight,
-  TrendingUp,
-  Layout,
   ChevronLeft,
   ArrowLeft
 } from 'lucide-react';
@@ -49,7 +43,8 @@ import {
 type AuthStep = 'landing' | 'login' | 'register' | 'forgot' | 'verify_otp' | 'update_password';
 
 const App: React.FC = () => {
-  const [activeView, setActiveView] = useState<View>(View.Dashboard);
+  // Fix: Set initial view to Landing so reloads/entry start there
+  const [activeView, setActiveView] = useState<View>(View.Landing);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [authStep, setAuthStep] = useState<AuthStep>('landing');
@@ -58,10 +53,8 @@ const App: React.FC = () => {
   const [authSuccess, setAuthSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [otpValue, setOtpValue] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
   const [otpPurpose, setOtpPurpose] = useState<'signup' | 'recovery'>('signup');
-  const [showOtpInput, setShowOtpInput] = useState(false);
   const [isStaffReg, setIsStaffReg] = useState(false);
   
   const [cameraAvailable, setCameraAvailable] = useState(false);
@@ -82,11 +75,12 @@ const App: React.FC = () => {
       else if (hash === 'legal') setActiveView(View.TermsOfService);
       else if (hash === 'privacy') setActiveView(View.PrivacyPolicy);
       else if (hash === 'governance') setActiveView(View.Governance);
+      else if (hash === 'dashboard' && store.isLoggedIn) setActiveView(View.Dashboard);
     };
     handleHash();
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
-  }, []);
+  }, [store.isLoggedIn]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -166,7 +160,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (store.currentUser?.role === 'staff') {
-      const allowedViews = [View.Dashboard, View.Sales, View.AboutUs, View.HelpCenter, View.TermsOfService, View.PrivacyPolicy, View.Governance];
+      const allowedViews = [View.Dashboard, View.Sales, View.AboutUs, View.HelpCenter, View.TermsOfService, View.PrivacyPolicy, View.Governance, View.Landing];
       if (!allowedViews.includes(activeView)) {
         setActiveView(View.Dashboard);
       }
@@ -175,30 +169,6 @@ const App: React.FC = () => {
 
   const toggleTheme = () => {
     store.updateSettings({ theme: store.settings.theme === 'light' ? 'dark' : 'light' });
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otpValue.length !== 6) return;
-    setAuthError('');
-    setIsSubmitting(true);
-    try {
-      const { error } = await store.verifyOtp(pendingEmail, otpValue, otpPurpose);
-      if (error) {
-        setAuthError(error.message);
-        setIsSubmitting(false);
-      } else if (otpPurpose === 'recovery') {
-        setAuthStep('update_password');
-        setIsSubmitting(false);
-      } else {
-        setAuthSuccess('Verification successful!');
-        setAuthStep('login');
-        setIsSubmitting(false);
-      }
-    } catch (err: any) {
-      setAuthError(err.message || 'Verification failed');
-      setIsSubmitting(false);
-    }
   };
 
   const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -214,6 +184,8 @@ const App: React.FC = () => {
       if (error) {
         setAuthError(error.message);
         setIsSubmitting(false);
+      } else {
+        setActiveView(View.Dashboard);
       }
     } catch (err: any) {
       setAuthError("Auth protocol failure.");
@@ -249,7 +221,6 @@ const App: React.FC = () => {
         setPendingEmail(email);
         setOtpPurpose('signup');
         setAuthStep('verify_otp');
-        setShowOtpInput(false);
         setIsSubmitting(false);
       }
     } catch (err: any) {
@@ -261,7 +232,7 @@ const App: React.FC = () => {
   const handleLogout = useCallback(async () => {
     setAuthStep('landing');
     await store.logout();
-    setActiveView(View.Dashboard);
+    setActiveView(View.Landing);
   }, [store.logout]);
 
   if (store.loading) {
@@ -275,9 +246,10 @@ const App: React.FC = () => {
 
   const isInfoView = [View.AboutUs, View.HelpCenter, View.TermsOfService, View.PrivacyPolicy, View.Governance].includes(activeView);
 
-  if (!store.isLoggedIn) {
-    if (authStep === 'landing' && !isInfoView) {
-      return <LandingPage onAuth={(step) => setAuthStep(step)} onNavigateInfo={setActiveView} />;
+  // AUTH SCREENS (FULL PAGE)
+  if (!store.isLoggedIn || activeView === View.Landing) {
+    if (activeView === View.Landing && authStep === 'landing') {
+      return <LandingPage onAuth={(step) => { setAuthStep(step); setActiveView(View.Landing); }} onNavigateInfo={setActiveView} />;
     }
 
     if (isInfoView) {
@@ -285,13 +257,13 @@ const App: React.FC = () => {
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
            <nav className="fixed top-0 w-full z-50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800">
             <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-              <button onClick={() => { setActiveView(View.Dashboard); setAuthStep('landing'); window.location.hash = ''; }} className="flex items-center gap-3 group">
+              <button onClick={() => { setActiveView(View.Landing); setAuthStep('landing'); window.location.hash = ''; }} className="flex items-center gap-3 group">
                 <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform">
                   <Box size={24} className="text-white" />
                 </div>
                 <span className="font-black text-xl tracking-tighter uppercase dark:text-white">StockBit Pro</span>
               </button>
-              <button onClick={() => setAuthStep('login')} className="px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Portal Access</button>
+              <button onClick={() => { setAuthStep('login'); setActiveView(View.Landing); }} className="px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Portal Access</button>
             </div>
           </nav>
           <div className="pt-32 pb-20 px-6 max-w-4xl mx-auto">
@@ -305,139 +277,135 @@ const App: React.FC = () => {
       );
     }
 
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4">
-        <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[3rem] p-8 md:p-20 shadow-2xl animate-in zoom-in-95 duration-500">
-          
-          <div className="flex flex-col items-center mb-12 text-center">
-            <button onClick={() => setAuthStep('landing')} className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl shadow-indigo-600/20 active:scale-95 transition-all">
-              <Box size={40} className="text-white" />
-            </button>
-            <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase">StockBit Pro</h1>
-            <p className="text-[12px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-[0.3em] mt-2">cloud inventory management</p>
+    // Login/Register modals for unauthenticated or landing-auth-triggers
+    if (!store.isLoggedIn) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[3rem] p-8 md:p-20 shadow-2xl animate-in zoom-in-95 duration-500">
+            <div className="flex flex-col items-center mb-12 text-center">
+              <button onClick={() => { setAuthStep('landing'); setActiveView(View.Landing); }} className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl shadow-indigo-600/20 active:scale-95 transition-all">
+                <Box size={40} className="text-white" />
+              </button>
+              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase">StockBit Pro</h1>
+              <p className="text-[12px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-[0.3em] mt-2">cloud inventory management</p>
+            </div>
+
+            {authError && (
+              <div className="mb-8 p-4 bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-900 rounded-2xl text-[11px] font-bold text-rose-600 flex items-center gap-3">
+                <ShieldAlert size={18} className="shrink-0" /> {authError}
+              </div>
+            )}
+
+            {authStep === 'login' && (
+              <form onSubmit={handleLoginSubmit} className="space-y-8">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">Authorized Email</label>
+                  <input name="email" type="email" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 border-none rounded-[1.5rem] font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all text-lg" placeholder="admin@shop.com" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center px-1">
+                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Password</label>
+                    <button type="button" onClick={() => setAuthStep('forgot')} className="text-[10px] font-black text-indigo-600 hover:text-indigo-700 uppercase tracking-widest">Lost Access?</button>
+                  </div>
+                  <div className="relative">
+                    <input name="password" type={showPassword ? "text" : "password"} required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 border-none rounded-[1.5rem] font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all text-lg" placeholder="••••••••" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 p-2 hover:text-indigo-600 transition-colors">
+                      {showPassword ? <EyeOff size={24} /> : <Eye size={24} />}
+                    </button>
+                  </div>
+                </div>
+                <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-indigo-600 text-white font-black uppercase tracking-widest text-sm rounded-[1.5rem] shadow-2xl shadow-indigo-600/30 active:scale-95 transition-all flex items-center justify-center gap-4">
+                  {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <LogIn size={20} />}
+                  {isSubmitting ? 'Verifying...' : 'Sign In'}
+                </button>
+                <div className="pt-6 text-center">
+                  <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">
+                    New enterprise? <button type="button" onClick={() => setAuthStep('register')} className="text-indigo-600 hover:underline font-black">Register Business</button>
+                  </p>
+                </div>
+              </form>
+            )}
+
+            {authStep === 'register' && (
+              <form onSubmit={handleRegisterSubmit} className="space-y-6">
+                <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl flex mb-6">
+                  <button type="button" onClick={() => setIsStaffReg(false)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isStaffReg ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Business Owner</button>
+                  <button type="button" onClick={() => setIsStaffReg(true)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isStaffReg ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Staff Member</button>
+                </div>
+                <div className="space-y-4">
+                  <input name="name" placeholder="Full Name" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                  {isStaffReg ? (
+                    <input name="inviteId" placeholder="Invite ID (from owner)" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                  ) : (
+                    <input name="companyName" placeholder="Business Name" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                  )}
+                  <input name="email" type="email" placeholder="Email Address" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                  <input name="password" type="password" placeholder="Password" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                </div>
+                <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-indigo-600 text-white font-black uppercase tracking-widest text-sm rounded-[1.5rem] shadow-2xl flex items-center justify-center gap-4 active:scale-95 transition-all">
+                  {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <UserPlus size={20} />}
+                  {isSubmitting ? 'Registering...' : 'Sign Up'}
+                </button>
+                <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[12px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest text-center flex items-center justify-center gap-3">
+                  <ChevronLeft size={18} /> Back to Sign In
+                </button>
+              </form>
+            )}
+
+            {authStep === 'verify_otp' && (
+              <div className="space-y-10 text-center">
+                <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner animate-pulse">
+                  <MailCheck size={40} />
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Verification Dispatched</h3>
+                <p className="text-[12px] text-slate-500 dark:text-slate-400 font-bold uppercase mt-4 leading-relaxed">
+                  We've sent a link to:<br/>
+                  <span className="text-slate-900 dark:text-white break-all">{pendingEmail}</span>
+                </p>
+                <button onClick={() => setAuthStep('login')} className="w-full py-6 bg-indigo-600 text-white font-black uppercase text-sm rounded-[1.5rem] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-4">
+                  Proceed to Login <ArrowRight size={20} />
+                </button>
+              </div>
+            )}
+
+            {authStep === 'forgot' && (
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setAuthError('');
+                setIsSubmitting(true);
+                const email = new FormData(e.currentTarget).get('email') as string;
+                const res = await store.resetPassword(email);
+                if (res.error) {
+                  setAuthError(res.error.message);
+                  setIsSubmitting(false);
+                } else {
+                  setPendingEmail(email);
+                  setOtpPurpose('recovery');
+                  setAuthStep('verify_otp');
+                  setIsSubmitting(false);
+                }
+              }} className="space-y-8">
+                <div className="text-center mb-8">
+                  <ShieldEllipsis size={48} className="mx-auto text-indigo-600 mb-6" />
+                  <h3 className="text-2xl font-black uppercase tracking-tighter">Account Recovery</h3>
+                </div>
+                <input name="email" type="email" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all text-lg" placeholder="Registered Email" />
+                <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-indigo-600 text-white font-black uppercase text-sm rounded-[1.5rem] shadow-xl">
+                  {isSubmitting ? 'Processing...' : 'Send Recovery Email'}
+                </button>
+                <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[12px] font-black text-slate-400 uppercase tracking-widest text-center">
+                  Back to Login
+                </button>
+              </form>
+            )}
+
+            <footer className="mt-16 text-center border-t border-slate-50 dark:border-slate-800 pt-8">
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] opacity-30">Powered by StockBit Intelligence v4.2</p>
+            </footer>
           </div>
-
-          {authError && (
-            <div className="mb-8 p-4 bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-900 rounded-2xl text-[11px] font-bold text-rose-600 flex items-center gap-3 animate-in slide-in-from-top-2">
-              <ShieldAlert size={18} className="shrink-0" /> {authError}
-            </div>
-          )}
-
-          {authStep === 'login' && (
-            <form onSubmit={handleLoginSubmit} className="space-y-8">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">Authorized Email</label>
-                <input name="email" type="email" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 border-none rounded-[1.5rem] font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all text-lg" placeholder="admin@shop.com" />
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center px-1">
-                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Password</label>
-                  <button type="button" onClick={() => setAuthStep('forgot')} className="text-[10px] font-black text-indigo-600 hover:text-indigo-700 uppercase tracking-widest">Lost Access?</button>
-                </div>
-                <div className="relative">
-                  <input name="password" type={showPassword ? "text" : "password"} required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 border-none rounded-[1.5rem] font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all text-lg" placeholder="••••••••" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 p-2 hover:text-indigo-600 transition-colors">
-                    {showPassword ? <EyeOff size={24} /> : <Eye size={24} />}
-                  </button>
-                </div>
-              </div>
-              <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-indigo-600 text-white font-black uppercase tracking-widest text-sm rounded-[1.5rem] shadow-2xl shadow-indigo-600/30 active:scale-95 transition-all flex items-center justify-center gap-4">
-                {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <LogIn size={20} />}
-                {isSubmitting ? 'Verifying...' : 'Sign In'}
-              </button>
-              <div className="pt-6 text-center">
-                <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">
-                  New enterprise? <button type="button" onClick={() => setAuthStep('register')} className="text-indigo-600 hover:underline font-black">Register Business</button>
-                </p>
-              </div>
-            </form>
-          )}
-
-          {authStep === 'register' && (
-            <form onSubmit={handleRegisterSubmit} className="space-y-6">
-              <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl flex mb-6">
-                <button type="button" onClick={() => setIsStaffReg(false)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isStaffReg ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Business Owner</button>
-                <button type="button" onClick={() => setIsStaffReg(true)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isStaffReg ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Staff Member</button>
-              </div>
-              <div className="space-y-4">
-                <input name="name" placeholder="Full Name" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
-                {isStaffReg ? (
-                  <input name="inviteId" placeholder="Invite ID (from owner)" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
-                ) : (
-                  <input name="companyName" placeholder="Business Name" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
-                )}
-                <input name="email" type="email" placeholder="Email Address" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
-                <input name="password" type="password" placeholder="Password" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
-              </div>
-              <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-indigo-600 text-white font-black uppercase tracking-widest text-sm rounded-[1.5rem] shadow-2xl flex items-center justify-center gap-4 active:scale-95 transition-all">
-                {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <UserPlus size={20} />}
-                {isSubmitting ? 'Registering...' : 'Sign Up'}
-              </button>
-              <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[12px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest text-center flex items-center justify-center gap-3">
-                <ChevronLeft size={18} /> Back to Sign In
-              </button>
-            </form>
-          )}
-
-          {authStep === 'verify_otp' && (
-            <div className="space-y-10 text-center">
-              <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner animate-pulse">
-                <MailCheck size={40} />
-              </div>
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Verification Dispatched</h3>
-              <p className="text-[12px] text-slate-500 dark:text-slate-400 font-bold uppercase mt-4 leading-relaxed">
-                We've sent a link to:<br/>
-                <span className="text-slate-900 dark:text-white break-all">{pendingEmail}</span>
-              </p>
-              <div className="bg-slate-50 dark:bg-slate-800 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800">
-                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
-                  Please check your email and click the verification link to proceed.
-                </p>
-              </div>
-              <button onClick={() => setAuthStep('login')} className="w-full py-6 bg-indigo-600 text-white font-black uppercase text-sm rounded-[1.5rem] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-4">
-                Proceed to Login <ArrowRight size={20} />
-              </button>
-            </div>
-          )}
-
-          {authStep === 'forgot' && (
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              setAuthError('');
-              setIsSubmitting(true);
-              const email = new FormData(e.currentTarget).get('email') as string;
-              const res = await store.resetPassword(email);
-              if (res.error) {
-                setAuthError(res.error.message);
-                setIsSubmitting(false);
-              } else {
-                setPendingEmail(email);
-                setOtpPurpose('recovery');
-                setAuthStep('verify_otp');
-                setShowOtpInput(false);
-                setIsSubmitting(false);
-              }
-            }} className="space-y-8">
-              <div className="text-center mb-8">
-                <ShieldEllipsis size={48} className="mx-auto text-indigo-600 mb-6" />
-                <h3 className="text-2xl font-black uppercase tracking-tighter">Account Recovery</h3>
-              </div>
-              <input name="email" type="email" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all text-lg" placeholder="Registered Email" />
-              <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-indigo-600 text-white font-black uppercase text-sm rounded-[1.5rem] shadow-xl">
-                {isSubmitting ? 'Processing...' : 'Send Recovery Email'}
-              </button>
-              <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[12px] font-black text-slate-400 uppercase tracking-widest text-center">
-                Back to Login
-              </button>
-            </form>
-          )}
-
-          <footer className="mt-16 text-center border-t border-slate-50 dark:border-slate-800 pt-8">
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] opacity-30">Powered by StockBit Intelligence v4.2</p>
-          </footer>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   const renderView = () => {
@@ -532,7 +500,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <div className="p-2 md:p-10 flex-1 overflow-x-hidden">
+        <div className="p-2 md:p-10 flex-1 overflow-x-hidden min-h-0">
           {renderView()}
         </div>
 

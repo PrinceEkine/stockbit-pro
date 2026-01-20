@@ -130,6 +130,7 @@ export type AppState = {
 };
 
 export enum View {
+  Landing = 'landing',
   Dashboard = 'dashboard',
   Inventory = 'inventory',
   Sales = 'sales',

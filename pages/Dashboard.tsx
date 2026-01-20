@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { 
-  DollarSign, TrendingUp, AlertTriangle, ShoppingCart, Plus, ArrowRight, ShoppingBag
+  DollarSign, TrendingUp, AlertTriangle, ShoppingCart, Plus, ArrowRight
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -16,28 +16,32 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
   const [timeFrame, setTimeFrame] = useState<'day' | 'week' | 'month'>('day');
-  const totalStockValue = (state.products || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
-  const totalSalesRevenue = (state.sales || []).reduce((acc, s) => acc + (s.total_price || 0), 0);
-  const lowStockItems = (state.products || []).filter(p => p.quantity <= (p.min_threshold || 5));
   
-  const trialStatus = useMemo(() => getTrialStatus(state.currentUser), [state.currentUser]);
+  // Safety guards for calculation
+  const totalStockValue = (state?.products || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
+  const totalSalesRevenue = (state?.sales || []).reduce((acc, s) => acc + (s.total_price || 0), 0);
+  const lowStockItems = (state?.products || []).filter(p => p.quantity <= (p.min_threshold || 5));
+  
+  const trialStatus = useMemo(() => getTrialStatus(state?.currentUser || null), [state?.currentUser]);
 
   const chartData = useMemo(() => {
     const now = new Date();
     const data: { name: string, sales: number }[] = [];
-    const sales = state.sales || [];
+    const sales = state?.sales || [];
+    
     if (timeFrame === 'day') {
       for (let i = 6; i >= 0; i--) {
         const date = new Date(now);
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
-        const dayTotal = sales.filter(s => s.date.startsWith(dateStr)).reduce((sum, s) => sum + (s.total_price || 0), 0);
+        const dayTotal = sales.filter(s => s.date && s.date.startsWith(dateStr)).reduce((sum, s) => sum + (s.total_price || 0), 0);
         data.push({ name: date.toLocaleDateString('en-US', { weekday: 'short' }), sales: dayTotal });
       }
     } else {
       for (let i = 5; i >= 0; i--) {
         const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const monthTotal = sales.filter(s => {
+          if (!s.date) return false;
           const sDate = new Date(s.date);
           return sDate.getMonth() === date.getMonth() && sDate.getFullYear() === date.getFullYear();
         }).reduce((sum, s) => sum + (s.total_price || 0), 0);
@@ -45,24 +49,24 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
       }
     }
     return data;
-  }, [state.sales, timeFrame]);
+  }, [state?.sales, timeFrame]);
 
   return (
     <div className="space-y-4 md:space-y-8 animate-in fade-in duration-500 px-1">
-      {state.error && (
+      {state?.error && (
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 p-3 rounded-2xl flex items-center gap-3 text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">
            <AlertTriangle size={14} className="shrink-0" /> {state.error}
         </div>
       )}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-        <StatsCard title="Stock Value" value={totalStockValue} symbol={state.settings.currency} icon={DollarSign} color="bg-indigo-600" />
-        <StatsCard title="Revenue" value={totalSalesRevenue} symbol={state.settings.currency} icon={TrendingUp} color="bg-emerald-600" />
-        <StatsCard title="Volume" value={state.sales.length} icon={ShoppingCart} color="bg-amber-600" />
+        <StatsCard title="Stock Value" value={totalStockValue} symbol={state?.settings?.currency || '₦'} icon={DollarSign} color="bg-indigo-600" />
+        <StatsCard title="Revenue" value={totalSalesRevenue} symbol={state?.settings?.currency || '₦'} icon={TrendingUp} color="bg-emerald-600" />
+        <StatsCard title="Volume" value={state?.sales?.length || 0} icon={ShoppingCart} color="bg-amber-600" />
         <StatsCard title="Risk Alert" value={lowStockItems.length} icon={AlertTriangle} color="bg-rose-600" isAlert={lowStockItems.length > 0} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-        <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm relative min-h-[350px]">
+        <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm relative min-h-[400px]">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
             <div>
               <h3 className="text-sm md:text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Performance Matrix</h3>
@@ -77,8 +81,8 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
             </div>
           </div>
           
-          <div className="w-full h-[250px] md:h-[350px]">
-            <ResponsiveContainer width="100%" height="100%" aspect={window.innerWidth < 768 ? 1.4 : 2.5}>
+          <div className="w-full h-[300px] md:h-[400px] min-w-0" style={{ minHeight: '300px' }}>
+            <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
@@ -92,7 +96,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
                   if (active && payload && payload.length) {
                     return (
                       <div className="bg-slate-900 text-white px-3 py-1.5 rounded-xl text-[9px] font-black shadow-2xl">
-                        {state.settings.currency}&nbsp;{(payload[0].value as number).toLocaleString()}
+                        {state?.settings?.currency || '₦'}&nbsp;{(payload[0].value as number).toLocaleString()}
                       </div>
                     );
                   }
@@ -115,7 +119,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
                 <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse" />
                 <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Trial Active</p>
              </div>
-             <p className="text-[14px] font-black text-slate-900 dark:text-white uppercase">{trialStatus.daysLeft} Days Remain</p>
+             <p className="text-[14px] font-black text-slate-900 dark:text-white uppercase">{trialStatus?.daysLeft || 0} Days Remain</p>
           </div>
         </div>
       </div>

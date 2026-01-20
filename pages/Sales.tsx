@@ -197,8 +197,8 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === 'ALL' || p.category.toUpperCase() === selectedCategory.toUpperCase();
+      const matchesSearch = (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (p.sku || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === 'ALL' || (p.category || '').toUpperCase() === selectedCategory.toUpperCase();
       return matchesSearch && matchesCategory;
     });
   }, [products, searchTerm, selectedCategory]);
@@ -210,7 +210,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
   const displayCompanyName = currentUser?.companyName || settings.companyName;
 
   return (
-    <div className="h-full flex flex-col bg-[#020617] text-white overflow-hidden">
+    <div className="h-full flex flex-col bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white overflow-hidden transition-colors">
       
       {/* SCAN FEEDBACK OVERLAY */}
       {scanFeedback && (
@@ -282,7 +282,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
         <div className="flex-1 p-6 md:p-12 space-y-10 animate-in fade-in duration-500 max-w-7xl mx-auto w-full">
           <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div>
-              <h1 className="text-4xl font-black tracking-tighter uppercase">Unified Protocol</h1>
+              <h1 className="text-4xl font-black tracking-tighter uppercase text-slate-900 dark:text-white">Unified Protocol</h1>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em] mt-1">Terminal Hub v4.2</p>
             </div>
             <button 
@@ -293,14 +293,14 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
             </button>
           </header>
 
-          <div className="bg-[#0f172a] rounded-[3rem] border border-white/5 overflow-hidden shadow-2xl">
-            <div className="p-8 border-b border-white/5 flex items-center justify-between">
+          <div className="bg-white dark:bg-[#0f172a] rounded-[3rem] border border-slate-100 dark:border-white/5 overflow-hidden shadow-2xl transition-colors">
+            <div className="p-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Transaction History</h3>
                <History size={18} className="text-indigo-500" />
             </div>
             <div className="overflow-x-auto">
                <table className="w-full text-left">
-                  <thead className="bg-black/20 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  <thead className="bg-slate-50 dark:bg-black/20 text-[9px] font-black uppercase tracking-widest text-slate-500">
                      <tr>
                         <th className="px-8 py-5">REF</th>
                         <th className="px-8 py-5">Customer</th>
@@ -308,16 +308,16 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                         <th className="px-8 py-5 text-right">Reprint</th>
                      </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
-                     {sales.slice(0, 10).map((sale) => (
-                        <tr key={sale.id} className="hover:bg-white/5 transition-colors group">
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                     {(sales || []).slice(0, 10).map((sale) => (
+                        <tr key={sale.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
                            <td className="px-8 py-5 font-mono text-[11px] text-slate-500">#{sale.id.slice(0,8)}</td>
-                           <td className="px-8 py-5 font-black text-[11px] uppercase">{sale.customer_name || 'Walk-in'}</td>
-                           <td className="px-8 py-5 font-black text-[11px] text-indigo-400">{settings.currency}{sale.total_price.toLocaleString()}</td>
+                           <td className="px-8 py-5 font-black text-[11px] uppercase text-slate-900 dark:text-white">{sale.customer_name || 'Walk-in'}</td>
+                           <td className="px-8 py-5 font-black text-[11px] text-indigo-500 dark:text-indigo-400">{settings.currency}{sale.total_price.toLocaleString()}</td>
                            <td className="px-8 py-5 text-right">
                               <button 
                                 onClick={() => handleReprint(sale)}
-                                className="p-2 bg-white/5 hover:bg-indigo-600 rounded-lg text-slate-400 hover:text-white transition-all ml-auto block"
+                                className="p-2 bg-slate-100 dark:bg-white/5 hover:bg-indigo-600 rounded-lg text-slate-400 hover:text-white transition-all ml-auto block"
                                 title="Reprint Receipt"
                               >
                                 <Printer size={16} />
@@ -325,6 +325,9 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                            </td>
                         </tr>
                      ))}
+                     {(sales || []).length === 0 && (
+                        <tr><td colSpan={4} className="py-20 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No transaction history found</td></tr>
+                     )}
                   </tbody>
                </table>
             </div>
@@ -333,26 +336,26 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
       )}
 
       {isTerminalOpen && (
-        <div className="fixed inset-0 z-[60] bg-[#020617] flex flex-col animate-in zoom-in-95 duration-300 no-print">
+        <div className="fixed inset-0 z-[60] bg-white dark:bg-[#020617] flex flex-col animate-in zoom-in-95 duration-300 no-print transition-colors">
           
-          <div className="h-14 bg-[#0a0f1d] flex items-end px-4 gap-1.5 shrink-0 overflow-x-auto scrollbar-hide">
+          <div className="h-14 bg-slate-100 dark:bg-[#0a0f1d] flex items-end px-4 gap-1.5 shrink-0 overflow-x-auto scrollbar-hide border-b border-slate-200 dark:border-none">
              {carts.map((cart, idx) => (
                <div key={cart.id} className="flex items-center">
                   <button 
                     onClick={() => setActiveCartIndex(idx)}
                     className={`h-10 px-6 rounded-t-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 relative whitespace-nowrap ${
                       activeCartIndex === idx 
-                      ? 'bg-white text-[#4f46e5] shadow-lg' 
-                      : 'text-slate-500 hover:text-slate-300 bg-white/5'
+                      ? 'bg-white dark:bg-[#4f46e5] text-[#4f46e5] dark:text-white shadow-lg' 
+                      : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 bg-white/50 dark:bg-white/5'
                     }`}
                   >
-                     <ReceiptText size={14} className={activeCartIndex === idx ? 'text-[#4f46e5]' : 'text-slate-500'} />
+                     <ReceiptText size={14} className={activeCartIndex === idx ? (settings.theme === 'dark' ? 'text-white' : 'text-[#4f46e5]') : 'text-slate-500'} />
                      {cart.label}
                      {cart.items.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-1"></span>}
                      {carts.length > 1 && (
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleCloseCart(idx); }} 
-                          className={`ml-2 hover:bg-black/10 rounded p-0.5 ${activeCartIndex === idx ? 'text-[#4f46e5]' : 'text-slate-500'}`}
+                          className={`ml-2 hover:bg-black/10 rounded p-0.5 ${activeCartIndex === idx ? (settings.theme === 'dark' ? 'text-white' : 'text-[#4f46e5]') : 'text-slate-500'}`}
                         >
                            <X size={10} />
                         </button>
@@ -360,12 +363,12 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                   </button>
                </div>
              ))}
-             <button onClick={handleAddNewCart} className="h-10 px-4 text-slate-500 hover:text-white transition-all mb-0.5 shrink-0"><Plus size={18}/></button>
+             <button onClick={handleAddNewCart} className="h-10 px-4 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-all mb-0.5 shrink-0"><Plus size={18}/></button>
              
              <div className="ml-auto mb-3 hidden md:flex items-center gap-4 pr-2">
                 <div className="text-right">
                    <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">OPERATOR</p>
-                   <p className="text-[10px] font-black text-white uppercase">{currentUser?.name || 'ADMIN'}</p>
+                   <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase">{currentUser?.name || 'ADMIN'}</p>
                 </div>
                 <button 
                   onClick={() => setIsTerminalOpen(false)} 
@@ -376,34 +379,34 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
              </div>
           </div>
 
-          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-[#0a0f1d] m-2 md:m-4 rounded-[1.5rem] md:rounded-[2.5rem] border border-white/5 shadow-2xl relative">
+          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-slate-50 dark:bg-[#0a0f1d] m-2 md:m-4 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-2xl relative transition-colors">
              
-             <div className="flex-1 flex flex-col min-w-0 border-r border-white/5">
+             <div className="flex-1 flex flex-col min-w-0 border-r border-slate-200 dark:border-white/5">
                 <div className="p-4 md:p-10 pb-4 md:pb-6 flex flex-col md:flex-row gap-4 shrink-0">
                    <div className="relative flex-1 group">
-                      <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400" size={18} />
+                      <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-500 dark:group-focus-within:text-indigo-400" size={18} />
                       <input 
                         type="text" 
                         placeholder="SEARCH SKU OR PRODUCT NAME..." 
-                        className="w-full pl-14 pr-6 py-4 md:py-5 bg-[#0f172a] border-none rounded-2xl text-[10px] md:text-[11px] font-black uppercase outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-slate-600"
+                        className="w-full pl-14 pr-6 py-4 md:py-5 bg-white dark:bg-[#0f172a] border-none rounded-2xl text-[10px] md:text-[11px] font-black uppercase outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white shadow-sm"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                       />
                    </div>
                    <button 
                      onClick={() => setIsScannerOpen(true)}
-                     className="px-8 py-4 md:py-5 bg-[#0f172a] text-white border border-white/5 rounded-2xl flex items-center justify-center gap-3 font-black text-[9px] md:text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all hover:bg-[#1e293b]"
+                     className="px-8 py-4 md:py-5 bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white border border-slate-100 dark:border-white/5 rounded-2xl flex items-center justify-center gap-3 font-black text-[9px] md:text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all hover:bg-slate-100 dark:hover:bg-[#1e293b]"
                    >
                       <Scan size={18}/> SENSOR SCAN
                    </button>
                 </div>
 
-                <div className="px-4 md:px-10 py-2 md:py-4 flex gap-2 overflow-x-auto scrollbar-hide shrink-0 border-b border-white/5">
+                <div className="px-4 md:px-10 py-2 md:py-4 flex gap-2 overflow-x-auto scrollbar-hide shrink-0 border-b border-slate-200 dark:border-white/5">
                    {['ALL', ...settings.categories.slice(0, 12)].map(cat => (
                      <button 
                        key={cat} 
                        onClick={() => setSelectedCategory(cat.toUpperCase())}
-                       className={`px-5 md:px-6 py-2 md:py-2.5 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedCategory === cat.toUpperCase() ? 'bg-[#4f46e5] text-white shadow-lg' : 'bg-[#0f172a] text-slate-500 hover:text-slate-300'}`}
+                       className={`px-5 md:px-6 py-2 md:py-2.5 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedCategory === cat.toUpperCase() ? 'bg-[#4f46e5] text-white shadow-lg' : 'bg-white dark:bg-[#0f172a] text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 shadow-sm'}`}
                      >
                        {cat}
                      </button>
@@ -415,20 +418,20 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                      <button 
                        key={p.id} 
                        onClick={() => handleProductSelection(p.id)}
-                       className="group bg-[#0f172a] rounded-2xl md:rounded-[2rem] p-5 md:p-8 border border-white/5 hover:border-[#4f46e5] transition-all flex flex-col text-left aspect-[4/5] relative overflow-hidden active:scale-95"
+                       className="group bg-white dark:bg-[#0f172a] rounded-2xl md:rounded-[2rem] p-5 md:p-8 border border-slate-100 dark:border-white/5 hover:border-[#4f46e5] transition-all flex flex-col text-left aspect-[4/5] relative overflow-hidden active:scale-95 shadow-sm hover:shadow-xl"
                      >
-                        <div className="absolute top-4 right-4 px-2 py-0.5 bg-white/5 rounded-md border border-white/10">
-                           <span className="text-[7px] font-black uppercase text-emerald-400">{p.quantity} IN STOCK</span>
+                        <div className="absolute top-4 right-4 px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded-md border border-slate-200 dark:border-white/10">
+                           <span className="text-[7px] font-black uppercase text-emerald-600 dark:text-emerald-400">{p.quantity} IN STOCK</span>
                         </div>
                         <div className="flex-1 space-y-3 md:space-y-4">
-                           <div className="w-10 h-10 md:w-12 md:h-12 bg-white/5 rounded-xl md:rounded-2xl flex items-center justify-center text-slate-600 group-hover:text-indigo-400 transition-colors">
+                           <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 dark:bg-white/5 rounded-xl md:rounded-2xl flex items-center justify-center text-slate-400 dark:text-slate-600 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
                               <Package size={20} />
                            </div>
-                           <h4 className="text-[10px] md:text-[11px] font-black text-white uppercase leading-tight line-clamp-3">{p.name}</h4>
+                           <h4 className="text-[10px] md:text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight line-clamp-3">{p.name}</h4>
                         </div>
                         <div className="mt-4 md:mt-6 flex items-center justify-between">
                            <span className="text-[10px] md:text-xs font-black text-[#4f46e5]">{settings.currency}{p.price.toLocaleString()}</span>
-                           <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-[#4f46e5] group-hover:text-white transition-all">
+                           <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center group-hover:bg-[#4f46e5] group-hover:text-white transition-all">
                               <Plus size={16} />
                            </div>
                         </div>
@@ -437,52 +440,52 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                 </div>
              </div>
 
-             <div className="hidden lg:flex w-[460px] flex-col bg-[#0a0f1d] overflow-hidden border-l border-white/5 shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
-                <div className="p-8 space-y-4 bg-[#0a0f1d] border-b border-white/5">
+             <div className="hidden lg:flex w-[460px] flex-col bg-white dark:bg-[#0a0f1d] overflow-hidden border-l border-slate-200 dark:border-white/5 shadow-[-10px_0_30px_rgba(0,0,0,0.02)] transition-colors">
+                <div className="p-8 space-y-4 bg-slate-50/50 dark:bg-[#0a0f1d] border-b border-slate-200 dark:border-white/5">
                    <div className="flex items-center gap-4">
-                      <User size={18} className="text-slate-600" />
+                      <User size={18} className="text-slate-400 dark:text-slate-600" />
                       <input 
                         placeholder="CLIENT PROFILE NAME..." 
-                        className="flex-1 bg-white border-none rounded-xl px-5 py-3 text-[10px] font-black uppercase outline-none shadow-inner text-slate-900" 
+                        className="flex-1 bg-white dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-xl px-5 py-3 text-[10px] font-black uppercase outline-none shadow-inner text-slate-900 dark:text-white transition-all" 
                         value={currentCart.customerName} 
                         onChange={e => updateActiveCart({ customerName: e.target.value })} 
                       />
                    </div>
                    <div className="flex items-center gap-4">
-                      <Edit3 size={18} className="text-slate-600" />
+                      <Edit3 size={18} className="text-slate-400 dark:text-slate-600" />
                       <input 
                         placeholder="ORDER LABEL..." 
-                        className="flex-1 bg-white border-none rounded-xl px-5 py-3 text-[10px] font-black uppercase outline-none shadow-inner text-slate-900" 
+                        className="flex-1 bg-white dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-xl px-5 py-3 text-[10px] font-black uppercase outline-none shadow-inner text-slate-900 dark:text-white transition-all" 
                         value={currentCart.label} 
                         onChange={e => updateActiveCart({ label: e.target.value })} 
                       />
                    </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide">
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide bg-white dark:bg-transparent">
                    {currentCart.items.map((item, idx) => (
-                     <div key={idx} className="bg-[#0f172a] rounded-2xl p-5 border border-white/5 group animate-in slide-in-from-right-4">
+                     <div key={idx} className="bg-slate-50 dark:bg-[#0f172a] rounded-2xl p-5 border border-slate-100 dark:border-white/5 group animate-in slide-in-from-right-4">
                         <div className="flex justify-between items-start mb-3">
-                           <p className="text-[10px] font-black uppercase truncate pr-4 text-white">{item.productName}</p>
+                           <p className="text-[10px] font-black uppercase truncate pr-4 text-slate-900 dark:text-white">{item.productName}</p>
                            <button onClick={() => {
                              const updated = [...currentCart.items];
                              updated.splice(idx, 1);
                              updateActiveCart({ items: updated });
-                           }} className="text-slate-600 hover:text-rose-500 transition-colors"><Trash2 size={16}/></button>
+                           }} className="text-slate-400 hover:text-rose-500 transition-colors"><Trash2 size={16}/></button>
                         </div>
                         <div className="flex items-center justify-between">
-                           <p className="text-[11px] font-black text-[#4f46e5]">{settings.currency}{(item.price * item.quantity).toLocaleString()}</p>
-                           <div className="flex items-center gap-1 bg-black/20 rounded-xl p-1 border border-white/5">
+                           <p className="text-[11px] font-black text-[#4f46e5] dark:text-indigo-400">{settings.currency}{(item.price * item.quantity).toLocaleString()}</p>
+                           <div className="flex items-center gap-1 bg-white dark:bg-black/20 rounded-xl p-1 border border-slate-200 dark:border-white/5 shadow-sm">
                               <button onClick={() => {
                                 const updated = [...currentCart.items];
                                 if (updated[idx].quantity > 1) updated[idx].quantity -= 1;
                                 else updated.splice(idx, 1);
                                 updateActiveCart({ items: updated });
-                              }} className="w-8 h-8 flex items-center justify-center hover:bg-white/5 rounded-lg text-slate-400"><Minus size={14}/></button>
+                              }} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-slate-400"><Minus size={14}/></button>
                               
                               <input 
                                 type="number"
-                                className="w-12 h-8 bg-transparent border-none text-center text-[11px] font-black p-0 focus:ring-0 text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                className="w-12 h-8 bg-transparent border-none text-center text-[11px] font-black p-0 focus:ring-0 text-slate-900 dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 value={item.quantity}
                                 onChange={(e) => handleQuantityChange(idx, e.target.value)}
                               />
@@ -494,21 +497,21 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                                   updated[idx].quantity += 1;
                                   updateActiveCart({ items: updated });
                                 }
-                              }} className="w-8 h-8 flex items-center justify-center hover:bg-white/5 rounded-lg text-slate-400"><Plus size={14}/></button>
+                              }} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-slate-400"><Plus size={14}/></button>
                            </div>
                         </div>
                      </div>
                    ))}
                 </div>
 
-                <div className="p-10 bg-[#020617] space-y-6">
-                   <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                <div className="p-10 bg-slate-50 dark:bg-[#020617] space-y-6 transition-colors border-t border-slate-200 dark:border-none">
+                   <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
                       <span>GROSS VAL</span>
                       <span>{settings.currency}{subtotal.toLocaleString()}</span>
                    </div>
-                   <div className="flex justify-between items-end border-t border-white/5 pt-4">
-                      <p className="text-[10px] font-black uppercase text-indigo-500 tracking-[0.3em]">NET SETTLE</p>
-                      <h4 className="text-4xl font-black tracking-tighter">{settings.currency}{total.toLocaleString()}</h4>
+                   <div className="flex justify-between items-end border-t border-slate-200 dark:border-white/5 pt-4">
+                      <p className="text-[10px] font-black uppercase text-[#4f46e5] dark:text-indigo-500 tracking-[0.3em]">NET SETTLE</p>
+                      <h4 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white">{settings.currency}{total.toLocaleString()}</h4>
                    </div>
                    <button 
                      disabled={currentCart.items.length === 0 || isProcessing}
@@ -520,19 +523,19 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                 </div>
              </div>
 
-             <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 bg-gradient-to-t from-[#020617] to-transparent">
+             <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 bg-gradient-to-t from-slate-200 dark:from-[#020617] to-transparent">
                 <button 
                   onClick={() => setMobileCartOpen(true)}
-                  className="w-full bg-white text-[#020617] p-5 rounded-[2.5rem] flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)] active:scale-95 transition-all"
+                  className="w-full bg-[#4f46e5] dark:bg-white text-white dark:text-[#020617] p-5 rounded-[2.5rem] flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.3)] active:scale-95 transition-all"
                 >
                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-[#4f46e5] rounded-[1.2rem] flex items-center justify-center text-white relative shadow-lg">
+                      <div className="w-12 h-12 bg-white/20 dark:bg-[#4f46e5] rounded-[1.2rem] flex items-center justify-center text-white relative shadow-lg">
                          <ShoppingCart size={22} />
-                         {currentCart.items.length > 0 && <span className="absolute -top-1 -right-1 w-6 h-6 bg-rose-600 text-white rounded-full text-[10px] flex items-center justify-center border-4 border-white font-black">{currentCart.items.length}</span>}
+                         {currentCart.items.length > 0 && <span className="absolute -top-1 -right-1 w-6 h-6 bg-rose-600 text-white rounded-full text-[10px] flex items-center justify-center border-4 border-[#4f46e5] dark:border-white font-black">{currentCart.items.length}</span>}
                       </div>
                       <div className="text-left">
                          <p className="text-[14px] font-black leading-none">{settings.currency}{total.toLocaleString()}</p>
-                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Review Current Trade</p>
+                         <p className="text-[9px] font-black opacity-60 dark:text-slate-400 uppercase tracking-widest mt-1">Review Current Trade</p>
                       </div>
                    </div>
                    <div className="flex items-center gap-2 pr-2">
@@ -543,29 +546,29 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
              </div>
 
              {mobileCartOpen && (
-               <div className="lg:hidden fixed inset-0 z-[70] bg-[#020617]/90 backdrop-blur-xl animate-in fade-in flex items-end">
-                  <div className="w-full bg-[#0a0f1d] rounded-t-[3rem] p-8 pb-24 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-10 flex flex-col border-t border-white/5">
+               <div className="lg:hidden fixed inset-0 z-[70] bg-slate-900/50 dark:bg-[#020617]/90 backdrop-blur-xl animate-in fade-in flex items-end">
+                  <div className="w-full bg-white dark:bg-[#0a0f1d] rounded-t-[3rem] p-8 pb-24 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-10 flex flex-col border-t border-slate-200 dark:border-white/5 transition-colors">
                      <div className="flex justify-between items-center mb-8">
                         <div>
-                           <h3 className="text-xl font-black uppercase tracking-tighter">Review Trade</h3>
-                           <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Order Summary Protocol</p>
+                           <h3 className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">Review Trade</h3>
+                           <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">Order Summary Protocol</p>
                         </div>
-                        <button onClick={() => setMobileCartOpen(false)} className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center text-slate-400 active:scale-90 transition-all"><X size={20}/></button>
+                        <button onClick={() => setMobileCartOpen(false)} className="w-10 h-10 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center text-slate-400 active:scale-90 transition-all"><X size={20}/></button>
                      </div>
                      <div className="space-y-4 mb-8">
                         {currentCart.items.map((item, idx) => (
-                           <div key={idx} className="bg-[#0f172a] p-5 rounded-[2rem] border border-white/5">
+                           <div key={idx} className="bg-slate-50 dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5">
                               <div className="flex justify-between items-start mb-4">
-                                 <p className="text-[11px] font-black uppercase truncate pr-4 text-white">{item.productName}</p>
+                                 <p className="text-[11px] font-black uppercase truncate pr-4 text-slate-900 dark:text-white">{item.productName}</p>
                                  <button onClick={() => {
                                     const updated = [...currentCart.items];
                                     updated.splice(idx, 1);
                                     updateActiveCart({ items: updated });
-                                 }} className="text-slate-600"><Trash2 size={16}/></button>
+                                 }} className="text-slate-400 dark:text-slate-600"><Trash2 size={16}/></button>
                               </div>
                               <div className="flex items-center justify-between">
-                                 <p className="text-[13px] font-black text-[#4f46e5]">{settings.currency}{(item.price * item.quantity).toLocaleString()}</p>
-                                 <div className="flex items-center gap-1 bg-black/40 rounded-xl p-1 border border-white/5">
+                                 <p className="text-[13px] font-black text-[#4f46e5] dark:text-indigo-400">{settings.currency}{(item.price * item.quantity).toLocaleString()}</p>
+                                 <div className="flex items-center gap-1 bg-white dark:bg-black/40 rounded-xl p-1 border border-slate-200 dark:border-white/5 shadow-sm">
                                     <button onClick={() => {
                                        const updated = [...currentCart.items];
                                        if (updated[idx].quantity > 1) updated[idx].quantity -= 1;
@@ -574,7 +577,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                                     }} className="w-8 h-8 flex items-center justify-center text-slate-400"><Minus size={14}/></button>
                                     <input 
                                        type="number" 
-                                       className="w-12 text-center text-xs font-black p-0 border-none bg-transparent text-white focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                       className="w-12 text-center text-xs font-black p-0 border-none bg-transparent text-slate-900 dark:text-white focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                        value={item.quantity}
                                        onChange={(e) => handleQuantityChange(idx, e.target.value)}
                                     />
@@ -591,10 +594,10 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                            </div>
                         ))}
                      </div>
-                     <div className="mt-auto space-y-6 pt-6 border-t border-white/5">
+                     <div className="mt-auto space-y-6 pt-6 border-t border-slate-200 dark:border-white/5">
                         <div className="flex justify-between items-center">
-                           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Net Settle Amount</span>
-                           <span className="text-3xl font-black text-white">{settings.currency}{total.toLocaleString()}</span>
+                           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Net Settle Amount</span>
+                           <span className="text-3xl font-black text-slate-900 dark:text-white">{settings.currency}{total.toLocaleString()}</span>
                         </div>
                         <button 
                            onClick={() => { setShowConfirmDialog(true); }}
@@ -619,7 +622,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
       )}
 
       {showConfirmDialog && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#020617]/98 backdrop-blur-3xl no-print">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-[#020617]/98 backdrop-blur-3xl no-print">
           <div className="bg-white rounded-[4rem] w-full max-w-lg p-10 md:p-16 shadow-2xl text-center animate-in zoom-in-95 duration-500">
              <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner"><CreditCard size={32} /></div>
              <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 text-slate-900">Checkout Finalization</h3>
