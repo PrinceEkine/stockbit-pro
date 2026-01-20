@@ -25,7 +25,8 @@ import {
   Loader2,
   Users,
   Eye,
-  Activity
+  Activity,
+  PlayCircle
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { View } from '../types';
@@ -75,7 +76,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
     setIsTyping(true);
 
     try {
-      // Fix: Strictly follow Gemini API initialization guidelines
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -141,13 +141,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-40 pb-20 px-6">
-        <div className="max-w-5xl mx-auto text-center space-y-8">
+      <section className="pt-40 pb-20 px-6 overflow-hidden">
+        <div className="max-w-7xl mx-auto text-center space-y-8 relative">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-full">
             <Sparkles size={14} className="text-indigo-600" />
             <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Enterprise Architecture</span>
           </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none uppercase">
+          <h1 className="text-5xl md:text-8xl font-black tracking-tighter leading-[0.9] uppercase max-w-5xl mx-auto">
             Industrial Logistics <br className="hidden md:block"/> for <span className="text-indigo-600">African Growth</span>.
           </h1>
           <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
@@ -161,6 +161,88 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
             >
               Deploy Trial Terminal <ArrowRight size={20} />
             </button>
+          </div>
+
+          {/* APP PREVIEW IMAGE - HERO */}
+          <div className="mt-20 relative perspective-1000 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-300">
+            <div className="relative mx-auto max-w-6xl group">
+              <div className="absolute -inset-4 bg-indigo-500/20 rounded-[3rem] blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+              <img 
+                src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=2000" 
+                alt="StockBit Dashboard Preview" 
+                className="rounded-[2.5rem] md:rounded-[4rem] shadow-2xl border-4 border-white dark:border-slate-800 relative z-10 transform hover:rotate-1 hover:scale-[1.02] transition-all duration-700 cursor-pointer object-cover aspect-[21/9]"
+              />
+              <div className="absolute inset-0 rounded-[2.5rem] md:rounded-[4rem] bg-gradient-to-t from-slate-900/60 via-transparent to-transparent z-20 pointer-events-none"></div>
+              <div className="absolute bottom-8 left-8 md:bottom-16 md:left-16 z-30 flex items-center gap-4">
+                <div className="w-16 h-16 bg-white dark:bg-slate-900 rounded-full flex items-center justify-center shadow-2xl text-indigo-600">
+                  <PlayCircle size={32} />
+                </div>
+                <div className="text-left text-white">
+                  <p className="text-xs font-black uppercase tracking-widest opacity-80">Interface v4.2</p>
+                  <h4 className="text-xl font-black uppercase tracking-tighter">Unified Mission Control</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* App Capabilities Section - Detailed Visuals */}
+      <section className="py-32 px-6">
+        <div className="max-w-7xl mx-auto space-y-24">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+             <div className="order-2 lg:order-1">
+                <img 
+                  src="https://images.unsplash.com/photo-1556740738-b6a63e27c4df?auto=format&fit=crop&q=80&w=1200" 
+                  alt="POS Terminal in Action" 
+                  className="rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 transform -rotate-2 hover:rotate-0 transition-transform duration-500"
+                />
+             </div>
+             <div className="space-y-8 order-1 lg:order-2">
+                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600">
+                  <ShoppingCart size={24} />
+                </div>
+                <h3 className="text-4xl font-black uppercase tracking-tighter leading-tight">Fastest POS Terminal <br/>in the Market.</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-lg font-medium leading-relaxed">
+                  Record sales in milliseconds. Our optimized checkout flow handles barcodes, manual SKU entry, and instant digital payments with zero lag.
+                </p>
+                <ul className="space-y-4">
+                  {['Multi-cart order queueing', 'Offline sales preservation', 'Instant thermal printing', 'Split payment settlement'].map((f, i) => (
+                    <li key={i} className="flex items-center gap-3 font-black uppercase text-[10px] tracking-widest text-slate-900 dark:text-white">
+                      <CheckCircle2 size={16} className="text-emerald-500" /> {f}
+                    </li>
+                  ))}
+                </ul>
+             </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+             <div className="space-y-8">
+                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600">
+                  <BarChart3 size={24} />
+                </div>
+                <h3 className="text-4xl font-black uppercase tracking-tighter leading-tight">AI Driven <br/>Logistics Audit.</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-lg font-medium leading-relaxed">
+                  Gemini 3 Pro analyzes every movement. Identify shrinkage, optimize restocking cycles, and forecast demand before the weekend peak.
+                </p>
+                <div className="p-6 bg-slate-900 rounded-3xl border border-slate-800 shadow-2xl space-y-4">
+                   <div className="flex justify-between items-center text-[10px] font-black uppercase text-indigo-400 tracking-widest">
+                      <span>Neural Analysis</span>
+                      <span>89% Accuracy</span>
+                   </div>
+                   <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-600 w-3/4"></div>
+                   </div>
+                   <p className="text-[11px] text-slate-400 italic">"Restock Type-C adapters immediately; velocity increased 14% since Tuesday."</p>
+                </div>
+             </div>
+             <div>
+                <img 
+                  src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200" 
+                  alt="StockBit AI Analytics" 
+                  className="rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 transform rotate-2 hover:rotate-0 transition-transform duration-500"
+                />
+             </div>
           </div>
         </div>
       </section>
@@ -220,18 +302,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
             </div>
             
             <div className="lg:w-1/2 relative">
-              <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-[3rem] shadow-inner flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700">
-                 <div className="p-8 w-full">
-                    <div className="space-y-4">
-                       <div className="h-4 w-3/4 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse"></div>
-                       <div className="h-4 w-1/2 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse delay-75"></div>
-                       <div className="grid grid-cols-3 gap-4 pt-4">
-                          <div className="h-20 bg-indigo-600/10 rounded-2xl border border-indigo-600/20"></div>
-                          <div className="h-20 bg-slate-200 dark:bg-slate-700 rounded-2xl"></div>
-                          <div className="h-20 bg-slate-200 dark:bg-slate-700 rounded-2xl"></div>
-                       </div>
-                    </div>
-                 </div>
+              <div className="aspect-square md:aspect-video rounded-[3rem] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                 <img 
+                   src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&q=80&w=1200" 
+                   alt="Multi-staff collaboration" 
+                   className="w-full h-full object-cover"
+                 />
+                 <div className="absolute inset-0 bg-indigo-600/10 mix-blend-multiply"></div>
               </div>
               <div className="absolute -top-6 -right-6 w-32 h-32 bg-indigo-600 rounded-[2rem] flex items-center justify-center shadow-2xl rotate-12">
                  <ShieldCheck size={48} className="text-white" />
@@ -271,8 +348,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
 
       {/* CTA Section */}
       <section className="py-32 px-6 text-center bg-slate-900 text-white relative overflow-hidden">
+        <img 
+          src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=2000" 
+          alt="Retail Store Visual" 
+          className="absolute inset-0 w-full h-full object-cover opacity-20"
+        />
         <div className="max-w-3xl mx-auto relative z-10 space-y-8">
-          <h2 className="text-4xl md:text-5xl font-black tracking-tighter uppercase">Upgrade Your Operational Protocol.</h2>
+          <h2 className="text-4xl md:text-5xl font-black tracking-tighter uppercase leading-tight">Upgrade Your <br/>Operational Protocol.</h2>
           <p className="text-slate-400 font-medium text-lg leading-relaxed">
             Deploy StockBit Pro across your entire organization and gain absolute control today.
           </p>
@@ -425,7 +507,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
 const FeatureCard = ({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) => (
   <div className="p-8 bg-slate-50 dark:bg-slate-800/50 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 hover:border-indigo-500/30 transition-all group">
     <div className="w-14 h-14 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition-transform">
-      {/* Fix: Added explicit generic type parameter to cloneElement for TypeScript compatibility */}
       {React.cloneElement(icon as React.ReactElement<any>, { size: 28 })}
     </div>
     <h3 className="text-lg font-black uppercase tracking-tighter mb-2">{title}</h3>
