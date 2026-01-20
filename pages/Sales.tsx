@@ -210,7 +210,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
   const displayCompanyName = currentUser?.companyName || settings.companyName;
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white overflow-hidden transition-colors">
+    <div className="h-full flex flex-col bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white transition-colors overflow-hidden">
       
       {/* SCAN FEEDBACK OVERLAY */}
       {scanFeedback && (
@@ -293,7 +293,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
             </button>
           </header>
 
-          <div className="bg-white dark:bg-[#0f172a] rounded-[3rem] border border-slate-100 dark:border-white/5 overflow-hidden shadow-2xl transition-colors">
+          <div className="bg-white dark:bg-[#0f172a] rounded-[3rem] border border-slate-200 dark:border-white/5 overflow-hidden shadow-2xl transition-colors">
             <div className="p-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Transaction History</h3>
                <History size={18} className="text-indigo-500" />
@@ -313,7 +313,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                         <tr key={sale.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
                            <td className="px-8 py-5 font-mono text-[11px] text-slate-500">#{sale.id.slice(0,8)}</td>
                            <td className="px-8 py-5 font-black text-[11px] uppercase text-slate-900 dark:text-white">{sale.customer_name || 'Walk-in'}</td>
-                           <td className="px-8 py-5 font-black text-[11px] text-indigo-500 dark:text-indigo-400">{settings.currency}{sale.total_price.toLocaleString()}</td>
+                           <td className="px-8 py-5 font-black text-[11px] text-indigo-600 dark:text-indigo-400">{settings.currency}{sale.total_price.toLocaleString()}</td>
                            <td className="px-8 py-5 text-right">
                               <button 
                                 onClick={() => handleReprint(sale)}
@@ -325,9 +325,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                            </td>
                         </tr>
                      ))}
-                     {(sales || []).length === 0 && (
-                        <tr><td colSpan={4} className="py-20 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No transaction history found</td></tr>
-                     )}
                   </tbody>
                </table>
             </div>
@@ -384,7 +381,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
              <div className="flex-1 flex flex-col min-w-0 border-r border-slate-200 dark:border-white/5">
                 <div className="p-4 md:p-10 pb-4 md:pb-6 flex flex-col md:flex-row gap-4 shrink-0">
                    <div className="relative flex-1 group">
-                      <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-500 dark:group-focus-within:text-indigo-400" size={18} />
+                      <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400" size={18} />
                       <input 
                         type="text" 
                         placeholder="SEARCH SKU OR PRODUCT NAME..." 
