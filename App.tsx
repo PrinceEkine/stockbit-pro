@@ -43,7 +43,6 @@ import {
 type AuthStep = 'landing' | 'login' | 'register' | 'forgot' | 'verify_otp' | 'update_password';
 
 const App: React.FC = () => {
-  // Fix: Set initial view to Landing so reloads/entry start there
   const [activeView, setActiveView] = useState<View>(View.Landing);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -65,6 +64,25 @@ const App: React.FC = () => {
   const notificationRef = useRef<HTMLDivElement>(null);
   const barcodeBuffer = useRef<string>('');
   const lastKeyTime = useRef<number>(0);
+
+  const isInfoView = useMemo(() => [
+    View.AboutUs, 
+    View.HelpCenter, 
+    View.TermsOfService, 
+    View.PrivacyPolicy, 
+    View.Governance
+  ].includes(activeView), [activeView]);
+
+  // Handle auto-redirection to dashboard for logged in users
+  useEffect(() => {
+    if (store.isLoggedIn && activeView === View.Landing && authStep === 'landing') {
+      const hash = window.location.hash.replace('#', '').toLowerCase();
+      // Only redirect if not explicitly visiting an info view via hash
+      if (!['about', 'help', 'legal', 'privacy', 'governance'].includes(hash)) {
+        setActiveView(View.Dashboard);
+      }
+    }
+  }, [store.isLoggedIn, activeView, authStep]);
 
   // Hash-based direct view navigation
   useEffect(() => {
@@ -244,18 +262,16 @@ const App: React.FC = () => {
     );
   }
 
-  const isInfoView = [View.AboutUs, View.HelpCenter, View.TermsOfService, View.PrivacyPolicy, View.Governance].includes(activeView);
-
-  // AUTH SCREENS (FULL PAGE)
-  if (!store.isLoggedIn || activeView === View.Landing) {
+  // CLEAN FULL PAGE LAYOUT (Landing & Info Views)
+  if (!store.isLoggedIn || activeView === View.Landing || isInfoView) {
     if (activeView === View.Landing && authStep === 'landing') {
       return <LandingPage onAuth={(step) => { setAuthStep(step); setActiveView(View.Landing); }} onNavigateInfo={setActiveView} />;
     }
 
     if (isInfoView) {
       return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-           <nav className="fixed top-0 w-full z-50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
+          <nav className="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800">
             <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
               <button onClick={() => { setActiveView(View.Landing); setAuthStep('landing'); window.location.hash = ''; }} className="flex items-center gap-3 group">
                 <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform">
@@ -263,7 +279,15 @@ const App: React.FC = () => {
                 </div>
                 <span className="font-black text-xl tracking-tighter uppercase dark:text-white">StockBit Pro</span>
               </button>
-              <button onClick={() => { setAuthStep('login'); setActiveView(View.Landing); }} className="px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Portal Access</button>
+              <div className="flex items-center gap-4">
+                {store.isLoggedIn ? (
+                  <button onClick={() => setActiveView(View.Dashboard)} className="px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2">
+                    <ArrowLeft size={14} /> Back to Terminal
+                  </button>
+                ) : (
+                  <button onClick={() => { setAuthStep('login'); setActiveView(View.Landing); }} className="px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Portal Access</button>
+                )}
+              </div>
             </div>
           </nav>
           <div className="pt-32 pb-20 px-6 max-w-4xl mx-auto">
@@ -277,7 +301,7 @@ const App: React.FC = () => {
       );
     }
 
-    // Login/Register modals for unauthenticated or landing-auth-triggers
+    // Login/Register modals for unauthenticated users
     if (!store.isLoggedIn) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4">
@@ -440,28 +464,17 @@ const App: React.FC = () => {
               <Menu size={20} />
             </button>
             <div className="flex flex-col min-w-0">
-              {isInfoView ? (
-                <button 
-                  onClick={() => setActiveView(View.Dashboard)}
-                  className="flex items-center gap-2 text-indigo-600 font-black uppercase text-[10px] tracking-widest hover:translate-x-[-4px] transition-transform"
-                >
-                  <ArrowLeft size={14} /> Back to Terminal
-                </button>
-              ) : (
-                <>
-                  <h1 className="font-black text-slate-900 dark:text-white tracking-tight truncate max-w-[100px] sm:max-w-xs uppercase text-[12px] md:text-base leading-none">{store.currentUser?.companyName}</h1>
-                  {!trialStatus.isSubscribed && (
-                     <span className="text-[8px] md:text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1 shrink-0 mt-1">
-                        <Clock size={10} /> {trialStatus.daysLeft}d Trial left
-                     </span>
-                  )}
-                </>
-              )}
+               <h1 className="font-black text-slate-900 dark:text-white tracking-tight truncate max-w-[100px] sm:max-w-xs uppercase text-[12px] md:text-base leading-none">{store.currentUser?.companyName}</h1>
+               {!trialStatus.isSubscribed && (
+                  <span className="text-[8px] md:text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1 shrink-0 mt-1">
+                     <Clock size={10} /> {trialStatus.daysLeft}d Trial left
+                  </span>
+               )}
             </div>
           </div>
 
           <div className="flex items-center gap-1 md:gap-4 shrink-0">
-            {cameraAvailable && !isInfoView && (
+            {cameraAvailable && (
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl mr-2">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                 <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Scanner Standby</span>
