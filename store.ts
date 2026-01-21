@@ -61,7 +61,6 @@ export const useStore = () => {
       taxRate: 7.5,
       language: 'en',
       isDynamicPricingActive: false,
-      // Priority 1: Built-in Env Var for permanent deployments
       paystackPublicKey: (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || undefined,
       marketplaces: {
         jumia: true,
@@ -90,14 +89,17 @@ export const useStore = () => {
         .select('*')
         .or(`id.eq.${targetId},parent_id.eq.${targetId}`);
 
+      // Infrastructure Priority Logic
+      const envKey = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY;
+      
       if (prof.data?.settings) {
         setState(prev => ({ 
           ...prev, 
           settings: { 
             ...prev.settings, 
             ...prof.data.settings,
-            // Only use DB key if Env Var is missing
-            paystackPublicKey: (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || prof.data.settings.paystackPublicKey || prev.settings.paystackPublicKey
+            // Priority: 1. Environment Build Var, 2. Database Setting
+            paystackPublicKey: envKey || prof.data.settings.paystackPublicKey || prev.settings.paystackPublicKey
           } 
         }));
       }
@@ -135,7 +137,7 @@ export const useStore = () => {
       }));
     } catch (e: any) {
       console.error("Data fetch error:", e);
-      setState(prev => ({ ...prev, error: "Network Protocol Error. Please check connectivity." }));
+      setState(prev => ({ ...prev, error: "Infrastructure Handshake Failed. Verify Network Protocol." }));
     }
   }, []);
 
@@ -174,7 +176,7 @@ export const useStore = () => {
       await loadInitialBatch(user.id, user.parentId);
     } catch (e: any) {
       console.error("Auth profile load failure:", e);
-      setState(prev => ({ ...prev, error: "Authentication Sync Failed." }));
+      setState(prev => ({ ...prev, error: "Authentication Sync Timeout." }));
     } finally {
       setLoading(false);
     }

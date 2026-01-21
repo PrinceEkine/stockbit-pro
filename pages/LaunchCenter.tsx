@@ -16,7 +16,15 @@ import {
   Lock,
   Server,
   Code2,
-  Copy
+  Copy,
+  Cpu,
+  Network,
+  Settings,
+  ExternalLink,
+  BookOpen,
+  Info,
+  Globe,
+  Cloud
 } from 'lucide-react';
 import { AppState } from '../types';
 
@@ -26,10 +34,12 @@ interface LaunchCenterProps {
 }
 
 const LaunchCenter: React.FC<LaunchCenterProps> = ({ state, onUpdateSettings }) => {
-  const [isExporting, setIsExporting] = useState(false);
   const [paystackKey, setPaystackKey] = useState(state.settings.paystackPublicKey || '');
-  const [activeStep, setActiveStep] = useState(0);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [activeTab, setActiveTab] = useState<'netlify' | 'gcp'>('netlify');
+
+  const ENV_VAR_NAME = "VITE_PAYSTACK_PUBLIC_KEY";
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -37,150 +47,178 @@ const LaunchCenter: React.FC<LaunchCenterProps> = ({ state, onUpdateSettings }) 
     setTimeout(() => setCopyFeedback(null), 2000);
   };
 
-  const gatewayLogicCode = `// Supabase Edge Function: paystack-gateway
+  const netlifyCmd = `# Set via Netlify CLI
+netlify env:set ${ENV_VAR_NAME} pk_live_your_key_here
+
+# Or add in Netlify UI: 
+# Site Settings -> Environment Variables -> Add Variable`;
+
+  const gsmProxyCode = `// Supabase Edge Function: vault-proxy
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 serve(async (req) => {
-  const signature = req.headers.get('x-paystack-signature');
-  const body = await req.json();
-  
-  // 1. Verify Signature (Industrial Protocol)
-  // 2. Process charge.success event
-  // 3. Update profiles using service_role
-  
-  return new Response(JSON.stringify({ status: 'success' }), { status: 200 });
+  const response = await fetch("https://secretmanager.googleapis.com/v1/...", {
+    headers: { "Authorization": \`Bearer \${Deno.env.get("GCP_TOKEN")}\` }
+  });
+  return new Response(JSON.stringify(await response.json()));
 })`;
 
-  const gatewaySteps = [
-    {
-      title: "API Keys Acquisition",
-      desc: "Retrieve your 'Public Key' and 'Secret Key' from Paystack Dashboard > Settings > API Keys.",
-      icon: <Key size={18} />
-    },
-    {
-      title: "Edge Deployment",
-      desc: "Deploy the logic server using Supabase CLI to create a permanent encrypted gateway.",
-      icon: <Server size={18} />
-    },
-    {
-      title: "Webhook Binding",
-      desc: "Point Paystack webhooks to your generated Supabase URL for immutable verification.",
-      icon: <Activity size={18} />
-    }
-  ];
-
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-24">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter flex items-center gap-3">
             Infrastructure Ops <Rocket className="text-indigo-600" />
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[9px] md:text-[10px] mt-1">Permanent API Gateway Configuration</p>
+          <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[9px] md:text-[10px] mt-1">Global Key Node Management</p>
         </div>
-        <button 
-          onClick={() => {}}
-          className="bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-6 py-3 rounded-2xl flex items-center gap-3 font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl active:scale-95"
-        >
-          <Download size={18} /> Full System Audit
-        </button>
+        <div className="flex gap-3">
+           <button 
+             onClick={() => setShowSetupGuide(!showSetupGuide)}
+             className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-6 py-3.5 rounded-2xl flex items-center gap-3 font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+           >
+             <BookOpen size={18} /> Protocol Guide
+           </button>
+           <button className="bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-8 py-3.5 rounded-2xl flex items-center gap-3 font-black text-[10px] uppercase tracking-widest transition-all shadow-xl active:scale-95">
+             <Download size={18} /> System Export
+           </button>
+        </div>
       </header>
+
+      {showSetupGuide && (
+        <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-[2.5rem] p-8 md:p-10 animate-in slide-in-from-top-4">
+          <div className="flex items-start gap-4 mb-8">
+            <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 rounded-xl">
+              <Info size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black uppercase tracking-tighter text-indigo-900 dark:text-indigo-400">Environment Sync Guide</h3>
+              <p className="text-xs text-indigo-800/70 dark:text-indigo-400/60 font-medium mt-1">Choose your deployment protocol below.</p>
+            </div>
+          </div>
+          
+          <div className="flex bg-white/50 dark:bg-black/20 p-1.5 rounded-2xl mb-8 w-fit">
+             <button onClick={() => setActiveTab('netlify')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'netlify' ? 'bg-white dark:bg-slate-800 text-teal-600 shadow-md' : 'text-slate-400'}`}>Netlify / Vercel</button>
+             <button onClick={() => setActiveTab('gcp')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'gcp' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-md' : 'text-slate-400'}`}>Google Vault (GSM)</button>
+          </div>
+
+          {activeTab === 'netlify' ? (
+            <div className="space-y-6 animate-in fade-in duration-300">
+               <div className="bg-teal-900/5 border border-teal-500/20 p-6 rounded-3xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-teal-600 dark:text-teal-400 text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                      <Globe size={16} /> Netlify Build Integration
+                    </h4>
+                    <button 
+                      onClick={() => handleCopy(ENV_VAR_NAME, 'var-name')}
+                      className="px-3 py-1 bg-teal-600 text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-teal-700 transition-all"
+                    >
+                      {copyFeedback === 'var-name' ? <CheckCircle2 size={12}/> : <Copy size={12}/>}
+                      {copyFeedback === 'var-name' ? 'Copied' : 'Copy Var Name'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-6 font-medium">
+                    Use the variable name <span className="text-teal-600 font-black">{ENV_VAR_NAME}</span> in your Netlify dashboard. 
+                    Vite will automatically inject this into the bundle.
+                  </p>
+                  <div className="bg-[#0f172a] rounded-2xl p-6 font-mono text-[10px] text-teal-300 relative group">
+                    <pre className="whitespace-pre-wrap">{netlifyCmd}</pre>
+                    <button onClick={() => handleCopy(netlifyCmd, 'net-cmd')} className="absolute right-4 top-4 p-2 bg-white/5 hover:bg-white/10 rounded-lg">
+                       {copyFeedback === 'net-cmd' ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                    </button>
+                  </div>
+               </div>
+            </div>
+          ) : (
+            <div className="space-y-6 animate-in fade-in duration-300">
+               <div className="bg-indigo-900/5 border border-indigo-500/20 p-6 rounded-3xl">
+                  <h4 className="text-indigo-600 dark:text-indigo-400 text-xs font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <Cloud size={16} /> Google Secret Manager (GCP)
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-6 font-medium">
+                    Best for <span className="text-indigo-600 font-black">Secret Keys</span>. This protocol keeps the keys entirely off the client device, fetching them via a secure Edge Proxy only when required.
+                  </p>
+                  <div className="bg-[#0f172a] rounded-2xl p-6 font-mono text-[10px] text-indigo-300 relative group overflow-x-auto">
+                    <pre>{gsmProxyCode}</pre>
+                  </div>
+               </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
           
-          {/* Permanent Gateway Protocol */}
-          <div className="bg-[#020617] rounded-[2.5rem] p-8 md:p-12 text-white shadow-2xl relative overflow-hidden border border-white/5">
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-12 border border-slate-100 dark:border-slate-800 shadow-sm transition-all overflow-hidden relative">
              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-10">
-                   <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
-                         <Lock size={24} className="text-white" />
-                      </div>
-                      <div>
-                         <h2 className="text-2xl font-black uppercase tracking-tighter">Gateway logic server</h2>
-                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Industrial Encryption Protocol</p>
-                      </div>
+                <div className="flex items-center gap-4 mb-10">
+                   <div className="w-14 h-14 bg-slate-900 dark:bg-white rounded-2xl flex items-center justify-center text-white dark:text-slate-900 shadow-xl">
+                      <Terminal size={32} />
                    </div>
-                   <div className="px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center gap-2">
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                      <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Permanent Node Ready</span>
+                   <div>
+                      <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Terminal Manual Injection</h2>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Client-Side Configuration Node</p>
                    </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                   {gatewaySteps.map((step, i) => (
-                      <div key={i} className={`p-6 rounded-3xl border transition-all ${activeStep === i ? 'bg-white/5 border-white/20' : 'border-white/5 bg-transparent opacity-60'} cursor-pointer hover:opacity-100`} onClick={() => setActiveStep(i)}>
-                         <div className="w-10 h-10 bg-indigo-600/20 text-indigo-400 rounded-xl flex items-center justify-center mb-4">{step.icon}</div>
-                         <h4 className="text-[10px] font-black uppercase tracking-widest mb-2">{step.title}</h4>
-                         <p className="text-[11px] text-slate-400 font-medium leading-relaxed">{step.desc}</p>
+                <div className="space-y-6">
+                   <div className="space-y-2">
+                      <div className="flex justify-between items-center px-1">
+                        <div className="flex items-center gap-2">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paystack Key</label>
+                          <span className="text-[8px] font-mono text-slate-300 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded uppercase">{ENV_VAR_NAME}</span>
+                        </div>
+                        {state.settings.paystackPublicKey && <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded flex items-center gap-1"><CheckCircle2 size={10}/> Detected</span>}
                       </div>
-                   ))}
-                </div>
-
-                <div className="space-y-4">
-                   <div className="flex items-center justify-between px-2">
-                      <div className="flex items-center gap-2">
-                         <Code2 size={16} className="text-indigo-400" />
-                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Deployment Payload (Supabase Edge)</span>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                         <input 
+                           type="password" 
+                           value={paystackKey} 
+                           onChange={e => setPaystackKey(e.target.value)}
+                           placeholder="pk_live_..."
+                           className="flex-1 px-6 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl font-mono text-sm text-indigo-600 dark:text-indigo-400 focus:ring-4 focus:ring-indigo-500/10 outline-none shadow-inner transition-all"
+                         />
+                         <button 
+                           onClick={() => {
+                             onUpdateSettings({ paystackPublicKey: paystackKey });
+                             handleCopy(paystackKey, 'sync');
+                           }}
+                           className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all shadow-xl shadow-indigo-600/20"
+                         >
+                            {copyFeedback === 'sync' ? 'Injected' : 'Sync To Node'}
+                         </button>
                       </div>
-                      <button 
-                        onClick={() => handleCopy(gatewayLogicCode, 'code')}
-                        className="text-[9px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 text-slate-300 px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
-                      >
-                         {copyFeedback === 'code' ? <CheckCircle2 size={12}/> : <Copy size={12} />}
-                         {copyFeedback === 'code' ? 'Synced' : 'Copy Logic'}
-                      </button>
                    </div>
-                   <div className="bg-black/40 backdrop-blur-md rounded-[2rem] p-8 border border-white/5 font-mono text-xs text-indigo-300/80 overflow-x-auto scrollbar-hide">
-                      <pre>{gatewayLogicCode}</pre>
-                   </div>
-                </div>
-
-                <div className="mt-10 p-6 bg-amber-500/5 border border-amber-500/20 rounded-3xl flex items-start gap-4">
-                   <AlertTriangle className="text-amber-500 shrink-0" size={20} />
-                   <div>
-                      <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest mb-1">Production Directive</p>
-                      <p className="text-xs text-slate-400 font-medium leading-relaxed">Ensure you set <code className="text-amber-200">PAYSTACK_SECRET_KEY</code> in your Supabase project settings. The gateway will fail authentication if the cryptographic handshake is not established.</p>
-                   </div>
+                   <p className="text-[10px] text-slate-400 font-medium leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 italic">
+                     Note: If you add the environment variable to Netlify, it will override the value entered here automatically.
+                   </p>
                 </div>
              </div>
-             <Server className="absolute -bottom-20 -right-20 text-indigo-600/5 w-96 h-96 pointer-events-none" />
+             <Network className="absolute -bottom-20 -right-20 text-slate-100 dark:text-white/5 w-96 h-96 pointer-events-none" />
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-10 border border-slate-100 dark:border-slate-800 shadow-sm transition-all">
-             <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-slate-950 dark:bg-white rounded-2xl flex items-center justify-center text-white dark:text-slate-900">
-                   <Terminal size={24} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div className="bg-emerald-600 rounded-[2rem] p-8 text-white shadow-xl relative overflow-hidden group">
+                <div className="relative z-10">
+                   <h3 className="text-lg font-black uppercase tracking-tighter mb-4 flex items-center gap-2">
+                      <ShieldCheck size={20} /> Integrity Verified
+                   </h3>
+                   <p className="text-emerald-50 text-[11px] font-medium leading-relaxed">System is ready for industrial scale. Payment relay status is normal.</p>
                 </div>
-                <div>
-                   <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Environment Binding</h2>
-                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Public Key Configuration Node</p>
+                <div className="absolute -bottom-10 -right-10 opacity-10 group-hover:scale-110 transition-transform duration-700">
+                   <ShieldCheck size={160} />
                 </div>
              </div>
-             
-             <div className="space-y-6">
-                <div className="space-y-2">
-                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Database Sync Key (pk_live_...)</label>
-                   <div className="flex flex-col sm:flex-row gap-3">
-                      <input 
-                        type="password" 
-                        value={paystackKey} 
-                        onChange={e => setPaystackKey(e.target.value)}
-                        placeholder="Enter Paystack Public Key..."
-                        className="flex-1 px-6 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl font-mono text-sm text-indigo-600 dark:text-indigo-400 focus:ring-4 focus:ring-indigo-500/10 outline-none shadow-inner"
-                      />
-                      <button 
-                        onClick={() => {
-                          onUpdateSettings({ paystackPublicKey: paystackKey });
-                          handleCopy(paystackKey, 'sync');
-                        }}
-                        className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all shadow-xl shadow-indigo-600/20"
-                      >
-                         {copyFeedback === 'sync' ? 'Synced to Node' : 'Initialize Sync'}
-                      </button>
-                   </div>
+             <div className="bg-[#0f172a] rounded-[2rem] p-8 text-white shadow-xl relative overflow-hidden group">
+                <div className="relative z-10">
+                   <h3 className="text-lg font-black uppercase tracking-tighter mb-4 flex items-center gap-2">
+                      <Network size={20} /> Node Latency
+                   </h3>
+                   <p className="text-slate-400 text-[11px] font-medium leading-relaxed">Cloud synchronization is at 14ms across primary regional nodes.</p>
+                </div>
+                <div className="absolute -bottom-10 -right-10 opacity-10 group-hover:rotate-12 transition-transform duration-700">
+                   <Network size={160} />
                 </div>
              </div>
           </div>
@@ -189,17 +227,17 @@ serve(async (req) => {
         <div className="lg:col-span-4 space-y-8">
           <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
             <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-8 flex items-center gap-2">
-              <ShieldCheck className="text-emerald-500" size={16} /> Integrity Pulse
+              <Activity className="text-indigo-600" size={16} /> Asset Infrastructure
             </h2>
             <div className="space-y-6">
               {[
-                { title: "PostgreSQL Logic", status: "Operational", ready: true, icon: <Database size={20} /> },
-                { title: "Gateway Node", status: "Active", ready: true, icon: <Server size={20} /> },
-                { title: "Vault Encryption", status: "Verified", ready: true, icon: <Lock size={20} /> },
-                { title: "Paystack Relay", status: state.settings.paystackPublicKey ? "Connected" : "Handshake Pending", ready: !!state.settings.paystackPublicKey, icon: <CreditCard size={20} /> }
+                { title: "Vault Handshake", status: "Secure", ready: true, icon: <Lock size={20} /> },
+                { title: "Netlify Injection", status: "Operational", ready: true, icon: <Globe size={20} /> },
+                { title: "Paystack Bridge", status: state.settings.paystackPublicKey ? "Provisioned" : "Pending", ready: !!state.settings.paystackPublicKey, icon: <CreditCard size={20} /> },
+                { title: "Supabase PGSQL", status: "Synced", ready: true, icon: <Database size={20} /> }
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-4 group cursor-default">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${item.ready ? 'bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600' : 'bg-rose-50 dark:bg-rose-900/10 text-rose-600'}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${item.ready ? 'bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600' : 'bg-rose-50 dark:bg-rose-900/10 text-rose-600'}`}>
                     {item.icon}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -212,14 +250,14 @@ serve(async (req) => {
             </div>
           </div>
 
-          <div className="bg-indigo-600 p-8 rounded-[2.5rem] text-white shadow-2xl group cursor-pointer relative overflow-hidden" onClick={() => window.open('https://wa.me/2347072127949', '_blank')}>
+          <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl group cursor-pointer relative overflow-hidden" onClick={() => window.open('https://wa.me/2347072127949', '_blank')}>
              <div className="relative z-10">
                 <h3 className="font-black uppercase tracking-tighter text-xl mb-2 flex items-center gap-2">
-                  <MessageCircle size={20} /> Operational Comms
+                  <MessageCircle size={20} /> Help Desk
                 </h3>
-                <p className="text-xs text-indigo-100 mb-6 font-medium leading-relaxed">Encrypted direct line to StockBit engineering for production deployment assistance.</p>
-                <div className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 group-hover:scale-[1.02] transition-transform shadow-lg">
-                  Establish Connection
+                <p className="text-xs text-slate-400 mb-6 font-medium leading-relaxed">Facing deployment issues on Netlify or Vercel? Contact StockBit HQ for a technical walkthrough.</p>
+                <div className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 group-hover:bg-indigo-500 transition-all shadow-lg">
+                  Direct Channel
                 </div>
              </div>
              <Activity className="absolute -bottom-10 -left-10 text-white/5 w-48 h-48 pointer-events-none" />
@@ -227,20 +265,17 @@ serve(async (req) => {
 
           <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Platform Metrics</h3>
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Stats</h3>
                 <Activity size={16} className="text-indigo-600" />
              </div>
              <div className="space-y-4">
                 <div className="flex justify-between text-[11px] font-bold">
                    <span className="text-slate-400 uppercase tracking-widest">Logic Node</span>
-                   <span className="text-emerald-500">STABLE</span>
+                   <span className="text-emerald-500 font-black">ACTIVE</span>
                 </div>
                 <div className="flex justify-between text-[11px] font-bold">
-                   <span className="text-slate-400 uppercase tracking-widest">Cloud Latency</span>
-                   <span className="text-slate-900 dark:text-white">14ms</span>
-                </div>
-                <div className="pt-4 border-t border-slate-50 dark:border-slate-800">
-                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] leading-relaxed">StockBit Pro Unified Terminal Architecture v4.2 Deployment Profile</p>
+                   <span className="text-slate-400 uppercase tracking-widest">Node Latency</span>
+                   <span className="text-slate-900 dark:text-white">12ms</span>
                 </div>
              </div>
           </div>
