@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Sparkles, RefreshCw, Zap, TrendingUp, AlertTriangle, ShieldCheck, PieChart, Activity } from 'lucide-react';
 import { AppState } from '../types';
@@ -14,14 +13,23 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
 
   const fetchInsights = async () => {
     setLoading(true);
-    const result = await getInventoryInsights(state.products, state.sales);
+    const result = await getInventoryInsights(state?.products || [], state?.sales || []);
     setInsights(result);
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchInsights();
+    if (state) fetchInsights();
   }, []);
+
+  const highVelocityItems = (state?.sales || [])
+    .slice(0, 3)
+    .flatMap(s => s.items || [])
+    .slice(0, 3);
+
+  const riskItems = (state?.products || [])
+    .filter(p => p.quantity <= (p.min_threshold || 0))
+    .slice(0, 3);
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
@@ -100,7 +108,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
               <TrendingUp size={16} className="text-emerald-500" /> High Velocity
             </h3>
             <div className="space-y-6">
-              {state.sales.slice(0, 3).flatMap(s => s.items).slice(0, 3).map((item, i) => (
+              {highVelocityItems.map((item, i) => (
                 <div key={i} className="flex items-center gap-5">
                   <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center font-black text-xs shadow-inner">
                     #{i+1}
@@ -111,6 +119,9 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
                   </div>
                 </div>
               ))}
+              {highVelocityItems.length === 0 && (
+                 <p className="text-center py-6 text-[10px] text-slate-400 font-black uppercase tracking-widest">No Recent Data</p>
+              )}
             </div>
           </div>
 
@@ -119,8 +130,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
               <AlertTriangle size={16} className="text-amber-500" /> Stock Fragility
             </h3>
             <div className="space-y-6">
-              {/* Fix: minThreshold changed to min_threshold */}
-              {state.products.filter(p => p.quantity <= p.min_threshold).slice(0, 3).map((p, i) => (
+              {riskItems.map((p, i) => (
                 <div key={i} className="flex items-center gap-5">
                   <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center font-black text-xs shadow-inner">
                     !
@@ -131,8 +141,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
                   </div>
                 </div>
               ))}
-              {/* Fix: minThreshold changed to min_threshold */}
-              {state.products.filter(p => p.quantity <= p.min_threshold).length === 0 && (
+              {riskItems.length === 0 && (
                 <p className="text-center py-6 text-[10px] text-slate-400 font-black uppercase tracking-widest">Inventory Stable</p>
               )}
             </div>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabase';
 import { Product, Sale, Supplier, AppState, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod } from './types';
@@ -116,6 +115,7 @@ export const useStore = () => {
         })),
         sales: (s.data || []).map(sale => ({
           ...sale,
+          items: sale.items || [],
           total_price: Number(sale.total_price) || 0,
           tax_amount: Number(sale.tax_amount) || 0,
         })),
