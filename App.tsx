@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { View, User as UserType, SubscriptionPlan, Product } from './types';
 import { useStore, getTrialStatus } from './store';
@@ -110,7 +111,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Reset submitting state when switching auth forms to prevent stuck UI
   useEffect(() => {
     setIsSubmitting(false);
     setAuthError('');
@@ -367,6 +367,14 @@ const App: React.FC = () => {
   }
 
   const renderView = () => {
+    const isStaff = store.currentUser?.role === 'staff';
+    const staffAllowedViews = [View.Dashboard, View.Sales];
+    
+    // Strict Guard: If staff attempts to reach any other view, force back to Dashboard
+    if (isStaff && !staffAllowedViews.includes(activeView)) {
+      return <Dashboard state={store} onNavigate={setActiveView} />;
+    }
+
     switch (activeView) {
       case View.Dashboard: return <Dashboard state={store} onNavigate={setActiveView} />;
       case View.Inventory: return <Inventory products={store.products || []} suppliers={store.suppliers || []} onAdd={store.addProduct} onUpdate={store.updateProduct} onDelete={store.deleteProduct} settings={store.settings} currentUser={store.currentUser} />;
@@ -382,6 +390,8 @@ const App: React.FC = () => {
     }
   };
 
+  const isStaff = store.currentUser?.role === 'staff';
+
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors overflow-x-hidden">
       <Sidebar activeView={activeView} onViewChange={setActiveView} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} user={store.currentUser} onLogout={handleLogout} onInstall={handleInstallApp} />
@@ -393,7 +403,7 @@ const App: React.FC = () => {
             </button>
             <div className="flex flex-col min-w-0">
                <h1 className="font-black text-slate-900 dark:text-white tracking-tight truncate max-w-[100px] sm:max-w-xs uppercase text-[12px] md:text-base leading-none">{store.currentUser?.companyName}</h1>
-               {!trialStatus.isSubscribed && (
+               {!isStaff && !trialStatus.isSubscribed && (
                   <span className="text-[8px] md:text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1 shrink-0 mt-1">
                      <Clock size={10} /> {trialStatus.daysLeft}d Trial left
                   </span>

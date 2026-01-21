@@ -56,6 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       label: 'Intelligence',
+      hidden: isStaff,
       items: [
         { id: View.AIInsights, icon: Sparkles, label: 'AI Insights', hidden: isStaff },
         { id: View.Reports, icon: BarChart3, label: 'Reports', hidden: isStaff },
@@ -64,6 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       label: 'Logistics',
+      hidden: isStaff,
       items: [
         { id: View.Stocktake, icon: ClipboardCheck, label: 'Stocktake', hidden: isStaff },
         { id: View.Suppliers, icon: Users, label: 'Suppliers', hidden: isStaff },
@@ -71,6 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       label: 'Resources',
+      hidden: isStaff,
       items: [
         { id: View.AboutUs, icon: Info, label: 'About Us' },
         { id: View.HelpCenter, icon: HelpCircle, label: 'Help Center' },
@@ -79,6 +82,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       label: 'System',
+      hidden: isStaff,
       items: [
         { id: View.Settings, icon: Settings, label: 'Settings', hidden: isStaff },
         { id: View.LaunchCenter, icon: Rocket, label: 'Admin Ops', hidden: user?.role !== 'admin' },
@@ -113,7 +117,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <nav className="flex-1 px-4 space-y-8 overflow-y-auto scrollbar-hide py-4">
           {sections.map((section, sIdx) => {
             const visibleItems = section.items.filter(i => !i.hidden);
-            if (visibleItems.length === 0) return null;
+            if (visibleItems.length === 0 || section.hidden) return null;
 
             return (
               <div key={sIdx} className="space-y-1">
