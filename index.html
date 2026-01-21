@@ -6,11 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-title" content="StockBit Pro">
+    <meta name="theme-color" content="#4f46e5">
     <title>StockBit Pro - Inventory Management</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'/%3E%3Cpath d='m3.3 7 8.7 5 8.7-5'/%3E%3Cpath d='M12 22V12'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234f46e5'%3E%3Cpath d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'/%3E%3C/svg%3E">
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://js.paystack.co/v1/inline.js"></script>
@@ -54,7 +56,6 @@
             .no-print, nav, header, aside, .fixed, .modal-backdrop, button, .no-print * { 
                 display: none !important; 
             }
-            
             #root, #root > div, main, .flex-1 { 
                 display: block !important; 
                 padding: 0 !important; 
@@ -62,7 +63,6 @@
                 border: none !important;
                 background: white !important;
             }
-            
             .print-only { 
                 display: block !important; 
                 visibility: visible !important;
@@ -73,16 +73,8 @@
                 z-index: 9999 !important;
                 background: white !important;
             }
-
-            body { 
-                background: white !important; 
-                color: black !important; 
-            }
-
-            @page {
-                margin: 0;
-            }
-
+            body { background: white !important; color: black !important; }
+            @page { margin: 0; }
             .receipt-print {
                 width: 80mm;
                 margin: 0 auto;
@@ -93,35 +85,11 @@
                 color: black !important;
                 background: white !important;
             }
-
-            .qr-label-print {
-                width: 50mm;
-                height: 30mm;
-                margin: 0;
-                padding: 2mm;
-                display: flex !important;
-                flex-direction: column;
-                page-break-after: always;
-                background: white !important;
-                color: black !important;
-                box-sizing: border-box;
-            }
         }
         
         .print-only { display: none; }
-        
-        .dark body {
-            background-color: #0f172a;
-            color: #f1f5f9;
-        }
-
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-        }
-        .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 <script type="importmap">
 {

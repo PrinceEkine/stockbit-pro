@@ -18,7 +18,8 @@ import {
   HelpCircle,
   ShieldAlert,
   Info,
-  Scale
+  Scale,
+  DownloadCloud
 } from 'lucide-react';
 import { View, User as UserType } from '../types';
 
@@ -29,6 +30,7 @@ interface SidebarProps {
   setIsOpen: (isOpen: boolean) => void;
   user: UserType | null;
   onLogout: () => void;
+  onInstall: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -37,7 +39,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   isOpen, 
   setIsOpen, 
   user, 
-  onLogout 
+  onLogout,
+  onInstall
 }) => {
   const isStaff = user?.role === 'staff';
 
@@ -72,7 +75,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         { id: View.AboutUs, icon: Info, label: 'About Us' },
         { id: View.HelpCenter, icon: HelpCircle, label: 'Help Center' },
         { id: View.Governance, icon: Scale, label: 'Governance' },
-        { id: View.TermsOfService, icon: ShieldAlert, label: 'Legal Doctrine' },
       ]
     },
     {
@@ -156,28 +158,31 @@ const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        {/* Footer Section - Profile Hub */}
-        <div className="shrink-0 p-6 bg-slate-900/50 backdrop-blur-md border-t border-slate-800/60">
-          <div className="flex items-center gap-3 p-4 bg-slate-800/40 rounded-3xl mb-4 border border-slate-700/30 group hover:border-indigo-500/40 transition-all duration-500">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-black text-sm shadow-xl uppercase ring-2 ring-indigo-500/20 group-hover:scale-105 transition-transform">
+        {/* Footer Section */}
+        <div className="shrink-0 p-6 bg-slate-900/50 backdrop-blur-md border-t border-slate-800/60 space-y-4">
+          <button 
+            onClick={onInstall} 
+            className="w-full flex items-center gap-3 px-5 py-4 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-2xl transition-all duration-300 text-[9px] font-black uppercase tracking-[0.2em] group"
+          >
+            <DownloadCloud size={16} /> Install Mobile Terminal
+          </button>
+          
+          <div className="flex items-center gap-3 p-4 bg-slate-800/40 rounded-3xl border border-slate-700/30 group hover:border-indigo-500/40 transition-all duration-500">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-black text-sm uppercase">
               {user?.name?.charAt(0)}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-black text-white truncate uppercase tracking-tighter group-hover:text-indigo-300 transition-colors">
+              <p className="text-xs font-black text-white truncate uppercase tracking-tighter">
                 {user?.name}
               </p>
-              <p className="text-[8px] text-indigo-400/70 truncate uppercase font-bold tracking-[0.2em] mt-0.5">
-                {user?.role} Terminal
+              <p className="text-[8px] text-indigo-400/70 truncate uppercase font-bold tracking-[0.2em]">
+                {user?.role} Node
               </p>
             </div>
+            <button onClick={onLogout} className="p-2 text-slate-500 hover:text-rose-500 transition-colors">
+              <LogOut size={16} />
+            </button>
           </div>
-          <button 
-            onClick={onLogout} 
-            className="w-full flex items-center justify-center gap-3 px-4 py-4 text-slate-500 hover:text-rose-400 hover:bg-rose-500/5 rounded-2xl transition-all duration-300 text-[9px] font-black uppercase tracking-[0.3em] group"
-          >
-            <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" /> 
-            Secure Exit
-          </button>
         </div>
       </aside>
       {isOpen && window.innerWidth < 1024 && (

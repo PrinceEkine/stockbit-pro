@@ -37,7 +37,8 @@ import {
   MailCheck,
   ArrowRight,
   ChevronLeft,
-  ArrowLeft
+  ArrowLeft,
+  DownloadCloud
 } from 'lucide-react';
 
 type AuthStep = 'landing' | 'login' | 'register' | 'forgot' | 'verify_otp' | 'update_password';
@@ -55,6 +56,7 @@ const App: React.FC = () => {
   const [cameraAvailable, setCameraAvailable] = useState(false);
   const [globalScannerActive, setGlobalScannerActive] = useState(false);
   const [lastScannedProduct, setLastScannedProduct] = useState<Product | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   const store = useStore();
   const notificationRef = useRef<HTMLDivElement>(null);
@@ -69,15 +71,27 @@ const App: React.FC = () => {
     View.Governance
   ].includes(activeView), [activeView]);
 
-  // Handle auto-redirection only if specifically landing at root without intent to see info views
+  // Handle PWA Install Prompt
   useEffect(() => {
-    if (!store.loading && store.isLoggedIn && activeView === View.Landing && authStep === 'landing') {
-      const hash = window.location.hash.replace('#', '').toLowerCase();
-      if (!hash || hash === 'dashboard') {
-        setActiveView(View.Dashboard);
-      }
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) {
+      alert("Download protocol already deployed or not supported on this terminal. Use 'Add to Home Screen' in browser settings.");
+      return;
     }
-  }, [store.isLoggedIn, store.loading, activeView, authStep]);
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   // Reset submitting state when switching auth forms to prevent stuck UI
   useEffect(() => {
@@ -140,16 +154,6 @@ const App: React.FC = () => {
       else root.classList.remove('dark');
     }
   }, [store.settings.theme]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        setIsNotificationOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const trialStatus = useMemo(() => getTrialStatus(store.currentUser), [store.currentUser]);
 
@@ -219,7 +223,15 @@ const App: React.FC = () => {
 
   if (!store.isLoggedIn || activeView === View.Landing || isInfoView) {
     if (activeView === View.Landing && authStep === 'landing') {
-      return <LandingPage onAuth={(step) => { setAuthStep(step); setActiveView(View.Landing); }} onNavigateInfo={setActiveView} />;
+      return (
+        <LandingPage 
+          isLoggedIn={store.isLoggedIn}
+          onAuth={(step) => { setAuthStep(step); setActiveView(View.Landing); }} 
+          onNavigateInfo={setActiveView} 
+          onInstall={handleInstallApp}
+          onEnterTerminal={() => setActiveView(View.Dashboard)}
+        />
+      );
     }
 
     if (isInfoView) {
@@ -331,10 +343,6 @@ const App: React.FC = () => {
                 <button onClick={() => setAuthStep('login')} className="w-full py-6 bg-indigo-600 text-white font-black uppercase text-sm rounded-[1.5rem] shadow-xl active:scale-95 transition-all">Proceed to Login <ArrowRight size={20} /></button>
               </div>
             )}
-
-            <footer className="mt-16 text-center border-t border-slate-50 dark:border-slate-800 pt-8">
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] opacity-30">Powered by StockBit Intelligence v4.2</p>
-            </footer>
           </div>
         </div>
       );
@@ -353,18 +361,13 @@ const App: React.FC = () => {
       case View.Suppliers: return <Suppliers suppliers={store.suppliers} onAdd={store.addSupplier} onUpdate={() => {}} onDelete={() => {}} />;
       case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} staff={store.users} currentUser={store.currentUser} onAddStaff={store.addStaffMember} onRemoveStaff={store.removeStaffMember} onActivateSubscription={async (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => { await store.activateSubscription(plan, cycle); }} />;
       case View.LaunchCenter: return <LaunchCenter state={store} onUpdateSettings={store.updateSettings} />;
-      case View.AboutUs: return <AboutUs />;
-      case View.HelpCenter: return <HelpCenter />;
-      case View.TermsOfService: return <TermsOfService />;
-      case View.PrivacyPolicy: return <PrivacyPolicy />;
-      case View.Governance: return <Governance />;
       default: return <Dashboard state={store} onNavigate={setActiveView} />;
     }
   };
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors overflow-x-hidden">
-      <Sidebar activeView={activeView} onViewChange={setActiveView} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} user={store.currentUser} onLogout={handleLogout} />
+      <Sidebar activeView={activeView} onViewChange={setActiveView} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} user={store.currentUser} onLogout={handleLogout} onInstall={handleInstallApp} />
       <main className={`flex-1 flex flex-col min-w-0 relative transition-all duration-500 ease-in-out ${isSidebarOpen ? 'lg:pl-72' : 'pl-0'}`}>
         <header className="no-print h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 px-3 md:px-10 flex items-center justify-between sticky top-0 z-30 transition-colors">
           <div className="flex items-center gap-2 md:gap-5 min-w-0">
@@ -382,22 +385,21 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1 md:gap-4 shrink-0">
-            {cameraAvailable && (
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl mr-2">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                <span className="text-[10px] font-black text-emerald-600 dark:text-amber-400 uppercase tracking-widest">Scanner Standby</span>
-                <button onClick={() => setGlobalScannerActive(true)} className="p-1 text-emerald-600 hover:scale-110 transition-transform"><Scan size={14} /></button>
-              </div>
-            )}
+            <button 
+              onClick={handleInstallApp}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-xl mr-2 hover:bg-indigo-100 transition-all active:scale-95"
+            >
+              <DownloadCloud size={14} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Install App</span>
+            </button>
             <button onClick={toggleTheme} className="p-2 md:p-2.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors rounded-xl">
               {store.settings.theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
             </button>
-            <div className="relative" ref={notificationRef}>
+            <div className="relative">
               <button onClick={() => setIsNotificationOpen(!isNotificationOpen)} className="p-2 md:p-3 text-slate-400 hover:text-indigo-600 relative transition-colors">
                 <Bell size={20} />
                 {store.notifications.filter(n => !n.read).length > 0 && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-slate-900"></span>}
               </button>
-              {isNotificationOpen && <NotificationPanel notifications={store.notifications} onClose={() => setIsNotificationOpen(false)} onMarkRead={() => {}} onClear={() => {}} />}
             </div>
           </div>
         </header>
@@ -405,20 +407,6 @@ const App: React.FC = () => {
         <div className="p-2 md:p-10 flex-1 overflow-x-hidden min-h-0">
           {renderView()}
         </div>
-
-        {globalScannerActive && (
-          <ScannerModal 
-            onScan={(res) => {
-              const sku = typeof res === 'string' ? res : res?.sku;
-              if (sku) {
-                 const product = store.products.find(p => p.sku === sku);
-                 if (product) setLastScannedProduct(product);
-                 setTimeout(() => setLastScannedProduct(null), 3000);
-              }
-            }} 
-            onClose={() => setGlobalScannerActive(false)} 
-          />
-        )}
       </main>
     </div>
   );

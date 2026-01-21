@@ -20,24 +20,39 @@ import {
   Activity,
   Plus,
   Play,
-  ArrowRight
+  ArrowRight,
+  DownloadCloud,
+  Terminal,
+  Zap,
+  Layers,
+  Cpu,
+  Shield,
+  CreditCard,
+  QrCode,
+  Scan,
+  Database
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { View } from '../types';
 
 interface LandingPageProps {
+  isLoggedIn: boolean;
   onAuth: (step: 'login' | 'register') => void;
   onNavigateInfo: (view: View) => void;
+  onInstall: () => void;
+  onEnterTerminal: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, onAuth, onNavigateInfo, onInstall, onEnterTerminal }) => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<{role: 'user' | 'bot', text: string}[]>([
     { role: 'bot', text: 'Protocol initialized. I am StockBot. How can I assist with your enterprise operations today?' }
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const architectureRef = useRef<HTMLElement>(null);
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -46,6 +61,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
       isMounted.current = false;
     };
   }, []);
+
+  const scrollToSection = (ref: React.RefObject<HTMLElement>) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -70,7 +89,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
         model: 'gemini-3-flash-preview',
         contents: userMsg,
         config: {
-          systemInstruction: "You are StockBot, the official enterprise assistant for StockBit Pro. Professional contact: Call: 07010698264, WhatsApp: 07072127949.",
+          systemInstruction: "You are StockBot, the official enterprise assistant for StockBit Pro. Professional contact: Call: 07010698264, WhatsApp: 07072127949. Keep answers professional and tech-oriented.",
         }
       });
       
@@ -90,366 +109,434 @@ const LandingPage: React.FC<LandingPageProps> = ({ onAuth, onNavigateInfo }) => 
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-300">
-      {/* Header - Precise Professional Scale */}
-      <nav className="fixed top-0 w-full z-50 bg-white/95 backdrop-blur-xl border-b border-slate-100 h-14 md:h-16">
+    <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-300 overflow-x-hidden">
+      {/* Navigation */}
+      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-2xl border-b border-slate-100 h-16 md:h-20">
         <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-600/30">
-              <Box size={16} className="text-white" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-600 rounded-[1.2rem] flex items-center justify-center shadow-lg shadow-indigo-600/30 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+              <Box size={22} className="text-white" />
             </div>
-            <span className="font-black text-sm md:text-base tracking-tight uppercase text-slate-900">StockBit Pro</span>
+            <span className="font-black text-lg md:text-xl tracking-tighter uppercase text-slate-900 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>StockBit Pro</span>
           </div>
           
-          <div className="flex items-center gap-4 md:gap-8 lg:gap-10">
-            <button onClick={() => onNavigateInfo(View.AboutUs)} className="hidden sm:block text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:text-indigo-600 transition-colors">About</button>
-            <button className="hidden sm:block text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:text-indigo-600 transition-colors">Enterprise</button>
-            <button onClick={() => onAuth('login')} className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.15em] text-slate-500 hover:text-indigo-600 transition-colors">Login</button>
-            <button onClick={() => onAuth('register')} className="px-5 py-2 md:px-6 md:py-2.5 bg-indigo-600 text-white rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 active:scale-95 hover:bg-indigo-700 transition-all">Free Trial</button>
+          <div className="hidden lg:flex items-center gap-10">
+            <NavOption label="Architecture" onClick={() => scrollToSection(architectureRef)} />
+            <NavOption label="Security" onClick={() => onNavigateInfo(View.Governance)} />
+            <NavOption label="About" onClick={() => onNavigateInfo(View.AboutUs)} />
+            <NavOption label="Help" onClick={() => onNavigateInfo(View.HelpCenter)} />
+          </div>
+
+          <div className="flex items-center gap-3 md:gap-4">
+            {isLoggedIn ? (
+              <button onClick={onEnterTerminal} className="px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-2">
+                <Terminal size={14} /> My Terminal
+              </button>
+            ) : (
+              <>
+                <button onClick={() => onAuth('login')} className="hidden sm:block text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-indigo-600 transition-colors">Login</button>
+                <button onClick={() => onAuth('register')} className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 hover:bg-slate-800 transition-all">Free Trial</button>
+              </>
+            )}
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-28 md:pt-40 pb-12 md:pb-16 px-6 overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-            <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=2000" className="w-full h-full object-cover" alt="" />
-        </div>
-        <div className="max-w-4xl mx-auto text-center space-y-5 md:space-y-7 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-indigo-50 rounded-full border border-indigo-100 mx-auto">
-            <Sparkles size={12} className="text-indigo-600" />
-            <span className="text-[8px] md:text-[9px] font-black text-indigo-600 uppercase tracking-[0.2em]">Enterprise Architecture</span>
-          </div>
-          
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tighter leading-[0.95] uppercase text-slate-900">
-            Industrial <br className="md:hidden"/>Logistics for <br/>
-            <span className="text-indigo-600">African <br className="md:hidden"/>Growth.</span>
-          </h1>
-          
-          <p className="max-w-md mx-auto text-xs md:text-sm text-slate-500 font-medium leading-relaxed">
-            A unified terminal ecosystem engineered for high-velocity retail. 
-            AI-driven auditing, immutable ledgers, and multi-staff synchronization.
-          </p>
-
-          <div className="pt-4 flex justify-center">
-            <button 
-              onClick={() => onAuth('register')}
-              className="w-full sm:w-auto px-10 py-4 bg-slate-900 text-white rounded-[2rem] font-black uppercase text-[8px] md:text-[10px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3"
-            >
-              Deploy Terminal <ArrowRight size={16} />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 1: Dashboard (Verified High-Fidelity Analytics Image) */}
-      <section className="py-10 md:py-16 px-5 md:px-10 bg-slate-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="relative rounded-[1.5rem] md:rounded-[3rem] overflow-hidden border-[4px] md:border-[8px] border-white shadow-2xl bg-[#020617] group">
-            <img 
-              src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2000&auto=format&fit=crop" 
-              alt="StockBit Dashboard Intelligence" 
-              className="w-full aspect-[1.5] md:aspect-[2.2] object-cover opacity-90 group-hover:scale-105 transition-transform duration-700"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#020617]/90 via-transparent to-transparent"></div>
-            
-            <div className="absolute bottom-6 left-6 md:bottom-12 md:left-12 space-y-2">
-              <p className="text-[8px] md:text-[9px] font-black text-indigo-400 uppercase tracking-[0.4em]">Interface v4.2</p>
-              <h2 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter leading-none">Unified Mission Control</h2>
-            </div>
-            
-            <div className="absolute bottom-6 right-6 md:bottom-12 md:right-12">
-               <div className="w-12 h-12 md:w-20 md:h-20 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 hover:scale-110 transition-transform cursor-pointer group-hover:bg-white/20">
-                  <Play className="text-white fill-white ml-1" size={window.innerWidth < 768 ? 16 : 28} />
-               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 2: POS Terminal (Verified Retail Experience Image) */}
-      <section className="py-16 md:py-24 px-6 overflow-hidden bg-white">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-20 items-center">
-          <div className="relative order-2 lg:order-1">
-            <div className="absolute -inset-4 bg-indigo-600/5 rounded-[4rem] blur-3xl"></div>
-            <img 
-              src="https://images.unsplash.com/photo-1556740738-b6a63e27c4df?q=80&w=1200&auto=format&fit=crop" 
-              alt="Professional POS Terminal" 
-              className="relative w-full aspect-[4/3] object-cover rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border border-slate-100"
-            />
-          </div>
-          <div className="space-y-6 md:space-y-10 order-1 lg:order-2">
-            <div className="w-11 h-11 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shadow-sm">
-               <ShoppingCart size={22} />
-            </div>
-            <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tighter leading-[0.95] text-slate-900">
-              Fastest POS Terminal <br className="hidden md:block"/>in the market.
-            </h2>
-            <p className="text-slate-500 text-sm font-medium leading-relaxed max-w-xl">
-              Record sales in milliseconds. Our optimized checkout flow handles barcodes, manual SKU entry, and instant digital payments with zero lag.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5 pt-2">
-              {[
-                "Multi-cart order queueing",
-                "Offline sales preservation",
-                "Instant thermal printing",
-                "Split payment settlement"
-              ].map((feature, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
-                  <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest text-slate-700">{feature}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 3: AI Driven Logistics (Verified Modern Logistics Image) */}
-      <section className="py-16 md:py-24 px-6 bg-slate-50">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-20 items-center">
-          <div className="space-y-6 md:space-y-10">
-            <div className="w-11 h-11 bg-indigo-600/10 rounded-xl flex items-center justify-center text-indigo-600 shadow-sm">
-               <BarChart3 size={22} />
-            </div>
-            <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tighter leading-[0.95] text-slate-900">
-              AI Driven <br/>Logistics Audit.
-            </h2>
-            <p className="text-slate-500 text-sm font-medium leading-relaxed max-w-xl">
-              Gemini 3 Pro analyzes every movement. Identify shrinkage, optimize restocking cycles, and forecast demand before the weekend peak.
-            </p>
-            
-            <div className="bg-white p-6 md:p-8 rounded-[1.5rem] border border-slate-200 shadow-xl space-y-5 max-sm:max-w-full max-w-sm">
-               <div className="flex justify-between items-center text-[8px] md:text-[9px] font-black uppercase tracking-widest text-indigo-600">
-                  <span>Neural Analysis</span>
-                  <span>89% Accuracy</span>
-               </div>
-               <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-indigo-600 w-[89%] rounded-full"></div>
-               </div>
-               <p className="text-[9px] italic text-slate-400 font-medium leading-relaxed">
-                 "Restock Type-C adapters immediately; velocity increased 14% since Tuesday."
-               </p>
-            </div>
-          </div>
-          <div className="relative">
-            <div className="absolute -inset-10 bg-indigo-600/5 rounded-full blur-[100px]"></div>
-            <img 
-              src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=1200&auto=format&fit=crop" 
-              alt="Inventory Logistics Insight" 
-              className="relative w-full aspect-[16/10] object-cover rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border-4 border-white"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Section 4: Governance */}
-      <section className="py-16 md:py-24 px-6 bg-white overflow-hidden">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-20 items-center">
-          <div className="space-y-8 md:space-y-12">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 rounded-xl shadow-xl shadow-indigo-600/20">
-               <Users size={16} className="text-white" />
-               <span className="text-[8px] md:text-[9px] font-black text-white uppercase tracking-widest">Personnel Protocol</span>
-            </div>
-            <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tighter leading-[0.95] text-slate-900">
-              Elite Multi-Staff <br className="hidden md:block"/>Governance Suite.
-            </h2>
-            <p className="text-slate-500 text-sm font-medium leading-relaxed max-w-xl">
-              Maintain absolute operational integrity while delegating mission-critical tasks to your frontline team. Our enterprise suite ensures zero-leakage workflows.
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-              {[
-                { title: "Granular RBAC", icon: <ShieldCheck size={18}/>, desc: "Deploy Role-Based Access Control to enforce strict data silos." },
-                { title: "Immutable Audit", icon: <Eye size={18}/>, desc: "Real-time activity logs with cryptographic timestamps." },
-                { title: "Productivity Intel", icon: <Activity size={18}/>, desc: "Quantify individual terminal performance and throughput." },
-                { title: "Terminal Sync", icon: <Smartphone size={18}/>, desc: "Concurrent multi-device synchronization with industrial security." }
-              ].map((item, i) => (
-                <div key={i} className="space-y-2">
-                  <div className="flex items-center gap-3 text-indigo-600">
-                    {item.icon}
-                    <h4 className="text-[9px] font-black uppercase tracking-widest">{item.title}</h4>
-                  </div>
-                  <p className="text-[9px] md:text-[10px] text-slate-500 font-medium leading-relaxed">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="relative group lg:ml-10">
-            <div className="absolute -inset-4 bg-indigo-600/5 rounded-[4rem] blur-3xl"></div>
-            <img 
-              src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1200&auto=format&fit=crop" 
-              alt="Staff Governance Team" 
-              className="relative w-full aspect-square object-cover rounded-[2.5rem] md:rounded-[3rem] shadow-2xl border border-slate-100"
-            />
-            <div className="absolute -top-6 -right-6 w-20 h-20 bg-indigo-600 rounded-[1.5rem] flex items-center justify-center shadow-2xl rotate-12 transition-transform group-hover:rotate-6">
-              <ShieldCheck size={32} className="text-white" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 5: CTA with BACKGROUND IMAGE (Requested Screenshot Background) */}
-      <section className="py-28 md:py-48 px-6 relative overflow-hidden bg-slate-950">
-        <div className="absolute inset-0">
+      <section className="relative pt-32 md:pt-48 pb-20 px-6 overflow-hidden min-h-[90vh] flex items-center">
+        {/* Full Hero Background Image - Using a very reliable texture ID */}
+        <div className="absolute inset-0 z-[-2]">
           <img 
-            src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2000&auto=format&fit=crop" 
-            alt="Retail Infrastructure Backdrop" 
-            className="w-full h-full object-cover grayscale brightness-[0.3]"
+            src="https://images.unsplash.com/photo-1551288049-bbbda595c7b8?auto=format&fit=crop&q=80&w=2000" 
+            alt="Hero Background" 
+            className="w-full h-full object-cover opacity-[0.05]"
+            loading="eager"
           />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/90 via-transparent to-slate-950/90"></div>
         
-        <div className="max-w-4xl mx-auto relative z-10 text-center space-y-6 md:space-y-8">
-          <h2 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight uppercase leading-[0.95] text-white drop-shadow-2xl">
-            Upgrade Your <br className="hidden md:block"/>Operational Protocol.
-          </h2>
-          <p className="text-slate-300 text-xs md:text-lg lg:text-xl font-medium max-w-lg mx-auto leading-relaxed">
-            Deploy StockBit Pro across your entire organization and gain absolute control today.
-          </p>
-          <div className="pt-6 flex justify-center">
-            <button 
-              onClick={() => onAuth('register')}
-              className="w-full sm:w-auto px-12 py-5 bg-white text-slate-950 rounded-full font-black uppercase text-[10px] md:text-[11px] tracking-[0.3em] shadow-[0_20px_50px_rgba(255,255,255,0.1)] active:scale-95 transition-all hover:bg-slate-100 flex items-center justify-center gap-4"
-            >
-              Deploy Terminal Now
+        {/* Animated Background Elements */}
+        <div className="absolute top-20 right-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] -z-10 animate-pulse"></div>
+        <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] bg-emerald-500/5 rounded-full blur-[120px] -z-10"></div>
+        
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-center relative z-10">
+          <div className="space-y-8 text-left">
+            <div className="inline-flex items-center gap-3 px-4 py-2 bg-indigo-50 rounded-full border border-indigo-100">
+              <Sparkles size={14} className="text-indigo-600" />
+              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.25em]">Cloud Infrastructure v4.2</span>
+            </div>
+            
+            <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.9] uppercase text-slate-900">
+              High-Velocity <br/>
+              <span className="text-indigo-600">Inventory <br/> Intelligence.</span>
+            </h1>
+            
+            <p className="max-w-md text-sm md:text-base text-slate-500 font-medium leading-relaxed">
+              Industrial-grade logistics ecosystem for African retail. 
+              Real-time synchronization across unlimited terminals with AI-powered SKU auditing.
+            </p>
+
+            <div className="pt-4 flex flex-col sm:flex-row gap-4">
+              <button 
+                onClick={() => onAuth('register')}
+                className="group px-10 py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase text-[10px] md:text-[11px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4"
+              >
+                Deploy Terminal <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+              <button 
+                onClick={onInstall}
+                className="px-10 py-5 bg-white text-slate-900 border-2 border-slate-100 rounded-[2rem] font-black uppercase text-[10px] md:text-[11px] tracking-[0.2em] hover:bg-slate-50 active:scale-95 transition-all flex items-center justify-center gap-4"
+              >
+                Get Mobile App <DownloadCloud size={18} />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-8 pt-8 border-t border-slate-100">
+              <div className="flex -space-x-3">
+                {[1,2,3,4].map(i => (
+                  <div key={i} className="w-10 h-10 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center overflow-hidden">
+                    <img src={`https://i.pravatar.cc/150?u=stockbit_user_${i}`} alt="User" />
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col">
+                <p className="text-[11px] font-black uppercase text-slate-900">500+ Businesses</p>
+                <p className="text-[9px] font-bold uppercase text-slate-400">Linked to our Cloud Nodes</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative group hidden lg:block">
+            <div className="absolute inset-0 bg-indigo-600/5 rounded-[4rem] rotate-3 scale-105 group-hover:rotate-6 transition-transform duration-700"></div>
+            <div className="relative bg-white rounded-[4rem] p-4 border border-slate-100 shadow-2xl overflow-hidden">
+              <img 
+                src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200" 
+                alt="StockBit Dashboard Preview" 
+                className="w-full h-full object-cover rounded-[3.5rem] opacity-95"
+                loading="eager"
+              />
+              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/10 to-transparent"></div>
+              
+              {/* Floating Stat Card */}
+              <div className="absolute top-12 -left-8 p-6 bg-white rounded-3xl shadow-2xl border border-slate-50 animate-bounce duration-[4000ms]">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+                    <Activity size={24} />
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Real-time Load</p>
+                    <p className="text-lg font-black text-slate-900">12ms Latency</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Feature Grid: Core Capabilities */}
+      <section ref={architectureRef} className="py-24 md:py-32 px-6 bg-slate-50">
+        <div className="max-w-7xl mx-auto space-y-20">
+          <div className="text-center space-y-4 max-w-2xl mx-auto">
+            <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">Protocol Features</h2>
+            <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">Engineered for Scalability</h3>
+            <p className="text-sm md:text-base text-slate-500 font-medium">Every module in the StockBit suite is built to handle thousands of concurrent transactions without data drift.</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <FeatureCard 
+              icon={<Scan size={28} />}
+              title="AI SKU Scanning"
+              desc="Snap a photo of any product. Gemini AI extracts SKU, Name, and Price instantly."
+              color="text-indigo-600"
+              bg="bg-indigo-50"
+            />
+            <FeatureCard 
+              icon={<Database size={28} />}
+              title="Cloud Synchronization"
+              desc="Real-time data flow between your PC, Tablet, and Smartphone terminals."
+              color="text-emerald-600"
+              bg="bg-emerald-50"
+            />
+            <FeatureCard 
+              icon={<Shield size={28} />}
+              title="Immutable Ledger"
+              desc="Cryptographic transaction logs that ensure absolute financial accountability."
+              color="text-slate-900"
+              bg="bg-slate-200"
+            />
+            <FeatureCard 
+              icon={<BarChart3 size={28} />}
+              title="Deep Analytics"
+              desc="Executive reports that identify dead stock and predict upcoming sales peaks."
+              color="text-amber-600"
+              bg="bg-amber-50"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Unified Terminal Showcase */}
+      <section className="py-24 md:py-32 px-6">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+          <div className="order-2 lg:order-1 relative flex justify-center">
+            {/* Reduced max-w and scale to make the grid smaller as requested */}
+            <div className="grid grid-cols-2 gap-3 max-w-xs md:max-w-md scale-90 lg:scale-[0.85] transform-origin-center">
+              <div className="space-y-3 pt-8">
+                <img 
+                  src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80" 
+                  className="w-full aspect-square object-cover rounded-[1.5rem] shadow-xl" 
+                  alt="Retail Groceries" 
+                  loading="eager" 
+                />
+                <img 
+                  src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=600&q=80" 
+                  className="w-full aspect-[2/3] object-cover rounded-[1.5rem] shadow-xl" 
+                  alt="Retail Fashion" 
+                  loading="eager" 
+                />
+              </div>
+              <div className="space-y-3">
+                <img 
+                  src="https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&w=600&q=80" 
+                  className="w-full aspect-[2/3] object-cover rounded-[1.5rem] shadow-xl" 
+                  alt="Retail Tech" 
+                  loading="eager" 
+                />
+                <img 
+                  src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80" 
+                  className="w-full aspect-square object-cover rounded-[1.5rem] shadow-xl" 
+                  alt="Warehouse Hub" 
+                  loading="eager" 
+                />
+              </div>
+            </div>
+            {/* Overlay badge scaled down to match smaller grid */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 bg-indigo-600 rounded-full border-[6px] border-white shadow-2xl flex flex-col items-center justify-center text-white p-2 text-center z-10">
+              <p className="text-[9px] font-black uppercase tracking-widest leading-none mb-0.5">99.9%</p>
+              <p className="text-[6px] font-bold uppercase opacity-80 leading-tight">Uptime Status</p>
+            </div>
+          </div>
+
+          <div className="order-1 lg:order-2 space-y-10">
+            <div className="space-y-4">
+              <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">Hardware Independence</h2>
+              <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">Your Terminal. <br/> Everywhere.</h3>
+              <p className="text-base text-slate-500 font-medium leading-relaxed">No expensive hardware required. StockBit Pro turns any Android or iOS device into a professional POS terminal with receipt printing and barcode scanning capabilities.</p>
+            </div>
+
+            <div className="space-y-6">
+              <Point icon={<CheckCircle2 size={20} />} text="PAYSTACK-INTEGRATED DIGITAL PAYMENTS." />
+              <Point icon={<CheckCircle2 size={20} />} text="BLUETOOTH THERMAL PRINTER SUPPORT." />
+              <Point icon={<CheckCircle2 size={20} />} text="OFFLINE-FIRST TRANSACTION BUFFERING." />
+              <Point icon={<CheckCircle2 size={20} />} text="MULTI-STAFF SHIFT MANAGEMENT." />
+            </div>
+
+            <button onClick={onInstall} className="inline-flex items-center gap-4 text-[11px] font-black uppercase tracking-[0.25em] text-indigo-600 hover:text-indigo-800 transition-colors py-4">
+              EXPLORE MOBILE FEATURES <ArrowRight size={16} />
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-24 px-6 bg-[#020617] relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full opacity-10">
+          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-indigo-500 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2"></div>
+        </div>
+        
+        <div className="max-w-4xl mx-auto text-center space-y-10 relative z-10">
+          <h2 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter leading-none">
+            Join the Next Era of <br/> <span className="text-indigo-400">Retail Excellence.</span>
+          </h2>
+          <p className="text-slate-400 text-sm md:text-base font-medium max-w-xl mx-auto">
+            Ready to digitize your warehouse? Deploy your professional terminal in under 60 seconds.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+            <button onClick={() => onAuth('register')} className="w-full sm:w-auto px-12 py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-[0.3em] shadow-2xl shadow-indigo-600/20 active:scale-95 transition-all">
+              Initialize Trial
+            </button>
+            <div className="flex items-center gap-4 text-slate-500">
+               <span className="text-[10px] font-black uppercase tracking-widest">No Credit Card Required</span>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-16 px-6 bg-[#010409] text-white border-t border-white/5">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-16">
+      <footer className="py-20 px-6 bg-white border-t border-slate-100">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-20">
           <div className="space-y-8">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
+              <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
                 <Box size={18} className="text-white" />
               </div>
-              <span className="font-black text-lg tracking-tighter uppercase">StockBit Pro</span>
+              <span className="font-black text-lg tracking-tighter uppercase cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>StockBit Pro</span>
             </div>
-            <p className="text-[9px] md:text-[10px] text-slate-500 font-medium leading-relaxed pr-6">
-              Industrial-grade retail management for the next generation of African commerce. Powered by Gemini AI.
+            <p className="text-[10px] text-slate-500 font-bold leading-relaxed uppercase tracking-wider">
+              Industrial-grade retail management for the next generation of African commerce. 
+              Engineered with Gemini AI Intelligence.
             </p>
-            <div className="flex gap-4">
-               <a href="https://x.com/StockBitpro" target="_blank" className="p-2.5 bg-white/5 rounded-xl text-slate-400 hover:text-indigo-400 hover:bg-white/10 transition-all">
-                  <Twitter size={16} />
-               </a>
+            <div className="flex items-center gap-4">
+              <SocialIcon icon={<Twitter size={18}/>} onClick={() => window.open('https://twitter.com/stockbit', '_blank')} />
+              <SocialIcon icon={<Globe size={18}/>} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
+              <SocialIcon icon={<Smartphone size={18}/>} onClick={onInstall} />
             </div>
           </div>
 
-          <div className="space-y-6">
-            <h4 className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.4em] text-slate-300">Navigation</h4>
-            <ul className="space-y-4">
-              <li><button onClick={() => onNavigateInfo(View.AboutUs)} className="text-[10px] text-slate-500 hover:text-indigo-400 transition-colors">About Us</button></li>
-              <li><button onClick={() => onNavigateInfo(View.HelpCenter)} className="text-[10px] text-slate-500 hover:text-indigo-400 transition-colors">Help Center</button></li>
-            </ul>
-          </div>
+          <FooterSection title="Architecture" links={[
+            { label: 'Terminal Core', onClick: () => scrollToSection(architectureRef) },
+            { label: 'AI Scanner', onClick: () => scrollToSection(architectureRef) },
+            { label: 'Cloud Sync', onClick: () => onNavigateInfo(View.Governance) },
+            { label: 'Mobile App', onClick: onInstall },
+          ]} />
 
-          <div className="space-y-6">
-            <h4 className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.4em] text-slate-300">Governance</h4>
-            <ul className="space-y-4">
-              <li><button onClick={() => onNavigateInfo(View.Governance)} className="text-[10px] text-slate-500 hover:text-indigo-400 transition-colors">Governance</button></li>
-              <li><button onClick={() => onNavigateInfo(View.TermsOfService)} className="text-[10px] text-slate-500 hover:text-indigo-400 transition-colors">Terms of Service</button></li>
-              <li><button onClick={() => onNavigateInfo(View.PrivacyPolicy)} className="text-[10px] text-slate-500 hover:text-indigo-400 transition-colors">Privacy Policy</button></li>
-            </ul>
-          </div>
+          <FooterSection title="Corporate" links={[
+            { label: 'About Us', onClick: () => onNavigateInfo(View.AboutUs) },
+            { label: 'Help Center', onClick: () => onNavigateInfo(View.HelpCenter) },
+            { label: 'Terms of Service', onClick: () => onNavigateInfo(View.TermsOfService) },
+            { label: 'Privacy Policy', onClick: () => onNavigateInfo(View.PrivacyPolicy) },
+          ]} />
 
-          <div className="space-y-6">
-            <h4 className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.4em] text-slate-300">Contact Control</h4>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 bg-white/5 p-4 rounded-xl border border-white/5 group hover:border-indigo-500/30 transition-all">
-                 <div className="w-7 h-7 bg-indigo-600/10 rounded-lg flex items-center justify-center text-indigo-400"><Phone size={14} /></div>
-                 <div>
-                    <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Direct Line</p>
-                    <p className="text-[10px] font-bold text-slate-200">07010698264</p>
-                 </div>
-              </div>
-              <div className="flex items-center gap-3 bg-white/5 p-4 rounded-xl border border-white/5 group hover:border-emerald-500/30 transition-all">
-                 <div className="w-7 h-7 bg-emerald-600/10 rounded-lg flex items-center justify-center text-emerald-400"><MessageCircle size={14} /></div>
-                 <div>
-                    <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">WhatsApp Ops</p>
-                    <p className="text-[10px] font-bold text-slate-200">07072127949</p>
-                 </div>
-              </div>
+          <div className="space-y-8">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-900">Mission Support</h4>
+            <div className="space-y-4">
+              <ContactLink icon={<Phone size={14} />} label="Voice Support" value="07010698264" onClick={() => window.open('tel:07010698264')} />
+              <ContactLink icon={<MessageCircle size={14} />} label="WhatsApp Desk" value="07072127949" onClick={() => window.open('https://wa.me/2347072127949')} />
             </div>
           </div>
         </div>
         
-        <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-white/5 text-center">
-          <p className="text-[8px] md:text-[9px] font-black text-slate-600 uppercase tracking-[0.6em]">
-            © 2025 STOCKBIT TECHNOLOGIES LTD. POWERED BY GEMINI.
-          </p>
+        <div className="max-w-7xl mx-auto pt-16 mt-16 border-t border-slate-100 text-center">
+          <p className="text-[9px] font-black uppercase tracking-[0.5em] text-slate-400">© 2025 StockBit Technologies Group. All Rights Reserved.</p>
         </div>
       </footer>
 
-      {/* AI Chat Bot UI */}
-      <div className="fixed bottom-6 right-6 z-[60]">
-         {isChatOpen ? (
-            <div className="w-[calc(100vw-3rem)] md:w-80 h-[480px] bg-white rounded-[2rem] shadow-2xl border border-slate-100 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10">
-               <div className="p-5 bg-indigo-600 text-white flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                     <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
-                        <Sparkles size={18} className="text-white" />
-                     </div>
-                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-tighter leading-none">StockBot AI</p>
-                        <p className="text-[7px] font-bold uppercase text-indigo-200 mt-1">Protocol Assistant</p>
-                     </div>
-                  </div>
-                  <button onClick={() => setIsChatOpen(false)} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
-                     <X size={18} />
-                  </button>
-               </div>
-
-               <div className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">
-                  {chatMessages.map((msg, idx) => (
-                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] p-3.5 rounded-2xl text-[10px] md:text-[11px] font-medium leading-relaxed ${
-                           msg.role === 'user' 
-                           ? 'bg-indigo-600 text-white rounded-br-none' 
-                           : 'bg-slate-100 text-slate-700 rounded-bl-none'
-                        }`}>
-                           {msg.text}
-                        </div>
-                     </div>
-                  ))}
-                  {isTyping && (
-                     <div className="flex justify-start">
-                        <div className="bg-slate-100 p-3.5 rounded-2xl rounded-bl-none flex gap-1">
-                           <div className="w-1 h-1 bg-indigo-400 rounded-full animate-bounce"></div>
-                           <div className="w-1 h-1 bg-indigo-400 rounded-full animate-bounce delay-100"></div>
-                           <div className="w-1 h-1 bg-indigo-400 rounded-full animate-bounce delay-200"></div>
-                        </div>
-                     </div>
-                  )}
-                  <div ref={chatEndRef} />
-               </div>
-
-               <form onSubmit={handleSendMessage} className="p-4 bg-slate-50 border-t border-slate-100 flex gap-2">
-                  <input 
-                     type="text" 
-                     placeholder="Inquire about protocol..." 
-                     className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-[9px] md:text-[10px] font-black uppercase outline-none focus:ring-2 focus:ring-indigo-600 shadow-inner"
-                     value={chatInput}
-                     onChange={e => setChatInput(e.target.value)}
-                  />
-                  <button type="submit" className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-lg active:scale-95 transition-all">
-                     <Send size={16} />
-                  </button>
-               </form>
+      {/* Floating AI ChatBot Bubble */}
+      <div className="fixed bottom-10 right-10 z-[100] group">
+        <button 
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 relative ${isChatOpen ? 'bg-slate-900 text-white rotate-90 scale-110' : 'bg-indigo-600 text-white hover:scale-110'}`}
+        >
+          {isChatOpen ? <X size={28} /> : <MessageSquare size={28} />}
+          {!isChatOpen && <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-white rounded-full"></span>}
+        </button>
+        
+        {isChatOpen && (
+          <div className="absolute bottom-20 right-0 w-[350px] md:w-[450px] bg-white rounded-[2.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-500">
+            <div className="p-8 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <Cpu size={24} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-widest">StockBot AI</h3>
+                  <p className="text-[9px] font-bold uppercase opacity-60">Logic Engine v4.2 Online</p>
+                </div>
+              </div>
+              <Activity size={20} className="text-emerald-500 animate-pulse" />
             </div>
-         ) : (
-            <button 
-               onClick={() => setIsChatOpen(true)}
-               className="w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-2xl shadow-indigo-600/40 hover:scale-110 active:scale-95 transition-all group"
-            >
-               <MessageSquare size={22} className="group-hover:rotate-12 transition-transform" />
-            </button>
-         )}
+
+            <div className="flex-1 p-8 overflow-y-auto max-h-[400px] space-y-6 scrollbar-hide bg-slate-50/50">
+              {chatMessages.map((m, i) => (
+                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}>
+                  <div className={`max-w-[85%] p-5 rounded-[1.8rem] text-xs font-medium leading-relaxed shadow-sm ${
+                    m.role === 'user' 
+                    ? 'bg-indigo-600 text-white rounded-tr-none' 
+                    : 'bg-white text-slate-600 rounded-tl-none border border-slate-100'
+                  }`}>
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-white p-5 rounded-[1.8rem] rounded-tl-none border border-slate-100 shadow-sm flex gap-1">
+                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce"></div>
+                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce delay-100"></div>
+                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce delay-200"></div>
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            <form onSubmit={handleSendMessage} className="p-6 bg-white border-t border-slate-100">
+              <div className="relative">
+                <input 
+                  type="text" 
+                  placeholder="Inquire about architecture..." 
+                  className="w-full pl-6 pr-16 py-4 bg-slate-50 border-none rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                />
+                <button 
+                  type="submit"
+                  disabled={!chatInput.trim() || isTyping}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-indigo-600 transition-colors disabled:opacity-20"
+                >
+                  <Send size={16} />
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );
 };
+
+const NavOption = ({ label, onClick }: any) => (
+  <button onClick={onClick} className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 hover:text-indigo-600 transition-colors">
+    {label}
+  </button>
+);
+
+const FeatureCard = ({ icon, title, desc, color, bg }: any) => (
+  <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all group active:scale-95 duration-500">
+    <div className={`w-16 h-16 ${bg} ${color} rounded-[1.5rem] flex items-center justify-center mb-10 shadow-inner group-hover:scale-110 transition-transform`}>
+      {icon}
+    </div>
+    <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-4">{title}</h4>
+    <p className="text-[12px] text-slate-500 font-medium leading-relaxed">{desc}</p>
+  </div>
+);
+
+const Point = ({ icon, text }: any) => (
+  <div className="flex items-center gap-4 group">
+    <div className="text-emerald-500 group-hover:scale-125 transition-transform duration-300">{icon}</div>
+    <span className="text-[11px] font-black uppercase tracking-widest text-slate-700">{text}</span>
+  </div>
+);
+
+const SocialIcon = ({ icon, onClick }: any) => (
+  <button onClick={onClick} className="w-10 h-10 rounded-xl bg-slate-900 text-slate-500 hover:text-white hover:bg-indigo-600 transition-all flex items-center justify-center border border-white/5">
+    {icon}
+  </button>
+);
+
+const FooterSection = ({ title, links }: any) => (
+  <div className="space-y-8">
+    <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-900">{title}</h4>
+    <ul className="space-y-4">
+      {links.map((l: any, i: number) => (
+        <li key={i}>
+          <button onClick={l.onClick} className="text-[11px] text-slate-500 hover:text-indigo-600 font-bold transition-colors uppercase tracking-widest text-left">{l.label}</button>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
+const ContactLink = ({ icon, label, value, onClick }: any) => (
+  <div className="flex items-center gap-4 group cursor-pointer" onClick={onClick}>
+    <div className="w-9 h-9 bg-slate-100 text-indigo-600 rounded-lg flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+      {icon}
+    </div>
+    <div>
+      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
+      <p className="text-[11px] font-bold text-slate-900">{value}</p>
+    </div>
+  </div>
+);
 
 export default LandingPage;
