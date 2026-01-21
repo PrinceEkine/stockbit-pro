@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { View, User as UserType, SubscriptionPlan, Product } from './types';
 import { useStore, getTrialStatus } from './store';
@@ -38,7 +37,8 @@ import {
   ArrowRight,
   ChevronLeft,
   ArrowLeft,
-  DownloadCloud
+  DownloadCloud,
+  Share
 } from 'lucide-react';
 
 type AuthStep = 'landing' | 'login' | 'register' | 'forgot' | 'verify_otp' | 'update_password';
@@ -63,13 +63,16 @@ const App: React.FC = () => {
   const barcodeBuffer = useRef<string>('');
   const lastKeyTime = useRef<number>(0);
 
-  const isInfoView = useMemo(() => [
-    View.AboutUs, 
-    View.HelpCenter, 
-    View.TermsOfService, 
-    View.PrivacyPolicy, 
-    View.Governance
-  ].includes(activeView), [activeView]);
+  const isInfoView = useMemo(() => {
+    const list = [
+      View.AboutUs, 
+      View.HelpCenter, 
+      View.TermsOfService, 
+      View.PrivacyPolicy, 
+      View.Governance
+    ];
+    return list.includes(activeView);
+  }, [activeView]);
 
   // Handle PWA Install Prompt
   useEffect(() => {
@@ -82,10 +85,24 @@ const App: React.FC = () => {
   }, []);
 
   const handleInstallApp = async () => {
-    if (!deferredPrompt) {
-      alert("Download protocol already deployed or not supported on this terminal. Use 'Add to Home Screen' in browser settings.");
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+
+    if (isStandalone) {
+      alert("StockBit Pro Terminal is already installed and running as a standalone app.");
       return;
     }
+
+    if (isIOS) {
+      alert("To install StockBit Pro on iOS:\n1. Tap the Share button in Safari (box with up arrow)\n2. Scroll down and tap 'Add to Home Screen'\n3. Tap 'Add' to deploy the terminal.");
+      return;
+    }
+
+    if (!deferredPrompt) {
+      alert("Installation protocol not triggered by browser yet. Ensure you are using a supported browser (Chrome/Edge/Android) and have a stable connection. Or manually use 'Install App' in browser settings.");
+      return;
+    }
+
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === 'accepted') {
@@ -121,7 +138,7 @@ const App: React.FC = () => {
       if (e.key === 'Enter') {
         if (barcodeBuffer.current.length > 2) {
           const sku = barcodeBuffer.current;
-          const product = store.products.find(p => p.sku === sku);
+          const product = (store.products || []).find(p => p.sku === sku);
           if (product) {
             setLastScannedProduct(product);
             setTimeout(() => setLastScannedProduct(null), 3000);
@@ -352,14 +369,14 @@ const App: React.FC = () => {
   const renderView = () => {
     switch (activeView) {
       case View.Dashboard: return <Dashboard state={store} onNavigate={setActiveView} />;
-      case View.Inventory: return <Inventory products={store.products} suppliers={store.suppliers} onAdd={store.addProduct} onUpdate={store.updateProduct} onDelete={store.deleteProduct} settings={store.settings} currentUser={store.currentUser} />;
-      case View.Sales: return <Sales sales={store.sales} products={store.products} onRecordSale={store.recordSale} settings={store.settings} currentUser={store.currentUser} />;
+      case View.Inventory: return <Inventory products={store.products || []} suppliers={store.suppliers || []} onAdd={store.addProduct} onUpdate={store.updateProduct} onDelete={store.deleteProduct} settings={store.settings} currentUser={store.currentUser} />;
+      case View.Sales: return <Sales sales={store.sales || []} products={store.products || []} onRecordSale={store.recordSale} settings={store.settings} currentUser={store.currentUser} />;
       case View.AIInsights: return <AIInsights state={store} />;
-      case View.Stocktake: return <Stocktake products={store.products} onReconcile={store.reconcileInventory} />;
-      case View.Returns: return <Returns returns={store.returns} products={store.products} onRecordReturn={store.recordReturn} settings={store.settings} />;
+      case View.Stocktake: return <Stocktake products={store.products || []} onReconcile={store.reconcileInventory} />;
+      case View.Returns: return <Returns returns={store.returns || []} products={store.products || []} onRecordReturn={store.recordReturn} settings={store.settings} />;
       case View.Reports: return <Reports state={store} />;
-      case View.Suppliers: return <Suppliers suppliers={store.suppliers} onAdd={store.addSupplier} onUpdate={() => {}} onDelete={() => {}} />;
-      case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} staff={store.users} currentUser={store.currentUser} onAddStaff={store.addStaffMember} onRemoveStaff={store.removeStaffMember} onActivateSubscription={async (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => { await store.activateSubscription(plan, cycle); }} />;
+      case View.Suppliers: return <Suppliers suppliers={store.suppliers || []} onAdd={store.addSupplier} onUpdate={() => {}} onDelete={() => {}} />;
+      case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} staff={store.users || []} currentUser={store.currentUser} onAddStaff={store.addStaffMember} onRemoveStaff={store.removeStaffMember} onActivateSubscription={async (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => { await store.activateSubscription(plan, cycle); }} />;
       case View.LaunchCenter: return <LaunchCenter state={store} onUpdateSettings={store.updateSettings} />;
       default: return <Dashboard state={store} onNavigate={setActiveView} />;
     }
@@ -398,7 +415,7 @@ const App: React.FC = () => {
             <div className="relative">
               <button onClick={() => setIsNotificationOpen(!isNotificationOpen)} className="p-2 md:p-3 text-slate-400 hover:text-indigo-600 relative transition-colors">
                 <Bell size={20} />
-                {store.notifications.filter(n => !n.read).length > 0 && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-slate-900"></span>}
+                {(store.notifications || []).filter(n => !n.read).length > 0 && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-slate-900"></span>}
               </button>
             </div>
           </div>
