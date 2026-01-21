@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabase';
 import { Product, Sale, Supplier, AppState, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod } from './types';
 import { DEFAULT_CATEGORIES } from './constants';
@@ -41,6 +40,8 @@ export const useStore = () => {
   const [loading, setLoading] = useState(true);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const initialized = useRef(false);
+
   const [state, setState] = useState<AppState>({
     products: [],
     sales: [],
@@ -138,7 +139,9 @@ export const useStore = () => {
       setInitialLoadComplete(true);
     } catch (e: any) {
       console.error("Data fetch error:", e);
-      setState(prev => ({ ...prev, error: "Infrastructure Handshake Failed. Verify Network Protocol." }));
+      setState(prev => ({ ...prev, error: "Cloud Sync Interrupted. Verify Connection." }));
+    } finally {
+      setInitialLoadComplete(true); // Ensure UI isn't stuck forever
     }
   }, []);
 
@@ -177,7 +180,6 @@ export const useStore = () => {
       setIsLoggedIn(true);
     } catch (e: any) {
       console.error("Auth profile load failure:", e);
-      setState(prev => ({ ...prev, error: "Authentication Sync Timeout." }));
       setIsLoggedIn(false);
     } finally {
       setLoading(false);
@@ -185,7 +187,18 @@ export const useStore = () => {
   }, [loadInitialBatch]);
 
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
     let isMounted = true;
+
+    // Safety Timeout: Force loading screen to end after 10 seconds if Supabase hangs
+    const safetyTimer = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn("Safety Timeout: Breaking loading hang.");
+        setLoading(false);
+      }
+    }, 10000);
 
     const checkSession = async () => {
       try {
@@ -206,27 +219,32 @@ export const useStore = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
+        // Only run if login state actually changed
         if (!isLoggedIn) await handleInitialDataLoad(session.user);
       } else {
         if (isMounted) {
           setIsLoggedIn(false);
           setInitialLoadComplete(false);
           setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [] }));
+          setLoading(false);
         }
       }
     });
 
     return () => {
       isMounted = false;
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
-  }, [handleInitialDataLoad, isLoggedIn]);
+  }, []); // Strictly run once on mount
 
   const logout = useCallback(async () => {
     setIsLoggedIn(false);
     setInitialLoadComplete(false);
+    setLoading(true);
     setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [], error: null }));
     await supabase.auth.signOut();
+    setLoading(false);
   }, []);
 
   return {

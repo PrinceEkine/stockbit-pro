@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { View, User as UserType, SubscriptionPlan, Product } from './types';
 import { useStore, getTrialStatus } from './store';
@@ -82,6 +81,7 @@ const App: React.FC = () => {
   // Handle PWA Install Prompt
   useEffect(() => {
     const handler = (e: any) => {
+      console.log('beforeinstallprompt triggered');
       e.preventDefault();
       setDeferredPrompt(e);
     };
@@ -94,17 +94,17 @@ const App: React.FC = () => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
 
     if (isStandalone) {
-      alert("StockBit Pro Terminal is already installed and running as a standalone app.");
+      alert("StockBit Pro Terminal is already installed.");
       return;
     }
 
     if (isIOS) {
-      alert("To install StockBit Pro on iOS:\n1. Tap the Share button in Safari (box with up arrow)\n2. Scroll down and tap 'Add to Home Screen'\n3. Tap 'Add' to deploy the terminal.");
+      alert("Installation protocol for iOS:\n1. Tap the Share button in Safari.\n2. Tap 'Add to Home Screen'.\n3. Tap 'Add' to complete deployment.");
       return;
     }
 
     if (!deferredPrompt) {
-      alert("Installation protocol not triggered by browser yet. Ensure you are using a supported browser (Chrome/Edge/Android) and have a stable connection. Or manually use 'Install App' in browser settings.");
+      alert("Protocol Pending. Use the browser menu and select 'Install App' or 'Add to Home Screen' if this button doesn't respond.");
       return;
     }
 
@@ -241,12 +241,19 @@ const App: React.FC = () => {
     setActiveView(View.Landing);
   }, [store.logout]);
 
-  // Global loading state while checking Supabase session
   if (store.loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 gap-6">
         <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
-        <p className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-[0.3em] animate-pulse text-center">Entering StockBit Pro...</p>
+        <div className="text-center space-y-4">
+          <p className="text-slate-400 dark:text-slate-500 font-bold text-[10px] uppercase tracking-[0.3em] animate-pulse">Entering StockBit Pro...</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:underline flex items-center gap-2 mx-auto"
+          >
+            <RefreshCw size={12}/> Manual Override
+          </button>
+        </div>
       </div>
     );
   }
