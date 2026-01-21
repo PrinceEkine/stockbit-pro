@@ -3,7 +3,11 @@ import { supabase } from './supabase';
 import { Product, Sale, Supplier, AppState, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod } from './types';
 import { DEFAULT_CATEGORIES } from './constants';
 
-const SUPER_ADMIN_EMAIL = 'princedagogoekine@gmail.com';
+// Whitelist for true system administrators
+const SUPER_ADMIN_EMAILS = [
+  'princedagogoekine@gmail.com',
+  'dagogoekineprince@gmail.com'
+];
 
 const mapProfile = (dbProfile: any, authUser: any): User => ({
   id: dbProfile.id,
@@ -138,10 +142,10 @@ export const useStore = () => {
           plan: p.plan || 'beta'
         }))
       }));
+      setInitialLoadComplete(true);
     } catch (e: any) {
       console.error("Data fetch error:", e);
       setState(prev => ({ ...prev, error: "Cloud Sync Interrupted. Verify Connection." }));
-    } finally {
       setInitialLoadComplete(true);
     }
   }, []);
@@ -153,16 +157,16 @@ export const useStore = () => {
       if (error) throw error;
 
       const metadata = authUser.user_metadata || {};
-      let user: User;
-
-      // Determine correct role based on email and context
+      
+      // Strict role assignment logic
       let assignedRole: 'admin' | 'user' | 'staff' = 'user';
-      if (authUser.email === SUPER_ADMIN_EMAIL) {
+      if (SUPER_ADMIN_EMAILS.includes(authUser.email)) {
         assignedRole = 'admin';
-      } else if (metadata.parentId || (profile && profile.parent_id)) {
+      } else if (metadata.role === 'staff' || metadata.parentId || (profile && profile.parent_id)) {
         assignedRole = 'staff';
       }
 
+      let user: User;
       if (!profile) {
         const trialExpiry = new Date();
         trialExpiry.setMonth(trialExpiry.getMonth() + 2);
@@ -181,12 +185,14 @@ export const useStore = () => {
         await supabase.from('profiles').upsert(repairData);
         user = mapProfile(repairData, authUser);
       } else {
-        // Correct profile role if it doesn't match protocol
-        if (profile.role !== assignedRole) {
-          await supabase.from('profiles').update({ role: assignedRole }).eq('id', authUser.id);
-          profile.role = assignedRole;
+        // AUTO-REPAIR: If a user is not authorized admin but has admin role, downgrade them
+        if (profile.role === 'admin' && !SUPER_ADMIN_EMAILS.includes(authUser.email)) {
+           console.warn(`Unauthorized admin detected (${authUser.email}). Downgrading to user.`);
+           const { data: updatedProfile } = await supabase.from('profiles').update({ role: 'user' }).eq('id', authUser.id).select().single();
+           user = mapProfile(updatedProfile, authUser);
+        } else {
+           user = mapProfile(profile, authUser);
         }
-        user = mapProfile(profile, authUser);
       }
 
       setState(prev => ({ ...prev, currentUser: user, error: null }));
@@ -207,17 +213,10 @@ export const useStore = () => {
 
     let isMounted = true;
 
-    const safetyTimer = setTimeout(() => {
-      if (isMounted && loading) {
-        setLoading(false);
-      }
-    }, 12000);
-
     const checkSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
-
         if (isMounted) {
           if (session) await handleInitialDataLoad(session.user);
           else setLoading(false);
@@ -244,10 +243,9 @@ export const useStore = () => {
 
     return () => {
       isMounted = false;
-      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
-  }, [isLoggedIn, handleInitialDataLoad, loading]);
+  }, [isLoggedIn, handleInitialDataLoad]);
 
   const logout = useCallback(async () => {
     setIsLoggedIn(false);
@@ -266,8 +264,7 @@ export const useStore = () => {
     login: (email: string, pass: string) => supabase.auth.signInWithPassword({ email, password: pass }),
     logout,
     register: async (userData: any) => {
-      const assignedRole = userData.email === SUPER_ADMIN_EMAIL ? 'admin' : (userData.inviteId ? 'staff' : 'user');
-      
+      const assignedRole = SUPER_ADMIN_EMAILS.includes(userData.email) ? 'admin' : (userData.inviteId ? 'staff' : 'user');
       const { data, error } = await supabase.auth.signUp({
         email: userData.email, 
         password: userData.password,
