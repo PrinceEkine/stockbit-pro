@@ -3,7 +3,6 @@ import { supabase } from './supabase';
 import { Product, Sale, Supplier, AppState, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod } from './types';
 import { DEFAULT_CATEGORIES } from './constants';
 
-// Whitelist for true system administrators
 const SUPER_ADMIN_EMAILS = [
   'princedagogoekine@gmail.com',
 ];
@@ -82,12 +81,13 @@ export const useStore = () => {
     
     try {
       const targetId = parentId || userId;
+      // Use maybeSingle to avoid errors on missing profile settings
       const [p, s, ret, sup, n, prof] = await Promise.all([
-        supabase.from('products').select('*').eq('user_id', targetId),
-        supabase.from('sales').select('*').eq('user_id', targetId).order('date', { ascending: false }),
-        supabase.from('returns').select('*').eq('user_id', targetId).order('date', { ascending: false }),
+        supabase.from('products').select('*').eq('user_id', targetId).limit(1000),
+        supabase.from('sales').select('*').eq('user_id', targetId).order('date', { ascending: false }).limit(100),
+        supabase.from('returns').select('*').eq('user_id', targetId).order('date', { ascending: false }).limit(50),
         supabase.from('suppliers').select('*').eq('user_id', targetId),
-        supabase.from('notifications').select('*').eq('user_id', targetId).order('date', { ascending: false }),
+        supabase.from('notifications').select('*').eq('user_id', targetId).order('date', { ascending: false }).limit(20),
         supabase.from('profiles').select('settings').eq('id', userId).maybeSingle()
       ]);
 
@@ -141,23 +141,31 @@ export const useStore = () => {
           plan: p.plan || 'beta'
         }))
       }));
-      setInitialLoadComplete(true);
     } catch (e: any) {
-      console.error("Data fetch error:", e);
-      setState(prev => ({ ...prev, error: "Cloud Sync Interrupted. Verify Connection." }));
+      console.error("Critical Sync Failure:", e);
+      setState(prev => ({ ...prev, error: "Network Sync Delayed. Retry Manual Override." }));
+    } finally {
       setInitialLoadComplete(true);
     }
   }, []);
 
   const handleInitialDataLoad = useCallback(async (authUser: any) => {
+    if (!authUser) {
+      setLoading(false);
+      return;
+    }
+
     try {
+      // 1. Immediate Login Transition
+      setIsLoggedIn(true);
+      setLoading(false);
+
+      // 2. Profile Fetching
       const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
       
       if (error) throw error;
 
       const metadata = authUser.user_metadata || {};
-      
-      // Strict role assignment logic
       let assignedRole: 'admin' | 'user' | 'staff' = 'user';
       if (SUPER_ADMIN_EMAILS.includes(authUser.email)) {
         assignedRole = 'admin';
@@ -184,9 +192,7 @@ export const useStore = () => {
         await supabase.from('profiles').upsert(repairData);
         user = mapProfile(repairData, authUser);
       } else {
-        // AUTO-REPAIR: If a user is not authorized admin but has admin role, downgrade them
         if (profile.role === 'admin' && !SUPER_ADMIN_EMAILS.includes(authUser.email)) {
-           console.warn(`Unauthorized admin detected (${authUser.email}). Downgrading to user.`);
            const { data: updatedProfile } = await supabase.from('profiles').update({ role: 'user' }).eq('id', authUser.id).select().single();
            user = mapProfile(updatedProfile, authUser);
         } else {
@@ -195,12 +201,11 @@ export const useStore = () => {
       }
 
       setState(prev => ({ ...prev, currentUser: user, error: null }));
-      setIsLoggedIn(true);
-      setLoading(false);
       
+      // 3. Background Sync
       await loadInitialBatch(user.id, user.parentId);
     } catch (e: any) {
-      console.error("Auth profile load failure:", e);
+      console.error("Post-Auth Flow Error:", e);
       setIsLoggedIn(false);
       setLoading(false);
     }
@@ -211,6 +216,14 @@ export const useStore = () => {
     initialized.current = true;
 
     let isMounted = true;
+
+    // Safety timeout to ensure splash screen disappears no matter what
+    const bootTimeout = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn("Safety boot triggered: forcing splash screen close.");
+        setLoading(false);
+      }
+    }, 10000);
 
     const checkSession = async () => {
       try {
@@ -229,7 +242,7 @@ export const useStore = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
-        if (!isLoggedIn) await handleInitialDataLoad(session.user);
+        if (isMounted) await handleInitialDataLoad(session.user);
       } else {
         if (isMounted) {
           setIsLoggedIn(false);
@@ -242,9 +255,10 @@ export const useStore = () => {
 
     return () => {
       isMounted = false;
+      clearTimeout(bootTimeout);
       subscription.unsubscribe();
     };
-  }, [isLoggedIn, handleInitialDataLoad]);
+  }, [handleInitialDataLoad]);
 
   const logout = useCallback(async () => {
     setIsLoggedIn(false);
