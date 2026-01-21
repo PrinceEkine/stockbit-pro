@@ -5,13 +5,14 @@ import { DEFAULT_CATEGORIES } from './constants';
 
 const SUPER_ADMIN_EMAILS = [
   'princedagogoekine@gmail.com',
+  'dagogoekineprince@gmail.com'
 ];
 
 const mapProfile = (dbProfile: any, authUser: any): User => ({
   id: dbProfile.id,
   email: authUser?.email || dbProfile.email || '',
   name: dbProfile.name || '',
-  companyName: (dbProfile.company_name || '').trim() || 'StockBit Enterprise',
+  companyName: (dbProfile.company_name || '').trim() || 'My StockBit Shop',
   role: dbProfile.role || 'user',
   trialStartDate: dbProfile.trial_start_date || new Date().toISOString(),
   isSubscribed: dbProfile.is_subscribed || false,
@@ -56,7 +57,7 @@ export const useStore = () => {
     currentUser: null,
     error: null,
     settings: {
-      companyName: 'StockBit Store',
+      companyName: 'My StockBit Shop',
       currency: '₦',
       categories: DEFAULT_CATEGORIES,
       lowStockEmailAlerts: true,
@@ -81,7 +82,6 @@ export const useStore = () => {
     
     try {
       const targetId = parentId || userId;
-      // Use maybeSingle to avoid errors on missing profile settings
       const [p, s, ret, sup, n, prof] = await Promise.all([
         supabase.from('products').select('*').eq('user_id', targetId).limit(1000),
         supabase.from('sales').select('*').eq('user_id', targetId).order('date', { ascending: false }).limit(100),
@@ -96,16 +96,10 @@ export const useStore = () => {
         .select('*')
         .or(`id.eq.${targetId},parent_id.eq.${targetId}`);
 
-      const envKey = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY;
-      
       if (prof.data?.settings) {
         setState(prev => ({ 
           ...prev, 
-          settings: { 
-            ...prev.settings, 
-            ...prof.data.settings,
-            paystackPublicKey: envKey || prof.data.settings.paystackPublicKey || prev.settings.paystackPublicKey
-          } 
+          settings: { ...prev.settings, ...prof.data.settings } 
         }));
       }
 
@@ -142,8 +136,8 @@ export const useStore = () => {
         }))
       }));
     } catch (e: any) {
-      console.error("Critical Sync Failure:", e);
-      setState(prev => ({ ...prev, error: "Network Sync Delayed. Retry Manual Override." }));
+      console.error("Data Load Error:", e);
+      setState(prev => ({ ...prev, error: "Network slow. Try clicking 'Start Over' if this persists." }));
     } finally {
       setInitialLoadComplete(true);
     }
@@ -156,18 +150,17 @@ export const useStore = () => {
     }
 
     try {
-      // 1. Immediate Login Transition
       setIsLoggedIn(true);
       setLoading(false);
 
-      // 2. Profile Fetching
-      const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
       
-      if (error) throw error;
-
+      const userEmail = authUser.email?.toLowerCase() || '';
+      const isAdminEmail = SUPER_ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail);
+      
       const metadata = authUser.user_metadata || {};
       let assignedRole: 'admin' | 'user' | 'staff' = 'user';
-      if (SUPER_ADMIN_EMAILS.includes(authUser.email)) {
+      if (isAdminEmail) {
         assignedRole = 'admin';
       } else if (metadata.role === 'staff' || metadata.parentId || (profile && profile.parent_id)) {
         assignedRole = 'staff';
@@ -179,10 +172,10 @@ export const useStore = () => {
         trialExpiry.setMonth(trialExpiry.getMonth() + 2);
         const repairData = {
           id: authUser.id,
-          name: metadata.name || authUser.email.split('@')[0],
-          email: authUser.email,
+          name: metadata.name || userEmail.split('@')[0],
+          email: userEmail,
           role: assignedRole,
-          company_name: metadata.companyName || 'New Enterprise',
+          company_name: metadata.companyName || 'My New Shop',
           parent_id: metadata.parentId || null,
           trial_start_date: new Date().toISOString(),
           plan: 'beta',
@@ -192,20 +185,18 @@ export const useStore = () => {
         await supabase.from('profiles').upsert(repairData);
         user = mapProfile(repairData, authUser);
       } else {
-        if (profile.role === 'admin' && !SUPER_ADMIN_EMAILS.includes(authUser.email)) {
+        if (profile.role === 'admin' && !isAdminEmail) {
            const { data: updatedProfile } = await supabase.from('profiles').update({ role: 'user' }).eq('id', authUser.id).select().single();
-           user = mapProfile(updatedProfile, authUser);
+           user = mapProfile(updatedProfile || profile, authUser);
         } else {
            user = mapProfile(profile, authUser);
         }
       }
 
       setState(prev => ({ ...prev, currentUser: user, error: null }));
-      
-      // 3. Background Sync
-      await loadInitialBatch(user.id, user.parentId);
+      loadInitialBatch(user.id, user.parentId);
     } catch (e: any) {
-      console.error("Post-Auth Flow Error:", e);
+      console.error("Auth Load Error:", e);
       setIsLoggedIn(false);
       setLoading(false);
     }
@@ -217,18 +208,13 @@ export const useStore = () => {
 
     let isMounted = true;
 
-    // Safety timeout to ensure splash screen disappears no matter what
     const bootTimeout = setTimeout(() => {
-      if (isMounted && loading) {
-        console.warn("Safety boot triggered: forcing splash screen close.");
-        setLoading(false);
-      }
-    }, 10000);
+      if (isMounted && loading) setLoading(false);
+    }, 8000);
 
     const checkSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
+        const { data: { session } } = await supabase.auth.getSession();
         if (isMounted) {
           if (session) await handleInitialDataLoad(session.user);
           else setLoading(false);
@@ -241,15 +227,13 @@ export const useStore = () => {
     checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        if (isMounted) await handleInitialDataLoad(session.user);
-      } else {
-        if (isMounted) {
-          setIsLoggedIn(false);
-          setInitialLoadComplete(false);
-          setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [] }));
-          setLoading(false);
-        }
+      if (session && isMounted) {
+        await handleInitialDataLoad(session.user);
+      } else if (!session && isMounted) {
+        setIsLoggedIn(false);
+        setInitialLoadComplete(false);
+        setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [] }));
+        setLoading(false);
       }
     });
 
@@ -274,12 +258,14 @@ export const useStore = () => {
     loading,
     initialLoadComplete,
     isLoggedIn,
-    login: (email: string, pass: string) => supabase.auth.signInWithPassword({ email, password: pass }),
+    login: (email: string, pass: string) => supabase.auth.signInWithPassword({ email: email.toLowerCase(), password: pass }),
     logout,
     register: async (userData: any) => {
-      const assignedRole = SUPER_ADMIN_EMAILS.includes(userData.email) ? 'admin' : (userData.inviteId ? 'staff' : 'user');
+      const email = userData.email.toLowerCase();
+      const isAdminEmail = SUPER_ADMIN_EMAILS.some(e => e.toLowerCase() === email);
+      const assignedRole = isAdminEmail ? 'admin' : (userData.inviteId ? 'staff' : 'user');
       const { data, error } = await supabase.auth.signUp({
-        email: userData.email, 
+        email, 
         password: userData.password,
         options: { 
           emailRedirectTo: window.location.origin,
@@ -296,7 +282,7 @@ export const useStore = () => {
         await supabase.from('profiles').upsert({ 
           id: data.user.id, 
           name: userData.name, 
-          email: userData.email, 
+          email, 
           role: assignedRole, 
           company_name: userData.companyName, 
           parent_id: userData.inviteId || null, 
@@ -381,7 +367,10 @@ export const useStore = () => {
       await loadInitialBatch(state.currentUser.id);
     },
     resetPassword: async (email: string) => {
-      return await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/#update_password` });
+      return await supabase.auth.resetPasswordForEmail(email.toLowerCase(), { redirectTo: `${window.location.origin}/#update_password` });
+    },
+    updatePassword: async (newPassword: string) => {
+      return await supabase.auth.updateUser({ password: newPassword });
     },
     assignParentToUser: async (userId: string, parentId: string) => {
       await supabase.from('profiles').update({ parent_id: parentId, role: 'staff' }).eq('id', userId);
