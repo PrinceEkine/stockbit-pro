@@ -40,7 +40,9 @@ import {
   ArrowLeft,
   DownloadCloud,
   Share,
-  RefreshCw
+  RefreshCw,
+  Link,
+  Building
 } from 'lucide-react';
 
 type AuthStep = 'landing' | 'login' | 'register' | 'forgot' | 'verify_otp' | 'update_password';
@@ -54,6 +56,7 @@ const App: React.FC = () => {
   const [authError, setAuthError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
+  const [isStaffSignup, setIsStaffSignup] = useState(false);
   
   const [cameraAvailable, setCameraAvailable] = useState(false);
   const [globalScannerActive, setGlobalScannerActive] = useState(false);
@@ -156,6 +159,16 @@ const App: React.FC = () => {
   }, [store.products]);
 
   useEffect(() => {
+    const checkCamera = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        setCameraAvailable(devices.some(device => device.kind === 'videoinput'));
+      } catch (e) { setCameraAvailable(false); }
+    };
+    checkCamera();
+  }, []);
+
+  useEffect(() => {
     const root = window.document.documentElement;
     if (root) {
       if (store.settings.theme === 'dark') root.classList.add('dark');
@@ -201,6 +214,12 @@ const App: React.FC = () => {
     const name = formData.get('name') as string;
     const companyName = formData.get('companyName') as string || '';
     const inviteId = formData.get('inviteId') as string || null;
+
+    if (isStaffSignup && !inviteId) {
+      setAuthError("Business Invite ID is required for Personnel Activation.");
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const res = await store.register({ email, password, name, companyName, inviteId });
@@ -285,7 +304,7 @@ const App: React.FC = () => {
     if (!store.isLoggedIn) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4">
-          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[3rem] p-8 md:p-20 shadow-2xl animate-in zoom-in-95 duration-500">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[3rem] p-8 md:p-20 shadow-2xl animate-in zoom-in-95 duration-500 overflow-y-auto max-h-[95vh]">
             <div className="flex flex-col items-center mb-12 text-center">
               <button onClick={() => { setAuthStep('landing'); setActiveView(View.Landing); }} className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl shadow-indigo-600/20 active:scale-95 transition-all">
                 <Box size={40} className="text-white" />
@@ -332,15 +351,56 @@ const App: React.FC = () => {
 
             {authStep === 'register' && (
               <form onSubmit={handleRegisterSubmit} className="space-y-6">
-                <div className="space-y-4">
-                  <input name="name" placeholder="Full Name" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
-                  <input name="companyName" placeholder="Business Name" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
-                  <input name="email" type="email" placeholder="Email Address" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
-                  <input name="password" type="password" placeholder="Password" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                {/* Protocol Selector */}
+                <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-[1.5rem] mb-4">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsStaffSignup(false)}
+                    className={`flex-1 flex items-center justify-center gap-3 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${!isStaffSignup ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-xl' : 'text-slate-400'}`}
+                  >
+                    <Building size={14} /> Owner
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsStaffSignup(true)}
+                    className={`flex-1 flex items-center justify-center gap-3 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${isStaffSignup ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-xl' : 'text-slate-400'}`}
+                  >
+                    <Link size={14} /> Personnel
+                  </button>
                 </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4 block">Identity</label>
+                    <input name="name" placeholder="Full Legal Name" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                  </div>
+
+                  {!isStaffSignup ? (
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4 block">Enterprise Profile</label>
+                      <input name="companyName" placeholder="Business Name" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 animate-in slide-in-from-left-2 duration-300">
+                      <label className="text-[9px] font-black text-indigo-500 uppercase tracking-widest ml-4 block">Activation Key (Found in Admin Settings)</label>
+                      <input name="inviteId" placeholder="Paste Business Invite ID..." required className="w-full px-8 py-5 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-100 dark:border-indigo-800/50 rounded-2xl font-mono font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4 block">Contact Node</label>
+                    <input name="email" type="email" placeholder="Email Address" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4 block">Terminal Access Password</label>
+                    <input name="password" type="password" placeholder="Password" required className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" />
+                  </div>
+                </div>
+
                 <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-indigo-600 text-white font-black uppercase tracking-widest text-sm rounded-[1.5rem] shadow-2xl flex items-center justify-center gap-4 active:scale-95 transition-all">
                   {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <UserPlus size={20} />}
-                  {isSubmitting ? 'Registering...' : 'Sign Up'}
+                  {isSubmitting ? 'Provisioning...' : isStaffSignup ? 'Activate Terminal' : 'Register Business'}
                 </button>
                 <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[12px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest text-center flex items-center justify-center gap-3">
                   <ChevronLeft size={18} /> Back to Sign In
