@@ -186,19 +186,31 @@ const App: React.FC = () => {
     e.preventDefault();
     setAuthError('');
     setIsSubmitting(true);
+    
+    // Safety Timeout for Submitting state
+    const submitTimeout = setTimeout(() => {
+      setIsSubmitting(false);
+      setAuthError("Network request timed out. Please check connection.");
+    }, 15000);
+
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
     try {
       const { error } = await store.login(email, password);
-      if (error) setAuthError(error.message);
-      else {
+      if (error) {
+        setAuthError(error.message);
+        clearTimeout(submitTimeout);
+        setIsSubmitting(false);
+      } else {
+        // Success: store.isLoggedIn will transition in background
+        clearTimeout(submitTimeout);
         setActiveView(View.Dashboard);
       }
     } catch (err: any) {
       setAuthError("Auth protocol failure.");
-    } finally {
+      clearTimeout(submitTimeout);
       setIsSubmitting(false);
     }
   };
@@ -208,6 +220,12 @@ const App: React.FC = () => {
     setAuthError('');
     setIsSubmitting(true);
     
+    // Safety Timeout for Submitting state
+    const submitTimeout = setTimeout(() => {
+      setIsSubmitting(false);
+      setAuthError("Registration timed out. Attempting reconnect...");
+    }, 15000);
+
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -218,20 +236,24 @@ const App: React.FC = () => {
     if (isStaffSignup && !inviteId) {
       setAuthError("Business Invite ID is required for Personnel Activation.");
       setIsSubmitting(false);
+      clearTimeout(submitTimeout);
       return;
     }
 
     try {
       const res = await store.register({ email, password, name, companyName, inviteId });
-      if (res.error) setAuthError(res.error.message);
-      else {
+      if (res.error) {
+        setAuthError(res.error.message);
+        setIsSubmitting(false);
+      } else {
         setPendingEmail(email);
         setAuthStep('verify_otp');
       }
     } catch (err: any) {
       setAuthError("Registration failure.");
-    } finally {
       setIsSubmitting(false);
+    } finally {
+      clearTimeout(submitTimeout);
     }
   };
 

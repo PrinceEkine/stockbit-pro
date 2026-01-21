@@ -136,12 +136,11 @@ export const useStore = () => {
           plan: p.plan || 'beta'
         }))
       }));
-      setInitialLoadComplete(true);
     } catch (e: any) {
       console.error("Data fetch error:", e);
       setState(prev => ({ ...prev, error: "Cloud Sync Interrupted. Verify Connection." }));
     } finally {
-      setInitialLoadComplete(true); // Ensure UI isn't stuck forever
+      setInitialLoadComplete(true);
     }
   }, []);
 
@@ -175,13 +174,16 @@ export const useStore = () => {
         user = mapProfile(profile, authUser);
       }
 
+      // POSITIVE STATE TRANSITION: Set LoggedIn as soon as auth is validated
       setState(prev => ({ ...prev, currentUser: user, error: null }));
-      await loadInitialBatch(user.id, user.parentId);
       setIsLoggedIn(true);
+      setLoading(false);
+      
+      // BACKGROUND DATA LOAD: Heavy lifting happens while UI moves to sync screen
+      await loadInitialBatch(user.id, user.parentId);
     } catch (e: any) {
       console.error("Auth profile load failure:", e);
       setIsLoggedIn(false);
-    } finally {
       setLoading(false);
     }
   }, [loadInitialBatch]);
@@ -192,13 +194,12 @@ export const useStore = () => {
 
     let isMounted = true;
 
-    // Safety Timeout: Force loading screen to end after 10 seconds if Supabase hangs
     const safetyTimer = setTimeout(() => {
       if (isMounted && loading) {
         console.warn("Safety Timeout: Breaking loading hang.");
         setLoading(false);
       }
-    }, 10000);
+    }, 12000);
 
     const checkSession = async () => {
       try {
@@ -219,7 +220,6 @@ export const useStore = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
-        // Only run if login state actually changed
         if (!isLoggedIn) await handleInitialDataLoad(session.user);
       } else {
         if (isMounted) {
@@ -236,7 +236,7 @@ export const useStore = () => {
       clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
-  }, []); // Strictly run once on mount
+  }, [isLoggedIn, handleInitialDataLoad, loading]);
 
   const logout = useCallback(async () => {
     setIsLoggedIn(false);
