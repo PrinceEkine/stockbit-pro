@@ -3,6 +3,8 @@ import { supabase } from './supabase';
 import { Product, Sale, Supplier, AppState, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod } from './types';
 import { DEFAULT_CATEGORIES } from './constants';
 
+const SUPER_ADMIN_EMAIL = 'princedagogoekine@gmail.com';
+
 const mapProfile = (dbProfile: any, authUser: any): User => ({
   id: dbProfile.id,
   email: authUser?.email || dbProfile.email || '',
@@ -153,6 +155,14 @@ export const useStore = () => {
       const metadata = authUser.user_metadata || {};
       let user: User;
 
+      // Determine correct role based on email and context
+      let assignedRole: 'admin' | 'user' | 'staff' = 'user';
+      if (authUser.email === SUPER_ADMIN_EMAIL) {
+        assignedRole = 'admin';
+      } else if (metadata.parentId || (profile && profile.parent_id)) {
+        assignedRole = 'staff';
+      }
+
       if (!profile) {
         const trialExpiry = new Date();
         trialExpiry.setMonth(trialExpiry.getMonth() + 2);
@@ -160,7 +170,7 @@ export const useStore = () => {
           id: authUser.id,
           name: metadata.name || authUser.email.split('@')[0],
           email: authUser.email,
-          role: metadata.role || 'user',
+          role: assignedRole,
           company_name: metadata.companyName || 'New Enterprise',
           parent_id: metadata.parentId || null,
           trial_start_date: new Date().toISOString(),
@@ -171,15 +181,18 @@ export const useStore = () => {
         await supabase.from('profiles').upsert(repairData);
         user = mapProfile(repairData, authUser);
       } else {
+        // Correct profile role if it doesn't match protocol
+        if (profile.role !== assignedRole) {
+          await supabase.from('profiles').update({ role: assignedRole }).eq('id', authUser.id);
+          profile.role = assignedRole;
+        }
         user = mapProfile(profile, authUser);
       }
 
-      // POSITIVE STATE TRANSITION: Set LoggedIn as soon as auth is validated
       setState(prev => ({ ...prev, currentUser: user, error: null }));
       setIsLoggedIn(true);
       setLoading(false);
       
-      // BACKGROUND DATA LOAD: Heavy lifting happens while UI moves to sync screen
       await loadInitialBatch(user.id, user.parentId);
     } catch (e: any) {
       console.error("Auth profile load failure:", e);
@@ -196,7 +209,6 @@ export const useStore = () => {
 
     const safetyTimer = setTimeout(() => {
       if (isMounted && loading) {
-        console.warn("Safety Timeout: Breaking loading hang.");
         setLoading(false);
       }
     }, 12000);
@@ -211,7 +223,6 @@ export const useStore = () => {
           else setLoading(false);
         }
       } catch (err) {
-        console.error("Session check failed:", err);
         if (isMounted) setLoading(false);
       }
     };
@@ -255,6 +266,8 @@ export const useStore = () => {
     login: (email: string, pass: string) => supabase.auth.signInWithPassword({ email, password: pass }),
     logout,
     register: async (userData: any) => {
+      const assignedRole = userData.email === SUPER_ADMIN_EMAIL ? 'admin' : (userData.inviteId ? 'staff' : 'user');
+      
       const { data, error } = await supabase.auth.signUp({
         email: userData.email, 
         password: userData.password,
@@ -263,7 +276,7 @@ export const useStore = () => {
           data: { 
             name: userData.name, 
             companyName: userData.companyName, 
-            role: userData.inviteId ? 'staff' : 'admin', 
+            role: assignedRole, 
             parentId: userData.inviteId || null 
           } 
         }
@@ -274,7 +287,7 @@ export const useStore = () => {
           id: data.user.id, 
           name: userData.name, 
           email: userData.email, 
-          role: userData.inviteId ? 'staff' : 'admin', 
+          role: assignedRole, 
           company_name: userData.companyName, 
           parent_id: userData.inviteId || null, 
           trial_start_date: new Date().toISOString(), 
