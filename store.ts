@@ -6,7 +6,6 @@ import { DEFAULT_CATEGORIES } from './constants';
 // Whitelist for true system administrators
 const SUPER_ADMIN_EMAILS = [
   'princedagogoekine@gmail.com',
-  'dagogoekineprince@gmail.com'
 ];
 
 const mapProfile = (dbProfile: any, authUser: any): User => ({
