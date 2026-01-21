@@ -39,7 +39,8 @@ import {
   ChevronLeft,
   ArrowLeft,
   DownloadCloud,
-  Share
+  Share,
+  RefreshCw
 } from 'lucide-react';
 
 type AuthStep = 'landing' | 'login' | 'register' | 'forgot' | 'verify_otp' | 'update_password';
@@ -155,16 +156,6 @@ const App: React.FC = () => {
   }, [store.products]);
 
   useEffect(() => {
-    const checkCamera = async () => {
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        setCameraAvailable(devices.some(device => device.kind === 'videoinput'));
-      } catch (e) { setCameraAvailable(false); }
-    };
-    checkCamera();
-  }, []);
-
-  useEffect(() => {
     const root = window.document.documentElement;
     if (root) {
       if (store.settings.theme === 'dark') root.classList.add('dark');
@@ -189,7 +180,9 @@ const App: React.FC = () => {
     try {
       const { error } = await store.login(email, password);
       if (error) setAuthError(error.message);
-      else setActiveView(View.Dashboard);
+      else {
+        setActiveView(View.Dashboard);
+      }
     } catch (err: any) {
       setAuthError("Auth protocol failure.");
     } finally {
@@ -229,6 +222,7 @@ const App: React.FC = () => {
     setActiveView(View.Landing);
   }, [store.logout]);
 
+  // Global loading state while checking Supabase session
   if (store.loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 gap-6">
@@ -238,19 +232,9 @@ const App: React.FC = () => {
     );
   }
 
+  // FORCE PUBLIC VIEWS IF NOT LOGGED IN
   if (!store.isLoggedIn || activeView === View.Landing || isInfoView) {
-    if (activeView === View.Landing && authStep === 'landing') {
-      return (
-        <LandingPage 
-          isLoggedIn={store.isLoggedIn}
-          onAuth={(step) => { setAuthStep(step); setActiveView(View.Landing); }} 
-          onNavigateInfo={setActiveView} 
-          onInstall={handleInstallApp}
-          onEnterTerminal={() => setActiveView(View.Dashboard)}
-        />
-      );
-    }
-
+    // If we are logged in but looking at public info pages
     if (isInfoView) {
       return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
@@ -284,6 +268,20 @@ const App: React.FC = () => {
       );
     }
 
+    // Default Landing Page
+    if (authStep === 'landing') {
+      return (
+        <LandingPage 
+          isLoggedIn={store.isLoggedIn}
+          onAuth={(step) => { setAuthStep(step); setActiveView(View.Landing); }} 
+          onNavigateInfo={setActiveView} 
+          onInstall={handleInstallApp}
+          onEnterTerminal={() => setActiveView(View.Dashboard)}
+        />
+      );
+    }
+
+    // Strict Auth Guard: If not logged in, show login/register only
     if (!store.isLoggedIn) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4">
@@ -364,6 +362,24 @@ const App: React.FC = () => {
         </div>
       );
     }
+  }
+
+  // IF LOGGED IN BUT DATA NOT SYNCED YET: Show terminal preparation state
+  if (!store.initialLoadComplete) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 gap-6">
+        <div className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center shadow-2xl animate-bounce">
+           <Box size={40} className="text-white" />
+        </div>
+        <div className="text-center space-y-4">
+           <h2 className="text-white font-black uppercase tracking-tighter text-xl">Synchronizing Cloud Data</h2>
+           <div className="flex items-center justify-center gap-2">
+              <RefreshCw size={14} className="text-indigo-400 animate-spin" />
+              <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.3em]">Building Local Node...</p>
+           </div>
+        </div>
+      </div>
+    );
   }
 
   const renderView = () => {

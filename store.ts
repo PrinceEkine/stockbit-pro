@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabase';
 import { Product, Sale, Supplier, AppState, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod } from './types';
@@ -38,6 +39,7 @@ export const getTrialStatus = (user: User | null) => {
 
 export const useStore = () => {
   const [loading, setLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [state, setState] = useState<AppState>({
     products: [],
@@ -88,7 +90,6 @@ export const useStore = () => {
         .select('*')
         .or(`id.eq.${targetId},parent_id.eq.${targetId}`);
 
-      // Infrastructure Priority Logic
       const envKey = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY;
       
       if (prof.data?.settings) {
@@ -97,7 +98,6 @@ export const useStore = () => {
           settings: { 
             ...prev.settings, 
             ...prof.data.settings,
-            // Priority: 1. Environment Build Var, 2. Database Setting
             paystackPublicKey: envKey || prof.data.settings.paystackPublicKey || prev.settings.paystackPublicKey
           } 
         }));
@@ -135,6 +135,7 @@ export const useStore = () => {
           plan: p.plan || 'beta'
         }))
       }));
+      setInitialLoadComplete(true);
     } catch (e: any) {
       console.error("Data fetch error:", e);
       setState(prev => ({ ...prev, error: "Infrastructure Handshake Failed. Verify Network Protocol." }));
@@ -143,7 +144,6 @@ export const useStore = () => {
 
   const handleInitialDataLoad = useCallback(async (authUser: any) => {
     try {
-      setIsLoggedIn(true);
       const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
       
       if (error) throw error;
@@ -174,9 +174,11 @@ export const useStore = () => {
 
       setState(prev => ({ ...prev, currentUser: user, error: null }));
       await loadInitialBatch(user.id, user.parentId);
+      setIsLoggedIn(true);
     } catch (e: any) {
       console.error("Auth profile load failure:", e);
       setState(prev => ({ ...prev, error: "Authentication Sync Timeout." }));
+      setIsLoggedIn(false);
     } finally {
       setLoading(false);
     }
@@ -196,19 +198,11 @@ export const useStore = () => {
         }
       } catch (err) {
         console.error("Session check failed:", err);
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 
     checkSession();
-
-    const safetyTimer = setTimeout(() => {
-      if (isMounted && loading) {
-        setLoading(false);
-      }
-    }, 10000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
@@ -216,6 +210,7 @@ export const useStore = () => {
       } else {
         if (isMounted) {
           setIsLoggedIn(false);
+          setInitialLoadComplete(false);
           setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [] }));
         }
       }
@@ -223,13 +218,13 @@ export const useStore = () => {
 
     return () => {
       isMounted = false;
-      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
-  }, [handleInitialDataLoad, isLoggedIn, loading]);
+  }, [handleInitialDataLoad, isLoggedIn]);
 
   const logout = useCallback(async () => {
     setIsLoggedIn(false);
+    setInitialLoadComplete(false);
     setState(prev => ({ ...prev, currentUser: null, products: [], sales: [], suppliers: [], error: null }));
     await supabase.auth.signOut();
   }, []);
@@ -237,6 +232,7 @@ export const useStore = () => {
   return {
     ...state,
     loading,
+    initialLoadComplete,
     isLoggedIn,
     login: (email: string, pass: string) => supabase.auth.signInWithPassword({ email, password: pass }),
     logout,
