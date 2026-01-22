@@ -4,8 +4,7 @@ import { Product, Sale, Supplier, AppState, User, Settings, AppNotification, Sal
 import { DEFAULT_CATEGORIES } from './constants';
 
 const SUPER_ADMIN_EMAILS = [
-  'princedagogoekine@gmail.com',
-  'dagogoekineprince@gmail.com'
+  'princedagogoekine@gmail.com'
 ];
 
 const mapProfile = (dbProfile: any, authUser: any): User => ({
@@ -316,20 +315,51 @@ export const useStore = () => {
       const ownerId = state.currentUser.parentId || state.currentUser.id;
       const subtotal = items.reduce((acc, i) => acc + (i.price * i.quantity), 0);
       const tax = subtotal * (state.settings.taxRate / 100);
-      const { error } = await supabase.from('sales').insert({ user_id: ownerId, items, total_price: subtotal + tax, total_cost: items.reduce((acc, i) => acc + (i.costPrice * i.quantity), 0), date: new Date().toISOString(), customer_name: customerName || 'Walk-in', location, tax_amount: tax, payment_method: paymentMethod });
-      if (error) return false;
-      for (const i of items) {
-        const prod = state.products.find(p => p.id === i.productId);
-        if (prod) await supabase.from('products').update({ quantity: Math.max(0, prod.quantity - i.quantity) }).eq('id', prod.id);
+      
+      const { data: saleData, error: saleError } = await supabase.from('sales').insert({ 
+        user_id: ownerId, 
+        items, 
+        total_price: subtotal + tax, 
+        total_cost: items.reduce((acc, i) => acc + (i.costPrice * i.quantity), 0), 
+        date: new Date().toISOString(), 
+        customer_name: customerName || 'Walk-in', 
+        location, 
+        tax_amount: tax, 
+        payment_method: paymentMethod 
+      }).select().single();
+      
+      if (saleError) {
+        console.error("Sale Recording Error:", saleError);
+        return false;
       }
+      
+      // Fast multi-product quantity update
+      const updatePromises = items.map(async (i) => {
+        const prod = state.products.find(p => p.id === i.productId);
+        if (prod) {
+          return supabase.from('products').update({ 
+            quantity: Math.max(0, prod.quantity - i.quantity),
+            last_updated: new Date().toISOString()
+          }).eq('id', prod.id);
+        }
+      });
+      
+      await Promise.all(updatePromises);
       await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
       return true;
     },
     reconcileInventory: async (items: StocktakeItem[]) => {
       if (!state.currentUser) return;
-      for (const item of items) {
-        await supabase.from('products').update({ quantity: item.physicalQty }).eq('id', item.productId);
-      }
+      
+      // Batch update stock levels
+      const syncPromises = items.map(item => 
+        supabase.from('products').update({ 
+          quantity: item.physicalQty,
+          last_updated: new Date().toISOString()
+        }).eq('id', item.productId)
+      );
+      
+      await Promise.all(syncPromises);
       await loadInitialBatch(state.currentUser.id, state.currentUser.parentId);
     },
     recordReturn: async (data: Omit<ProductReturn, 'id' | 'date' | 'user_id'>) => {

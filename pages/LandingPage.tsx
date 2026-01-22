@@ -186,7 +186,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
                   onClick={onInstall}
                   className="px-10 py-5 bg-white text-slate-900 border-2 border-slate-100 rounded-[2rem] font-black uppercase text-[10px] md:text-[11px] tracking-[0.2em] hover:bg-slate-50 active:scale-95 transition-all flex items-center justify-center gap-4"
                 >
-                  Save to My Phone <DownloadCloud size={18} />
+                  Get the App <DownloadCloud size={18} />
                 </button>
               )}
             </div>
@@ -345,7 +345,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
             { label: 'Stock Manager', onClick: () => scrollToSection(architectureRef) },
             { label: 'Sales Counter', onClick: () => scrollToSection(architectureRef) },
             { label: 'AI Help', onClick: () => scrollToSection(architectureRef) },
-            { label: isAppInstalled ? 'My Shop' : 'Download App', onClick: isAppInstalled ? onEnterTerminal : onInstall },
+            { label: isAppInstalled ? 'My Shop' : 'Get the App', onClick: isAppInstalled ? onEnterTerminal : onInstall },
           ]} />
 
           <FooterSection title="About" links={[

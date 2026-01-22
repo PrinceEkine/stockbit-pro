@@ -103,7 +103,7 @@ const App: React.FC = () => {
 
   const handleInstallApp = async () => {
     if (isAppInstalled) {
-      alert("This app is already saved to your home screen.");
+      alert("The app is already installed.");
       return;
     }
     if (!deferredPrompt) {
@@ -476,7 +476,7 @@ const App: React.FC = () => {
             {!isAppInstalled && (
               <button onClick={handleInstallApp} className="hidden sm:flex items-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-xl hover:bg-indigo-100 active:scale-95 transition-all">
                 <DownloadCloud size={14} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Install App</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">Get the App</span>
               </button>
             )}
             <button onClick={toggleTheme} className="p-2.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-all">

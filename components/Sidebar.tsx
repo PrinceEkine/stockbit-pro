@@ -163,7 +163,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               onClick={onInstall} 
               className="w-full flex items-center gap-3 px-5 py-4 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-2xl transition-all duration-300 text-[10px] font-black uppercase tracking-[0.2em]"
             >
-              <DownloadCloud size={16} /> Save to My Home Screen
+              <DownloadCloud size={16} /> Get the App
             </button>
           )}
           

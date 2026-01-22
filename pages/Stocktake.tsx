@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   ClipboardCheck, 
@@ -7,7 +6,8 @@ import {
   Save, 
   AlertCircle,
   CheckCircle2,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Loader2
 } from 'lucide-react';
 import { Product, StocktakeItem } from '../types';
 
@@ -20,6 +20,7 @@ const Stocktake: React.FC<StocktakeProps> = ({ products = [], onReconcile }) => 
   const [searchTerm, setSearchTerm] = useState('');
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     const initialCounts: Record<string, number> = {};
@@ -40,15 +41,24 @@ const Stocktake: React.FC<StocktakeProps> = ({ products = [], onReconcile }) => 
   };
 
   const handleReconcile = async () => {
-    const reconciliationItems: StocktakeItem[] = (products || []).map(p => ({
-      productId: p.id,
-      systemQty: p.quantity,
-      physicalQty: counts[p.id] ?? p.quantity
-    }));
+    if (isSyncing) return;
+    setIsSyncing(true);
+    
+    try {
+      const reconciliationItems: StocktakeItem[] = (products || []).map(p => ({
+        productId: p.id,
+        systemQty: p.quantity,
+        physicalQty: counts[p.id] ?? p.quantity
+      }));
 
-    await onReconcile(reconciliationItems);
-    setIsSuccess(true);
-    setTimeout(() => setIsSuccess(false), 3000);
+      await onReconcile(reconciliationItems);
+      setIsSuccess(true);
+      setTimeout(() => setIsSuccess(false), 3000);
+    } catch (err) {
+      console.error("Reconciliation sync error:", err);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const totalDiscrepancies = (products || []).reduce((acc, p) => {
@@ -67,20 +77,23 @@ const Stocktake: React.FC<StocktakeProps> = ({ products = [], onReconcile }) => 
         </div>
         <div className="flex gap-3">
           <button 
+            disabled={isSyncing}
             onClick={() => {
               const reset: Record<string, number> = {};
               (products || []).forEach(p => reset[p.id] = p.quantity);
               setCounts(reset);
             }}
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 px-4 py-2 rounded-xl flex items-center gap-2 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 px-4 py-2 rounded-xl flex items-center gap-2 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-all disabled:opacity-50"
           >
             <RefreshCw size={18} /> Reset Counts
           </button>
           <button 
+            disabled={isSyncing}
             onClick={handleReconcile}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-xl flex items-center gap-2 font-medium transition-all shadow-lg shadow-indigo-600/20"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-xl flex items-center gap-2 font-medium transition-all shadow-lg shadow-indigo-600/20 active:scale-95 disabled:opacity-70"
           >
-            <Save size={18} /> Sync Inventory
+            {isSyncing ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            {isSyncing ? 'Synchronizing...' : 'Sync Inventory'}
           </button>
         </div>
       </div>

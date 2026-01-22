@@ -1,9 +1,8 @@
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   ShoppingCart, Search, Plus, Minus, X, Scan, User, Edit3, ChevronRight, Loader2, Printer, 
   Trash2, ReceiptText, Banknote, CreditCard, History, Package, ChevronUp, ChevronDown, ShieldCheck,
-  CheckCircle2
+  CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { Sale, Product, Settings, SaleItem, User as UserType, PaymentMethod } from '../types';
 import ScannerModal from '../components/ScannerModal';
@@ -35,8 +34,8 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [lastSaleForPrint, setLastSaleForPrint] = useState<CartTab | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  // Feedback for continuous scanning
   const [scanFeedback, setScanFeedback] = useState<{name: string, qty: number} | null>(null);
   
   const [carts, setCarts] = useState<CartTab[]>([{ 
@@ -117,7 +116,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
       return newCarts;
     });
 
-    // Provide immediate visual feedback for the scan
     if (productName) {
       setScanFeedback({ name: productName, qty: finalQty });
       setTimeout(() => setScanFeedback(null), 2000);
@@ -154,6 +152,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
   const handleCheckout = async (status: 'completed' | 'pending') => {
     if (currentCart.items.length === 0 || isProcessing) return;
     setIsProcessing(true);
+    setErrorMsg(null);
     
     const saleCopy = {
       ...JSON.parse(JSON.stringify(currentCart)),
@@ -164,18 +163,25 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
 
     try {
       const success = await onRecordSale(currentCart.items, currentCart.customerName, 'UNIFIED TERMINAL', paymentMethod, status);
+      
       if (success) {
+        // Critical: Set processing to false BEFORE the blocking print dialog appears
+        setIsProcessing(false);
+        
         setTimeout(() => {
           window.print();
           handleCloseCart(activeCartIndex);
           setShowConfirmDialog(false);
           setIsTerminalOpen(false);
           setMobileCartOpen(false);
-        }, 300);
+        }, 100);
+      } else {
+        setErrorMsg("DATABASE SYNC FAILED. PLEASE TRY AGAIN.");
+        setIsProcessing(false);
       }
     } catch (err) {
       console.error(err);
-    } finally {
+      setErrorMsg("A NETWORK ERROR OCCURRED.");
       setIsProcessing(false);
     }
   };
@@ -212,7 +218,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white transition-colors overflow-hidden">
       
-      {/* SCAN FEEDBACK OVERLAY */}
       {scanFeedback && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] bg-emerald-600 text-white px-8 py-4 rounded-[2rem] shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-10 duration-300">
           <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
@@ -229,7 +234,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
         </div>
       )}
 
-      {/* HIDDEN PRINT RECEIPT */}
       {lastSaleForPrint && (
         <div className="print-only">
           <div className="receipt-print p-8 text-black bg-white max-w-[80mm] mx-auto border border-dashed border-black">
@@ -512,7 +516,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                    </div>
                    <button 
                      disabled={currentCart.items.length === 0 || isProcessing}
-                     onClick={() => setShowConfirmDialog(true)}
+                     onClick={() => { setErrorMsg(null); setShowConfirmDialog(true); }}
                      className="w-full py-6 bg-[#4f46e5] text-white rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-20"
                    >
                       FINALIZE TICKET <ChevronRight size={18} />
@@ -597,7 +601,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                            <span className="text-3xl font-black text-slate-900 dark:text-white">{settings.currency}{total.toLocaleString()}</span>
                         </div>
                         <button 
-                           onClick={() => { setShowConfirmDialog(true); }}
+                           onClick={() => { setErrorMsg(null); setShowConfirmDialog(true); }}
                            disabled={currentCart.items.length === 0 || isProcessing}
                            className="w-full py-6 bg-[#4f46e5] text-white rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4"
                         >
@@ -623,7 +627,14 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
           <div className="bg-white rounded-[4rem] w-full max-w-lg p-10 md:p-16 shadow-2xl text-center animate-in zoom-in-95 duration-500">
              <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner"><CreditCard size={32} /></div>
              <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 text-slate-900">Checkout Finalization</h3>
-             <p className="text-5xl font-black text-[#4f46e5] mb-12 tracking-tighter leading-none">{settings.currency}{total.toLocaleString()}</p>
+             <p className="text-5xl font-black text-[#4f46e5] mb-8 tracking-tighter leading-none">{settings.currency}{total.toLocaleString()}</p>
+             
+             {errorMsg && (
+                <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest animate-pulse">
+                   <AlertCircle size={16} /> {errorMsg}
+                </div>
+             )}
+
              <div className="grid grid-cols-2 gap-4 mb-10">
                 <button onClick={() => setPaymentMethod('cash')} className={`py-6 rounded-[2.5rem] border-4 transition-all ${paymentMethod === 'cash' ? 'border-[#4f46e5] bg-indigo-50 text-[#4f46e5] shadow-xl' : 'border-slate-50 text-slate-400 opacity-60'}`}>
                    <Banknote size={32} className="mx-auto mb-2" />
