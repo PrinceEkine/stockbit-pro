@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { 
   DollarSign, TrendingUp, AlertTriangle, ShoppingCart, Plus, ArrowRight
@@ -59,23 +58,23 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
         </div>
       )}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-        <StatsCard title="Stock Value" value={totalStockValue} symbol={state?.settings?.currency || '₦'} icon={DollarSign} color="bg-indigo-600" />
-        <StatsCard title="Revenue" value={totalSalesRevenue} symbol={state?.settings?.currency || '₦'} icon={TrendingUp} color="bg-emerald-600" />
-        <StatsCard title="Volume" value={state?.sales?.length || 0} icon={ShoppingCart} color="bg-amber-600" />
-        <StatsCard title="Risk Alert" value={lowStockItems.length} icon={AlertTriangle} color="bg-rose-600" isAlert={lowStockItems.length > 0} />
+        <StatsCard title="Value of Stock" value={totalStockValue} symbol={state?.settings?.currency || '₦'} icon={DollarSign} color="bg-indigo-600" />
+        <StatsCard title="Total Money Made" value={totalSalesRevenue} symbol={state?.settings?.currency || '₦'} icon={TrendingUp} color="bg-emerald-600" />
+        <StatsCard title="Total Sales" value={state?.sales?.length || 0} icon={ShoppingCart} color="bg-amber-600" />
+        <StatsCard title="Stock Warning" value={lowStockItems.length} icon={AlertTriangle} color="bg-rose-600" isAlert={lowStockItems.length > 0} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
         <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm relative min-h-[400px]">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
             <div>
-              <h3 className="text-sm md:text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Performance Matrix</h3>
-              <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5 tracking-widest">Real-time Financial Flow</p>
+              <h3 className="text-sm md:text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Sales Performance</h3>
+              <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5 tracking-widest">Money flow in your shop</p>
             </div>
             <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto overflow-x-auto scrollbar-hide">
               {(['day', 'month'] as const).map((t) => (
                 <button key={t} onClick={() => setTimeFrame(t)} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all ${timeFrame === t ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
-                  {t}
+                  {t === 'day' ? 'Today' : 'This Month'}
                 </button>
               ))}
             </div>
@@ -109,17 +108,17 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
         </div>
 
         <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm h-fit">
-          <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Core Protocols</h3>
+          <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Quick Shortcuts</h3>
           <div className="space-y-3">
-            <ActionBtn onClick={() => onNavigate(View.Sales)} label="Launch POS" sub="Record Sale" icon={Plus} />
-            <ActionBtn onClick={() => onNavigate(View.Inventory)} label="Inventory" sub="Audit Grid" icon={ArrowRight} />
+            <ActionBtn onClick={() => onNavigate(View.Sales)} label="Open Sales Counter" sub="Sell items to customers" icon={Plus} />
+            <ActionBtn onClick={() => onNavigate(View.Inventory)} label="My Stock Room" sub="View items and quantities" icon={ArrowRight} />
           </div>
           <div className="mt-8 p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2rem] border border-indigo-100 dark:border-indigo-800">
              <div className="flex items-center gap-3 mb-2">
                 <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse" />
-                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Trial Active</p>
+                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Free Trial Active</p>
              </div>
-             <p className="text-[14px] font-black text-slate-900 dark:text-white uppercase">{trialStatus?.daysLeft || 0} Days Remain</p>
+             <p className="text-[14px] font-black text-slate-900 dark:text-white uppercase">{trialStatus?.daysLeft || 0} Days Remaining</p>
           </div>
         </div>
       </div>

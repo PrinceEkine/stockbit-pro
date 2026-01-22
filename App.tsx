@@ -60,15 +60,35 @@ const App: React.FC = () => {
   const [pendingEmail, setPendingEmail] = useState('');
   const [isStaffSignup, setIsStaffSignup] = useState(false);
   
-  const [cameraAvailable, setCameraAvailable] = useState(false);
-  const [globalScannerActive, setGlobalScannerActive] = useState(false);
-  const [lastScannedProduct, setLastScannedProduct] = useState<Product | null>(null);
+  // PWA & Install state
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   const store = useStore();
   const notificationRef = useRef<HTMLDivElement>(null);
   const barcodeBuffer = useRef<string>('');
   const lastKeyTime = useRef<number>(0);
+
+  // Check if app is installed on load
+  useEffect(() => {
+    const checkInstallStatus = () => {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+      setIsAppInstalled(isStandalone);
+    };
+    
+    checkInstallStatus();
+    window.addEventListener('appinstalled', () => setIsAppInstalled(true));
+    
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
 
   const isInfoView = useMemo(() => {
     const list = [
@@ -81,29 +101,21 @@ const App: React.FC = () => {
     return list.includes(activeView);
   }, [activeView]);
 
-  // Handle PWA Install Prompt
-  useEffect(() => {
-    const handler = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
   const handleInstallApp = async () => {
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
-    if (isStandalone) {
-      alert("App is already installed.");
+    if (isAppInstalled) {
+      alert("This app is already saved to your home screen.");
       return;
     }
     if (!deferredPrompt) {
-      alert("Please use your browser menu to 'Install App'.");
+      alert("To install: Tap the browser menu (3 dots or share icon) and select 'Add to Home Screen'.");
       return;
     }
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') setDeferredPrompt(null);
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setIsAppInstalled(true);
+    }
   };
 
   useEffect(() => {
@@ -272,6 +284,7 @@ const App: React.FC = () => {
       return (
         <LandingPage 
           isLoggedIn={store.isLoggedIn}
+          isAppInstalled={isAppInstalled}
           onAuth={(step) => { setAuthStep(step); setActiveView(View.Landing); }} 
           onNavigateInfo={setActiveView} 
           onInstall={handleInstallApp}
@@ -442,7 +455,7 @@ const App: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors overflow-x-hidden">
-      <Sidebar activeView={activeView} onViewChange={setActiveView} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} user={store.currentUser} onLogout={handleLogout} onInstall={handleInstallApp} />
+      <Sidebar activeView={activeView} onViewChange={setActiveView} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} user={store.currentUser} onLogout={handleLogout} onInstall={handleInstallApp} isAppInstalled={isAppInstalled} />
       <main className={`flex-1 flex flex-col min-w-0 relative transition-all duration-500 ease-in-out ${isSidebarOpen ? 'lg:pl-72' : 'pl-0'}`}>
         <header className="no-print h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 px-4 md:px-10 flex items-center justify-between sticky top-0 z-30 transition-colors">
           <div className="flex items-center gap-3 md:gap-5 min-w-0">
@@ -460,10 +473,12 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 md:gap-4 shrink-0">
-            <button onClick={handleInstallApp} className="hidden sm:flex items-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-xl hover:bg-indigo-100 active:scale-95 transition-all">
-              <DownloadCloud size={14} />
-              <span className="text-[10px] font-black uppercase tracking-widest">Install App</span>
-            </button>
+            {!isAppInstalled && (
+              <button onClick={handleInstallApp} className="hidden sm:flex items-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-xl hover:bg-indigo-100 active:scale-95 transition-all">
+                <DownloadCloud size={14} />
+                <span className="text-[10px] font-black uppercase tracking-widest">Install App</span>
+              </button>
+            )}
             <button onClick={toggleTheme} className="p-2.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-all">
               {store.settings.theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
             </button>

@@ -30,6 +30,7 @@ interface SidebarProps {
   user: UserType | null;
   onLogout: () => void;
   onInstall: () => void;
+  isAppInstalled: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -39,7 +40,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   setIsOpen, 
   user, 
   onLogout,
-  onInstall
+  onInstall,
+  isAppInstalled
 }) => {
   const isStaff = user?.role === 'staff';
 
@@ -82,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       hidden: isStaff,
       items: [
         { id: View.Settings, icon: Settings, label: 'My Settings', hidden: isStaff },
-        { id: View.LaunchCenter, icon: Rocket, label: 'Admin Panel', hidden: user?.role !== 'admin' },
+        { id: View.LaunchCenter, icon: Rocket, label: 'Advanced Settings', hidden: user?.role !== 'admin' },
       ]
     }
   ];
@@ -156,12 +158,14 @@ const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         <div className="shrink-0 p-6 bg-slate-900/50 backdrop-blur-md border-t border-slate-800/60 space-y-4">
-          <button 
-            onClick={onInstall} 
-            className="w-full flex items-center gap-3 px-5 py-4 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-2xl transition-all duration-300 text-[10px] font-black uppercase tracking-[0.2em]"
-          >
-            <DownloadCloud size={16} /> Save to My Home Screen
-          </button>
+          {!isAppInstalled && (
+            <button 
+              onClick={onInstall} 
+              className="w-full flex items-center gap-3 px-5 py-4 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-2xl transition-all duration-300 text-[10px] font-black uppercase tracking-[0.2em]"
+            >
+              <DownloadCloud size={16} /> Save to My Home Screen
+            </button>
+          )}
           
           <div className="flex items-center gap-3 p-4 bg-slate-800/40 rounded-2xl border border-slate-700/30">
             <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black text-sm uppercase">
