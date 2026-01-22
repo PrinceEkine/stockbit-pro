@@ -43,7 +43,8 @@ import {
   Link,
   Building,
   RotateCcw,
-  Key
+  KeyRound,
+  Mail
 } from 'lucide-react';
 
 type AuthStep = 'landing' | 'login' | 'register' | 'forgot' | 'verify_otp' | 'update_password';
@@ -113,11 +114,8 @@ const App: React.FC = () => {
       else if (hash === 'legal') setActiveView(View.TermsOfService);
       else if (hash === 'privacy') setActiveView(View.PrivacyPolicy);
       else if (hash === 'governance') setActiveView(View.Governance);
-      else if (hash === 'update_password') {
-        setActiveView(View.Landing);
-        setAuthStep('update_password');
-      }
       else if (hash === 'dashboard' && store.isLoggedIn) setActiveView(View.Dashboard);
+      else if (hash === 'update_password') setAuthStep('update_password');
     };
     handleHash();
     window.addEventListener('hashchange', handleHash);
@@ -143,11 +141,6 @@ const App: React.FC = () => {
     setAuthError('');
     setIsSubmitting(true);
     
-    const submitTimeout = setTimeout(() => {
-      setIsSubmitting(false);
-      setAuthError("Network is slow. Please check your connection.");
-    }, 15000);
-
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -155,15 +148,14 @@ const App: React.FC = () => {
     try {
       const { error } = await store.login(email, password);
       if (error) {
-        setAuthError(error.message);
+        setAuthError("Email or password is not correct. Try again.");
       } else {
         setActiveView(View.Dashboard);
       }
     } catch (err: any) {
-      setAuthError("Could not sign in. Please try again.");
+      setAuthError("Could not sign in. Please check your internet.");
     } finally {
       setIsSubmitting(false);
-      clearTimeout(submitTimeout);
     }
   };
 
@@ -193,7 +185,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleResetPasswordSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleResetSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setAuthError('');
     setIsSubmitting(true);
@@ -203,36 +195,13 @@ const App: React.FC = () => {
     try {
       const { error } = await store.resetPassword(email);
       if (error) {
-        setAuthError(error.message);
+        setAuthError("We couldn't find this email. Please check the spelling.");
       } else {
         setPendingEmail(email);
         setAuthStep('verify_otp');
       }
     } catch (err: any) {
-      setAuthError("Password recovery failed. Check your email address.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleUpdatePasswordSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setAuthError('');
-    setIsSubmitting(true);
-    const formData = new FormData(e.currentTarget);
-    const password = formData.get('password') as string;
-
-    try {
-      const { error } = await store.updatePassword(password);
-      if (error) {
-        setAuthError(error.message);
-      } else {
-        setAuthStep('login');
-        alert("Password updated successfully. Please log in.");
-        window.location.hash = '';
-      }
-    } catch (err: any) {
-      setAuthError("Failed to update password. Session may have expired.");
+      setAuthError("Something went wrong. Please try again later.");
     } finally {
       setIsSubmitting(false);
     }
@@ -311,7 +280,7 @@ const App: React.FC = () => {
       );
     }
 
-    if (!store.isLoggedIn || authStep === 'update_password' || authStep === 'forgot') {
+    if (!store.isLoggedIn) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4">
           <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-2xl animate-in zoom-in-95 duration-500 overflow-y-auto max-h-[95vh]">
@@ -319,9 +288,9 @@ const App: React.FC = () => {
               <button onClick={() => { setAuthStep('landing'); setActiveView(View.Landing); }} className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-xl active:scale-95 transition-all">
                 <Box size={32} className="text-white" />
               </button>
-              <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">StockBit Pro</h1>
+              <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase">StockBit Pro</h1>
               <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">
-                {authStep === 'forgot' ? 'Protocol Recovery' : authStep === 'update_password' ? 'Set New Access Key' : 'Sign in to your shop'}
+                {authStep === 'forgot' ? 'Find your account' : 'Sign in to your shop'}
               </p>
             </div>
 
@@ -362,35 +331,25 @@ const App: React.FC = () => {
             )}
 
             {authStep === 'forgot' && (
-              <form onSubmit={handleResetPasswordSubmit} className="space-y-6">
-                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">Recovery Email Address</label>
-                  <input name="email" type="email" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" placeholder="admin@shop.com" />
+              <form onSubmit={handleResetSubmit} className="space-y-6">
+                <div className="bg-indigo-50 dark:bg-indigo-900/10 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-800/50 flex gap-4">
+                  <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center text-indigo-600 shrink-0 shadow-sm">
+                    <KeyRound size={20} />
+                  </div>
+                  <p className="text-xs text-indigo-900/70 dark:text-indigo-300 font-medium leading-relaxed">
+                    Enter the email address you used to register. We will send you a secure link to reset your password.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">Email Address</label>
+                  <input name="email" type="email" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" placeholder="your@email.com" />
                 </div>
                 <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-indigo-600 text-white font-black uppercase tracking-widest text-[12px] rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
-                  {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <RotateCcw size={18} />}
-                  {isSubmitting ? 'Generating link...' : 'Send Recovery Link'}
+                  {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Mail size={18} />}
+                  {isSubmitting ? 'Sending Link...' : 'Send Recovery Link'}
                 </button>
                 <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[11px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest text-center flex items-center justify-center gap-2">
-                  <ChevronLeft size={16} /> Back to Sign In
-                </button>
-              </form>
-            )}
-
-            {authStep === 'update_password' && (
-              <form onSubmit={handleUpdatePasswordSubmit} className="space-y-6">
-                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">New Secure Password</label>
-                  <div className="relative">
-                    <input name="password" type={showPassword ? "text" : "password"} required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" placeholder="••••••••" />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 p-2">
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
-                </div>
-                <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-indigo-600 text-white font-black uppercase tracking-widest text-[12px] rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
-                  {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
-                  {isSubmitting ? 'Saving changes...' : 'Update Protocol Key'}
+                  <ArrowLeft size={16} /> Back to Sign In
                 </button>
               </form>
             )}
@@ -427,7 +386,7 @@ const App: React.FC = () => {
               <div className="space-y-8 text-center">
                 <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner"><MailCheck size={32} /></div>
                 <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase">Check Your Email</h3>
-                <p className="text-sm text-slate-500 font-medium leading-relaxed">We sent a link to <span className="text-slate-900 dark:text-white font-bold">{pendingEmail}</span>. Click it to authorize your session.</p>
+                <p className="text-sm text-slate-500 font-medium">We sent a link to <span className="text-slate-900 dark:text-white font-bold">{pendingEmail}</span>. Click it to reset your password or activate your shop.</p>
                 <button onClick={() => setAuthStep('login')} className="w-full py-5 bg-indigo-600 text-white font-black uppercase text-[12px] rounded-2xl shadow-xl active:scale-95">Go to Login</button>
               </div>
             )}

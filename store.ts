@@ -150,6 +150,7 @@ export const useStore = () => {
     }
 
     try {
+      // Immediate Transition to prevent the "Entering" hang
       setIsLoggedIn(true);
       setLoading(false);
 
@@ -208,6 +209,7 @@ export const useStore = () => {
 
     let isMounted = true;
 
+    // Faster safety timeout (8 seconds instead of 12)
     const bootTimeout = setTimeout(() => {
       if (isMounted && loading) setLoading(false);
     }, 8000);
@@ -367,10 +369,7 @@ export const useStore = () => {
       await loadInitialBatch(state.currentUser.id);
     },
     resetPassword: async (email: string) => {
-      return await supabase.auth.resetPasswordForEmail(email.toLowerCase(), { redirectTo: `${window.location.origin}/#update_password` });
-    },
-    updatePassword: async (newPassword: string) => {
-      return await supabase.auth.updateUser({ password: newPassword });
+      return await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/#update_password` });
     },
     assignParentToUser: async (userId: string, parentId: string) => {
       await supabase.from('profiles').update({ parent_id: parentId, role: 'staff' }).eq('id', userId);
