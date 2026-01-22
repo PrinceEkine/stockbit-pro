@@ -1,9 +1,7 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { Product, Sale } from "../types";
 import { DEFAULT_CATEGORIES } from "../constants";
 
-// Fix: Strictly follow Gemini API initialization guidelines
 const getAIClient = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
@@ -87,24 +85,71 @@ export const extractProductDetailsFromImage = async (base64Image: string) => {
   }
 };
 
-export const getInventoryInsights = async (products: Product[], sales: Sale[]) => {
+export interface InsightResult {
+  text: string;
+  sources: { title: string; uri: string }[];
+}
+
+export const getInventoryInsights = async (products: Product[], sales: Sale[]): Promise<InsightResult> => {
   const ai = getAIClient();
-  if (!ai) return "Engine unavailable.";
+  if (!ai) return { text: "Engine unavailable.", sources: [] };
   
-  const ctx = {
-    inventory: products.map(p => ({ n: p.name, q: p.quantity, m: p.min_threshold, p: p.price })),
-    sales: sales.slice(0, 30).map(s => ({ r: s.total_price, d: s.date }))
-  };
+  // Create a granular map of what sold and when
+  const itemSalesHistory = sales.slice(0, 50).map(s => ({
+    d: s.date,
+    items: s.items.map(i => ({ n: i.productName, q: i.quantity, p: i.price }))
+  }));
+
+  const inventoryState = products.map(p => ({ 
+    n: p.name, 
+    q: p.quantity, 
+    m: p.min_threshold, 
+    p: p.price,
+    c: p.category
+  }));
+
+  const systemInstruction = `You are an elite retail logistics analyst for Nigerian businesses. 
+  Your goal is to provide predictive stock recommendations.
+  Use Google Search to factor in:
+  1. Current inflation rates in Nigeria and their impact on retail pricing.
+  2. Upcoming holidays or seasonal events in Nigeria (e.g., Ramadan, Christmas, School Resumption).
+  3. Supply chain or currency (Naira) trends that might affect stock availability.
+  
+  Analyze the provided data and suggest:
+  - High priority restocks (items moving fast vs current low stock).
+  - Risk warnings (items expiring soon or stagnant capital).
+  - Market opportunities (new categories to enter based on search data).`;
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `Analyze this operational footprint: ${JSON.stringify(ctx)}. Provide concise directives.`,
+      contents: `
+      SHOP INVENTORY: ${JSON.stringify(inventoryState)}
+      HISTORICAL SALES (Last 50): ${JSON.stringify(itemSalesHistory)}
+      
+      Based on this data and your research of current market trends in Nigeria, provide a detailed predictive audit.`,
+      config: {
+        tools: [{ googleSearch: {} }]
+      }
     });
 
-    return response.text || "Analysis complete.";
+    const sources: { title: string; uri: string }[] = [];
+    const groundingMetadata = (response as any).candidates?.[0]?.groundingMetadata;
+    
+    if (groundingMetadata?.groundingChunks) {
+      groundingMetadata.groundingChunks.forEach((chunk: any) => {
+        if (chunk.web) {
+          sources.push({ title: chunk.web.title, uri: chunk.web.uri });
+        }
+      });
+    }
+
+    return {
+      text: response.text || "Analysis complete.",
+      sources: sources
+    };
   } catch (error) {
     console.error("Insight Error:", error);
-    return "Error connecting to logic server.";
+    return { text: "Error connecting to logic server.", sources: [] };
   }
 };

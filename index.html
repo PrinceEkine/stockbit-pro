@@ -54,13 +54,15 @@
         .safe-pt { padding-top: var(--sat); }
 
         @media print {
-            .no-print, .no-print *, nav, header, aside, .fixed, .modal-backdrop, button { 
+            .no-print, .no-print *, nav, header, aside, .fixed, .modal-backdrop, button, section, main, div:not(.print-only):not(.print-only *) { 
                 display: none !important; 
                 visibility: hidden !important;
-                opacity: 0 !important;
+                height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
             }
             html, body {
-                height: auto;
+                height: auto !important;
                 background: white !important;
                 color: black !important;
                 margin: 0 !important;
@@ -68,7 +70,9 @@
                 overflow: visible !important;
             }
             #root { 
-                display: none !important; 
+                display: block !important; 
+                visibility: visible !important;
+                height: auto !important;
             }
             .print-only { 
                 display: block !important; 
@@ -76,6 +80,7 @@
                 position: relative !important;
                 width: 100% !important;
                 background: white !important;
+                z-index: 9999 !important;
             }
             @page { margin: 0; }
             .receipt-print {
@@ -87,18 +92,22 @@
                 line-height: 1.4;
                 color: black !important;
                 background: white !important;
+                border: none !important;
             }
             .qr-label-print {
                 width: 50mm;
                 height: 30mm;
                 padding: 2mm;
                 margin: 0 auto 5mm auto;
-                border: 0.1mm solid #eee;
+                border: 0.1mm solid #000;
                 page-break-after: always;
                 display: flex;
                 flex-direction: column;
                 background: white !important;
                 color: black !important;
+            }
+            img {
+                -webkit-print-color-adjust: exact;
             }
         }
         

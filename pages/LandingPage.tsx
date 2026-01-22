@@ -164,13 +164,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
             </div>
             
             <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.9] uppercase text-slate-900">
-              Super Simple <br/>
-              <span className="text-indigo-600">Stock & Sales <br/> Helper.</span>
+              Industrial Grade <br/>
+              <span className="text-indigo-600">Stock & Sales <br/> Infrastructure.</span>
             </h1>
             
             <p className="max-w-md text-sm md:text-base text-slate-500 font-medium leading-relaxed">
-              The easiest way to track your shop inventory in Nigeria. 
-              Works on your phone, tablet, or computer. Know exactly what you have in stock.
+              The ultimate logistics ecosystem for Nigerian enterprise. 
+              Deploy high-velocity stock tracking, AI-driven auditing, and unified sales terminals across all your devices.
             </p>
 
             <div className="pt-4 flex flex-col sm:flex-row gap-4">
@@ -225,37 +225,37 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
       <section ref={architectureRef} className="py-24 md:py-32 px-6 bg-slate-50">
         <div className="max-w-7xl mx-auto space-y-20">
           <div className="text-center space-y-4 max-w-2xl mx-auto">
-            <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">What you get</h2>
-            <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">Made for Your Business</h3>
-            <p className="text-sm md:text-base text-slate-500 font-medium">Simple tools to help you manage your stock and make more money.</p>
+            <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">Core Capabilities</h2>
+            <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">Enterprise Engineering</h3>
+            <p className="text-sm md:text-base text-slate-500 font-medium">Sophisticated tools designed to optimize asset velocity and operational transparency.</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <FeatureCard 
               icon={<Scan size={28} />}
-              title="Easy QR Scanning"
-              desc="Just use your phone camera to scan products. It adds them to your stock instantly."
+              title="Computer Vision SKU Tracking"
+              desc="Leverage high-precision optical recognition to synchronize inventory nodes instantly via mobile camera."
               color="text-indigo-600"
               bg="bg-indigo-50"
             />
             <FeatureCard 
               icon={<Database size={28} />}
-              title="Automatic Sync"
-              desc="Information updates on your phone and computer at the same time."
+              title="Cloud Ledger Persistence"
+              desc="Real-time multi-terminal synchronization ensures data integrity across all decentralized warehouse nodes."
               color="text-emerald-600"
               bg="bg-emerald-50"
             />
             <FeatureCard 
               icon={<Shield size={28} />}
-              title="Safe & Secure"
-              desc="Your shop data is private and protected. Only you can see your sales records."
+              title="Military-Grade Security"
+              desc="End-to-end encryption and Row-Level Security protocols safeguard your proprietary enterprise intelligence."
               color="text-slate-900"
               bg="bg-slate-200"
             />
             <FeatureCard 
               icon={<BarChart3 size={28} />}
-              title="Sales Reports"
-              desc="See how much money you made today, this week, or this month clearly."
+              title="Fiscal Intelligence"
+              desc="Generate exhaustive financial audits and predictive analytics to visualize capital flow and seasonal trends."
               color="text-amber-600"
               bg="bg-amber-50"
             />
@@ -278,27 +278,27 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
               </div>
             </div>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 bg-indigo-600 rounded-full border-[6px] border-white shadow-2xl flex flex-col items-center justify-center text-white p-2 text-center z-10">
-              <p className="text-[14px] font-black leading-none mb-0.5">FAST</p>
-              <p className="text-[7px] font-bold uppercase opacity-80 leading-tight">Always Online</p>
+              <p className="text-[14px] font-black leading-none mb-0.5">SYNC</p>
+              <p className="text-[7px] font-bold uppercase opacity-80 leading-tight">Persistence Node</p>
             </div>
           </div>
 
           <div className="order-1 lg:order-2 space-y-10">
             <div className="space-y-4">
-              <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">Works on any phone</h2>
-              <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">Your Shop. <br/> in your Pocket.</h3>
-              <p className="text-base text-slate-500 font-medium leading-relaxed">No expensive machines needed. Use your own phone to record sales and print receipts easily.</p>
+              <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">Unified Deployment</h2>
+              <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">Universal <br/> Access Protocol.</h3>
+              <p className="text-base text-slate-500 font-medium leading-relaxed">Eliminate proprietary hardware overhead. Deploy industrial-grade point-of-sale functionality on any mobile device or desktop workstation.</p>
             </div>
 
             <div className="space-y-6">
-              <Point icon={<CheckCircle2 size={20} />} text="COLLECT PAYMENTS WITH PAYSTACK." />
-              <Point icon={<CheckCircle2 size={20} />} text="CONNECT TO BLUETOOTH PRINTERS." />
-              <Point icon={<CheckCircle2 size={20} />} text="STILL WORKS WHEN INTERNET IS SLOW." />
-              <Point icon={<CheckCircle2 size={20} />} text="ADD STAFF TO HELP YOU SELL." />
+              <Point icon={<CheckCircle2 size={20} />} text="INTEGRATED PAYSTACK GATEWAY SETTLEMENT." />
+              <Point icon={<CheckCircle2 size={20} />} text="ESC/POS THERMAL PRINTER COMPATIBILITY." />
+              <Point icon={<CheckCircle2 size={20} />} text="OPTIMIZED FOR LATENCY-SENSITIVE ENVIRONMENTS." />
+              <Point icon={<CheckCircle2 size={20} />} text="HIERARCHICAL ROLE-BASED ACCESS CONTROL." />
             </div>
 
             <button onClick={() => onNavigateInfo(View.HelpCenter)} className="inline-flex items-center gap-4 text-[11px] font-black uppercase tracking-[0.25em] text-indigo-600 hover:text-indigo-800 transition-colors py-4">
-              SEE HOW IT WORKS <ArrowRight size={16} />
+              EXAMINE SPECIFICATIONS <ArrowRight size={16} />
             </button>
           </div>
         </div>
@@ -308,14 +308,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
       <section className="py-24 px-6 bg-[#020617] relative overflow-hidden">
         <div className="max-w-4xl mx-auto text-center space-y-10 relative z-10">
           <h2 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter leading-none">
-            Ready to Start <br/> <span className="text-indigo-400">Growing Your Shop?</span>
+            Ready to Scale <br/> <span className="text-indigo-400">Your Enterprise?</span>
           </h2>
           <p className="text-slate-400 text-sm md:text-base font-medium max-w-xl mx-auto">
-            Take your business online today. Open your shop in less than a minute.
+            Onboard your business to the StockBit Pro ecosystem and gain absolute control over your operational logistics.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
             <button onClick={() => onAuth('register')} className="w-full sm:w-auto px-12 py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-[0.3em] shadow-2xl shadow-indigo-600/20 active:scale-95 transition-all">
-              Join StockBit Pro
+              Initialize Deployment
             </button>
           </div>
         </div>
@@ -332,8 +332,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
               <span className="font-black text-lg tracking-tighter uppercase cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>StockBit Pro</span>
             </div>
             <p className="text-[10px] text-slate-500 font-bold leading-relaxed uppercase tracking-wider">
-              Smart shop management for Nigeria. 
-              Easy. Fast. Professional.
+              High-performance logistics intelligence for African retail. 
+              Reliable. Scalable. Precise.
             </p>
             <div className="flex items-center gap-4">
               <SocialIcon icon={<Twitter size={18}/>} onClick={() => window.open('https://twitter.com/stockbit', '_blank')} />
@@ -341,25 +341,25 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
             </div>
           </div>
 
-          <FooterSection title="Shop Tools" links={[
-            { label: 'Stock Manager', onClick: () => scrollToSection(architectureRef) },
-            { label: 'Sales Counter', onClick: () => scrollToSection(architectureRef) },
-            { label: 'AI Help', onClick: () => scrollToSection(architectureRef) },
-            { label: isAppInstalled ? 'My Shop' : 'Get the App', onClick: isAppInstalled ? onEnterTerminal : onInstall },
+          <FooterSection title="Intelligence Suite" links={[
+            { label: 'Inventory Control', onClick: () => scrollToSection(architectureRef) },
+            { label: 'Sales Terminal', onClick: () => scrollToSection(architectureRef) },
+            { label: 'AI Analytics', onClick: () => scrollToSection(architectureRef) },
+            { label: isAppInstalled ? 'Console Login' : 'Download Client', onClick: isAppInstalled ? onEnterTerminal : onInstall },
           ]} />
 
-          <FooterSection title="About" links={[
-            { label: 'Our Story', onClick: () => onNavigateInfo(View.AboutUs) },
-            { label: 'Help Desk', onClick: () => onNavigateInfo(View.HelpCenter) },
-            { label: 'Rules of Service', onClick: () => onNavigateInfo(View.TermsOfService) },
-            { label: 'Your Privacy', onClick: () => onNavigateInfo(View.PrivacyPolicy) },
+          <FooterSection title="Corporate" links={[
+            { label: 'Platform Story', onClick: () => onNavigateInfo(View.AboutUs) },
+            { label: 'Knowledge Base', onClick: () => onNavigateInfo(View.HelpCenter) },
+            { label: 'Service Protocol', onClick: () => onNavigateInfo(View.TermsOfService) },
+            { label: 'Privacy Doctrine', onClick: () => onNavigateInfo(View.PrivacyPolicy) },
           ]} />
 
           <div className="space-y-8">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-900">Need Help?</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-900">Support Desk</h4>
             <div className="space-y-4">
-              <ContactLink icon={<Phone size={14} />} label="Call Us" value="07010698264" onClick={() => window.open('tel:07010698264')} />
-              <ContactLink icon={<MessageCircle size={14} />} label="WhatsApp Us" value="07072127949" onClick={() => window.open('https://wa.me/2347072127949')} />
+              <ContactLink icon={<Phone size={14} />} label="Voice Channel" value="07010698264" onClick={() => window.open('tel:07010698264')} />
+              <ContactLink icon={<MessageCircle size={14} />} label="Digital Channel" value="07072127949" onClick={() => window.open('https://wa.me/2347072127949')} />
             </div>
           </div>
         </div>
@@ -388,7 +388,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
                 </div>
                 <div>
                   <h3 className="text-sm font-black uppercase tracking-widest">StockBot AI</h3>
-                  <p className="text-[9px] font-bold uppercase opacity-60">Help Desk Online</p>
+                  <p className="text-[9px] font-bold uppercase opacity-60">Intelligence Hub Online</p>
                 </div>
               </div>
               <Activity size={20} className="text-emerald-500 animate-pulse" />
@@ -422,7 +422,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
               <div className="relative">
                 <input 
                   type="text" 
-                  placeholder="Ask me a question about the app..." 
+                  placeholder="Inquire about system capabilities..." 
                   className="w-full pl-6 pr-16 py-4 bg-slate-50 border-none rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}

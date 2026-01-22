@@ -233,39 +233,40 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
         </div>
       )}
 
-      {/* PRINT VIEW: ADVANCED BARCODE LABELS (Optimized for standard label printers) */}
+      {/* PRINT VIEW: ADVANCED BARCODE LABELS */}
       {printMode === 'labels' && (
         <div className="print-only">
           {printProducts.map(p => (
-            <div key={p.id} className="qr-label-print bg-white">
-               <div className="flex justify-between items-center border-b border-black/10 pb-0.5 mb-1 px-1">
-                  <span className="text-[8px] font-black uppercase tracking-tight truncate w-32">{displayCompanyName}</span>
-                  <span className="text-[6px] font-black uppercase border border-black px-1 rounded-sm">Retail Tag</span>
+            <div key={p.id} className="qr-label-print bg-white border border-black">
+               <div className="flex justify-between items-center border-b border-black/20 pb-0.5 mb-1 px-1">
+                  <span className="text-[9px] font-black uppercase tracking-tight truncate w-32">{displayCompanyName}</span>
+                  <span className="text-[7px] font-black uppercase border border-black px-1 rounded-sm">RETAIL</span>
                </div>
                
                <div className="flex-1 flex flex-col items-center justify-center overflow-hidden">
-                  <h4 className="text-[8px] font-black uppercase leading-tight truncate w-full text-center mb-1">{p.name}</h4>
+                  <h4 className="text-[9px] font-black uppercase leading-tight truncate w-full text-center mb-1">{p.name}</h4>
                   
-                  {/* PROFESSIONAL LINEAR BARCODE */}
-                  <div className="w-full h-[12mm] flex items-center justify-center overflow-hidden bg-white">
+                  {/* PROFESSIONAL LINEAR BARCODE - SCALE 3 for better clarity */}
+                  <div className="w-full h-[14mm] flex items-center justify-center overflow-hidden bg-white">
                      <img 
-                        src={`https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(p.sku)}&scale=2&rotate=N&includetext=false&backgroundcolor=ffffff`} 
+                        src={`https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(p.sku)}&scale=3&rotate=N&includetext=false&backgroundcolor=ffffff&barcolor=000000`} 
                         alt="Barcode" 
                         className="h-full object-contain" 
+                        style={{ imageRendering: 'pixelated' }}
                      />
                   </div>
                   
-                  <div className="text-[9px] font-mono font-black tracking-[0.2em] mt-0.5">
+                  <div className="text-[10px] font-mono font-black tracking-[0.25em] mt-1 text-black">
                      {p.sku.toUpperCase()}
                   </div>
                </div>
 
-               <div className="flex items-center justify-between border-t border-black/10 pt-1 mt-1 px-1">
+               <div className="flex items-center justify-between border-t border-black/20 pt-1 mt-1 px-1">
                   <div className="flex flex-col">
-                     <span className="text-[12px] font-black tracking-tighter leading-none">{settings.currency}{p.price.toLocaleString()}</span>
+                     <span className="text-[14px] font-black tracking-tighter leading-none text-black">{settings.currency}{p.price.toLocaleString()}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                     <span className="text-[6px] font-black uppercase bg-black text-white px-1 rounded-sm">{p.category}</span>
+                     <span className="text-[7px] font-black uppercase bg-black text-white px-1 rounded-sm">{p.category}</span>
                   </div>
                </div>
             </div>
@@ -352,7 +353,7 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                   <button 
                     onClick={(e) => { e.stopPropagation(); handlePrintLabels([p]); }} 
                     className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-slate-400 active:bg-indigo-600 active:text-white transition-all border border-white/5"
-                    aria-label="Print QR"
+                    aria-label="Print Barcode"
                   >
                     <QrCode size={20} />
                   </button>
@@ -415,7 +416,7 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                     <td className="px-10 py-6 text-center font-black text-indigo-600">{settings.currency}{(p.price || 0).toLocaleString()}</td>
                     <td className="px-10 py-6 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => handlePrintLabels([p])} className="p-3 text-slate-300 hover:text-indigo-600 transition-colors" title="Print Advanced QR Label"><QrCode size={18} /></button>
+                        <button onClick={() => handlePrintLabels([p])} className="p-3 text-slate-300 hover:text-indigo-600 transition-colors" title="Print Barcode Label"><QrCode size={18} /></button>
                         <button onClick={() => onDelete(p.id)} className="p-3 text-slate-300 hover:text-rose-600 transition-colors" title="Delete Product"><Trash2 size={18} /></button>
                       </div>
                     </td>

@@ -1,30 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, RefreshCw, Zap, TrendingUp, AlertTriangle, ShieldCheck, PieChart, Activity } from 'lucide-react';
+import { Sparkles, RefreshCw, Zap, TrendingUp, AlertTriangle, ShieldCheck, PieChart, Activity, ExternalLink, Globe, BookOpen } from 'lucide-react';
 import { AppState } from '../types';
-import { getInventoryInsights } from '../services/geminiService';
+import { getInventoryInsights, InsightResult } from '../services/geminiService';
 
 interface AIInsightsProps {
   state: AppState;
 }
 
 const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
-  const [insights, setInsights] = useState<string | null>(null);
+  const [insightData, setInsightData] = useState<InsightResult | null>(null);
   const [loading, setLoading] = useState(false);
 
   const fetchInsights = async () => {
     setLoading(true);
     const result = await getInventoryInsights(state?.products || [], state?.sales || []);
-    setInsights(result);
+    setInsightData(result);
     setLoading(false);
   };
 
   useEffect(() => {
-    if (state) fetchInsights();
+    if (state && !insightData) fetchInsights();
   }, []);
 
   const highVelocityItems = (state?.sales || [])
-    .slice(0, 3)
+    .slice(0, 5)
     .flatMap(s => s.items || [])
+    .reduce((acc: any, item) => {
+      acc[item.productName] = (acc[item.productName] || 0) + item.quantity;
+      return acc;
+    }, {});
+
+  const sortedVelocity = Object.entries(highVelocityItems)
+    .sort(([, a]: any, [, b]: any) => b - a)
     .slice(0, 3);
 
   const riskItems = (state?.products || [])
@@ -32,14 +39,14 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
     .slice(0, 3);
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700">
+    <div className="space-y-10 animate-in fade-in duration-700 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">
-            Market Pulse
+            Market Intelligence
           </h1>
           <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1 flex items-center gap-2">
-            <Activity size={14} className="text-indigo-600" /> Real-time Gemini 3 Logic
+            <Activity size={14} className="text-indigo-600" /> Advanced Gemini 3 Predictive Engine
           </p>
         </div>
         <button 
@@ -48,28 +55,35 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
           className="bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-8 py-3 rounded-2xl flex items-center gap-3 font-black text-[10px] uppercase tracking-widest transition-all shadow-xl active:scale-95 disabled:opacity-50"
         >
           {loading ? <RefreshCw size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-          Synchronize Intelligence
+          Generate Predictive Roadmap
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
-          <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+          <div className="bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
             <Sparkles className="absolute -top-10 -right-10 text-indigo-500/5 w-64 h-64 rotate-12 group-hover:scale-110 transition-transform duration-1000" />
             
-            <div className="flex items-center gap-4 mb-10">
-               <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-600/30">
-                  <ShieldCheck size={24} />
+            <div className="flex items-center justify-between mb-10">
+               <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-600/30">
+                     <ShieldCheck size={24} />
+                  </div>
+                  <div>
+                     <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Executive Strategy</h2>
+                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Real-time Data & Market Correlation</p>
+                  </div>
                </div>
-               <div>
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Executive Strategy</h2>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Actionable Logistics Audit</p>
-               </div>
+               {loading && (
+                 <div className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full text-[9px] font-black uppercase tracking-widest animate-pulse">
+                   Researching Trends...
+                 </div>
+               )}
             </div>
 
             {loading ? (
               <div className="space-y-6">
-                {[1, 2, 3].map(i => (
+                {[1, 2, 3, 4].map(i => (
                   <div key={i} className="flex gap-4 animate-pulse">
                     <div className="w-2 h-16 bg-slate-100 dark:bg-slate-800 rounded-full"></div>
                     <div className="flex-1 space-y-2 py-1">
@@ -79,13 +93,38 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
                   </div>
                 ))}
               </div>
-            ) : insights ? (
-              <div className="prose prose-slate dark:prose-invert max-w-none text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line font-medium text-sm">
-                {insights}
+            ) : insightData ? (
+              <div className="space-y-10">
+                <div className="prose prose-slate dark:prose-invert max-w-none text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line font-medium text-sm">
+                  {insightData.text}
+                </div>
+
+                {insightData.sources.length > 0 && (
+                  <div className="pt-8 border-t border-slate-50 dark:border-slate-800">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                      <Globe size={14} className="text-indigo-500" /> Research Sources & Market Data
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {insightData.sources.map((source, i) => (
+                        <a 
+                          key={i} 
+                          href={source.uri} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between group hover:border-indigo-200 transition-all"
+                        >
+                          <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 truncate pr-4">{source.title}</span>
+                          <ExternalLink size={12} className="text-slate-400 group-hover:text-indigo-600 shrink-0" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-center py-20 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-slate-700">
-                <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Awaiting Neural Sequence</p>
+                <BookOpen size={48} className="mx-auto mb-4 text-slate-200" />
+                <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Tap the button above to begin analysis</p>
               </div>
             )}
           </div>
@@ -93,11 +132,10 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
           <div className="bg-gradient-to-br from-slate-900 to-indigo-950 p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group">
             <PieChart className="absolute -bottom-10 -right-10 w-48 h-48 text-white/5 rotate-12 group-hover:scale-125 transition-transform duration-1000" />
             <h3 className="text-lg font-black uppercase tracking-tighter mb-4 flex items-center gap-3">
-               <Zap className="text-amber-400" size={20} /> Optimization Tip
+               <Zap className="text-amber-400" size={20} /> Smart Velocity Engine
             </h3>
             <p className="text-indigo-100/80 font-medium leading-relaxed max-w-md">
-              Current volatility in the local tech sector suggests a 12% rise in demand for peripheral accessories. 
-              Increase stock buffers for "Type-C Adapters" and "Power Banks" by 15 units immediately to avoid stockout during month-end peaks.
+              Your inventory is currently processed through a cross-weighted algorithm. We prioritize items with high historical movement during seasonal shifts in the Nigerian retail calendar.
             </p>
           </div>
         </div>
@@ -105,21 +143,21 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
         <div className="lg:col-span-4 space-y-8">
           <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
             <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-3">
-              <TrendingUp size={16} className="text-emerald-500" /> High Velocity
+              <TrendingUp size={16} className="text-emerald-500" /> Top Sales Velocity
             </h3>
             <div className="space-y-6">
-              {highVelocityItems.map((item, i) => (
+              {sortedVelocity.map(([name, qty]: any, i) => (
                 <div key={i} className="flex items-center gap-5">
                   <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center font-black text-xs shadow-inner">
                     #{i+1}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight truncate w-32">{item.productName}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{item.quantity} units flow</p>
+                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight truncate w-32">{name}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{qty} units sold recently</p>
                   </div>
                 </div>
               ))}
-              {highVelocityItems.length === 0 && (
+              {sortedVelocity.length === 0 && (
                  <p className="text-center py-6 text-[10px] text-slate-400 font-black uppercase tracking-widest">No Recent Data</p>
               )}
             </div>
@@ -127,17 +165,17 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
 
           <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
             <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-3">
-              <AlertTriangle size={16} className="text-amber-500" /> Stock Fragility
+              <AlertTriangle size={16} className="text-amber-500" /> Critical Stockouts
             </h3>
             <div className="space-y-6">
               {riskItems.map((p, i) => (
                 <div key={i} className="flex items-center gap-5">
-                  <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center font-black text-xs shadow-inner">
+                  <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-2xl flex items-center justify-center font-black text-xs shadow-inner">
                     !
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight truncate w-32">{p.name}</p>
-                    <p className="text-[10px] text-rose-500 font-bold uppercase tracking-widest">{p.quantity} Units Remaining</p>
+                    <p className="text-[10px] text-rose-500 font-bold uppercase tracking-widest">{p.quantity} Units Left (Warn at {p.min_threshold})</p>
                   </div>
                 </div>
               ))}
