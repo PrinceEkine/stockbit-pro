@@ -165,16 +165,14 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
       const success = await onRecordSale(currentCart.items, currentCart.customerName, 'UNIFIED TERMINAL', paymentMethod, status);
       
       if (success) {
-        // Critical: Set processing to false BEFORE the blocking print dialog appears
         setIsProcessing(false);
-        
         setTimeout(() => {
           window.print();
           handleCloseCart(activeCartIndex);
           setShowConfirmDialog(false);
           setIsTerminalOpen(false);
           setMobileCartOpen(false);
-        }, 100);
+        }, 150);
       } else {
         setErrorMsg("DATABASE SYNC FAILED. PLEASE TRY AGAIN.");
         setIsProcessing(false);
@@ -239,28 +237,28 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
           <div className="receipt-print p-8 text-black bg-white max-w-[80mm] mx-auto border border-dashed border-black">
              <div className="text-center mb-6">
                 <h2 className="text-xl font-black uppercase tracking-tight leading-none mb-1">{displayCompanyName}</h2>
-                <p className="text-[10px] font-bold uppercase opacity-60">Professional Retail Receipt</p>
+                <p className="text-[10px] font-bold uppercase opacity-60">Retail Sales Receipt</p>
                 <div className="w-full border-b border-black border-dashed my-4"></div>
              </div>
              
              <div className="space-y-1 mb-6 text-[10px] font-mono">
                 <div className="flex justify-between uppercase"><span>REF NO:</span> <span>{lastSaleForPrint.ref}</span></div>
                 <div className="flex justify-between uppercase"><span>DATE:</span> <span>{new Date(lastSaleForPrint.date || Date.now()).toLocaleDateString()} {new Date(lastSaleForPrint.date || Date.now()).toLocaleTimeString()}</span></div>
-                <div className="flex justify-between uppercase"><span>CLIENT:</span> <span>{lastSaleForPrint.customerName || 'WALK-IN'}</span></div>
+                <div className="flex justify-between uppercase"><span>CLIENT:</span> <span className="truncate max-w-[150px]">{lastSaleForPrint.customerName || 'WALK-IN'}</span></div>
                 <div className="flex justify-between uppercase"><span>OPERATOR:</span> <span>{currentUser?.name || 'ADMIN'}</span></div>
              </div>
 
              <div className="w-full border-b border-black border-dashed mb-4"></div>
              
-             <div className="space-y-4 mb-6">
+             <div className="space-y-3 mb-6">
                 {lastSaleForPrint.items.map((item, i) => (
                   <div key={i} className="text-[10px] uppercase font-mono">
                      <div className="flex justify-between font-bold">
-                        <span>{item.productName}</span>
+                        <span className="truncate max-w-[180px]">{item.productName}</span>
                         <span>{settings.currency}{(item.price * item.quantity).toLocaleString()}</span>
                      </div>
                      <div className="text-[8px] opacity-60">
-                        {item.quantity} UNIT(S) @ {settings.currency}{item.price.toLocaleString()}
+                        {item.quantity} X {settings.currency}{item.price.toLocaleString()}
                      </div>
                   </div>
                 ))}
@@ -270,36 +268,36 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
 
              <div className="space-y-1 text-[11px] uppercase font-mono">
                 <div className="flex justify-between"><span>SUBTOTAL</span> <span>{settings.currency}{lastSaleForPrint.items.reduce((a,c)=>a+(c.price*c.quantity),0).toLocaleString()}</span></div>
-                <div className="flex justify-between"><span>TAX ({settings.taxRate}%)</span> <span>{settings.currency}{(lastSaleForPrint.items.reduce((a,c)=>a+(c.price*c.quantity),0) * (settings.taxRate/100)).toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>VAT ({settings.taxRate}%)</span> <span>{settings.currency}{(lastSaleForPrint.items.reduce((a,c)=>a+(c.price*c.quantity),0) * (settings.taxRate/100)).toLocaleString()}</span></div>
                 <div className="flex justify-between font-black text-sm border-t border-black pt-2 mt-2"><span>TOTAL</span> <span>{settings.currency}{(lastSaleForPrint.items.reduce((a,c)=>a+(c.price*c.quantity),0) * (1 + settings.taxRate/100)).toLocaleString()}</span></div>
              </div>
 
-             <div className="text-center mt-10">
-                <p className="text-[8px] font-black uppercase tracking-widest mb-1">Thank you for your business</p>
-                <p className="text-[7px] font-bold opacity-40">System Powered by StockBit Pro AI</p>
+             <div className="text-center mt-12">
+                <p className="text-[8px] font-black uppercase tracking-widest mb-1">Thank you for your patronage</p>
+                <p className="text-[7px] font-bold opacity-50">Generated by StockBit Pro AI</p>
              </div>
           </div>
         </div>
       )}
 
       {!isTerminalOpen && (
-        <div className="flex-1 p-6 md:p-12 space-y-10 animate-in fade-in duration-500 max-w-7xl mx-auto w-full">
+        <div className="flex-1 p-6 md:p-12 space-y-10 animate-in fade-in duration-500 max-w-7xl mx-auto w-full no-print">
           <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div>
-              <h1 className="text-4xl font-black tracking-tighter uppercase text-slate-900 dark:text-white">Unified Protocol</h1>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em] mt-1">Terminal Hub v4.2</p>
+              <h1 className="text-4xl font-black tracking-tighter uppercase text-slate-900 dark:text-white">Sales Terminal</h1>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em] mt-1">Unified Point of Sale</p>
             </div>
             <button 
               onClick={() => setIsTerminalOpen(true)}
               className="px-10 py-5 bg-[#4f46e5] text-white rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-indigo-600/30 active:scale-95 transition-all flex items-center gap-3"
             >
-              <ShoppingCart size={20} /> Open Terminal
+              <ShoppingCart size={20} /> New Sale
             </button>
           </header>
 
           <div className="bg-white dark:bg-[#0f172a] rounded-[3rem] border border-slate-200 dark:border-white/5 overflow-hidden shadow-2xl transition-colors">
             <div className="p-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
-               <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Transaction History</h3>
+               <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Transaction Registry</h3>
                <History size={18} className="text-indigo-500" />
             </div>
             <div className="overflow-x-auto">
@@ -309,7 +307,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                         <th className="px-8 py-5">REF</th>
                         <th className="px-8 py-5">Customer</th>
                         <th className="px-8 py-5">Value</th>
-                        <th className="px-8 py-5 text-right">Reprint</th>
+                        <th className="px-8 py-5 text-right">Ops</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -505,13 +503,13 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                    ))}
                 </div>
 
-                <div className="p-10 bg-slate-50 dark:bg-[#020617] space-y-6 transition-colors border-t border-slate-200 dark:border-none">
+                <div className="p-10 bg-slate-50 dark:bg-[#020617] space-y-6 transition-colors border-t border-slate-200 dark:border-white/5">
                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
                       <span>GROSS VAL</span>
                       <span>{settings.currency}{subtotal.toLocaleString()}</span>
                    </div>
                    <div className="flex justify-between items-end border-t border-slate-200 dark:border-white/5 pt-4">
-                      <p className="text-[10px] font-black uppercase text-[#4f46e5] dark:text-indigo-500 tracking-[0.3em]">NET SETTLE</p>
+                      <p className="text-[10px] font-black uppercase text-[#4f46e5] dark:text-indigo-50 tracking-[0.3em]">NET SETTLE</p>
                       <h4 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white">{settings.currency}{total.toLocaleString()}</h4>
                    </div>
                    <button 

@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   Search, 
@@ -234,34 +233,39 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
         </div>
       )}
 
-      {/* PRINT VIEW: ADVANCED QR LABELS (Optimized for 50x30mm) */}
+      {/* PRINT VIEW: ADVANCED BARCODE LABELS (Optimized for standard label printers) */}
       {printMode === 'labels' && (
         <div className="print-only">
           {printProducts.map(p => (
-            <div key={p.id} className="qr-label-print">
-               <div className="flex justify-between items-center border-b border-black pb-0.5 mb-1">
+            <div key={p.id} className="qr-label-print bg-white">
+               <div className="flex justify-between items-center border-b border-black/10 pb-0.5 mb-1 px-1">
                   <span className="text-[8px] font-black uppercase tracking-tight truncate w-32">{displayCompanyName}</span>
-                  <span className="text-[5px] font-black uppercase border border-black px-1 rounded">Asset Tag</span>
+                  <span className="text-[6px] font-black uppercase border border-black px-1 rounded-sm">Retail Tag</span>
                </div>
-               <div className="flex flex-1 gap-2 overflow-hidden">
-                  <div className="w-14 h-14 flex-shrink-0 flex items-center justify-center border border-slate-100 p-0.5">
-                     <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${p.sku}`} alt="QR" className="w-full h-full object-contain" />
+               
+               <div className="flex-1 flex flex-col items-center justify-center overflow-hidden">
+                  <h4 className="text-[8px] font-black uppercase leading-tight truncate w-full text-center mb-1">{p.name}</h4>
+                  
+                  {/* PROFESSIONAL LINEAR BARCODE */}
+                  <div className="w-full h-[12mm] flex items-center justify-center overflow-hidden bg-white">
+                     <img 
+                        src={`https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(p.sku)}&scale=2&rotate=N&includetext=false&backgroundcolor=ffffff`} 
+                        alt="Barcode" 
+                        className="h-full object-contain" 
+                     />
                   </div>
-                  <div className="flex-1 flex flex-col justify-between overflow-hidden">
-                     <div>
-                        <h4 className="text-[9px] font-black uppercase leading-none line-clamp-2 mb-1">{p.name}</h4>
-                        <div className="flex gap-1 items-center">
-                           <span className="text-[5px] font-black uppercase bg-black text-white px-1 rounded-sm">{p.category}</span>
-                           <span className="text-[6px] font-mono font-bold tracking-widest opacity-60">#{p.sku}</span>
-                        </div>
-                     </div>
-                     <div className="flex items-end justify-between">
-                        <div className="flex flex-col">
-                           <span className="text-[4px] font-black uppercase opacity-40 leading-none">Net Value</span>
-                           <span className="text-[12px] font-black tracking-tight leading-none">{settings.currency}{p.price.toLocaleString()}</span>
-                        </div>
-                        <ShieldCheck size={14} className="opacity-20 mr-1" />
-                     </div>
+                  
+                  <div className="text-[9px] font-mono font-black tracking-[0.2em] mt-0.5">
+                     {p.sku.toUpperCase()}
+                  </div>
+               </div>
+
+               <div className="flex items-center justify-between border-t border-black/10 pt-1 mt-1 px-1">
+                  <div className="flex flex-col">
+                     <span className="text-[12px] font-black tracking-tighter leading-none">{settings.currency}{p.price.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                     <span className="text-[6px] font-black uppercase bg-black text-white px-1 rounded-sm">{p.category}</span>
                   </div>
                </div>
             </div>
