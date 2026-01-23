@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { View, User as UserType, SubscriptionPlan, Product } from './types';
 import { useStore, getTrialStatus } from './store';
@@ -219,10 +220,10 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogout = useCallback(async () => {
-    setAuthStep('landing');
-    await store.logout();
+  const handleLogout = useCallback(() => {
     setActiveView(View.Landing);
+    setAuthStep('landing');
+    store.logout();
   }, [store.logout]);
 
   const handleManualOverride = () => {
@@ -233,14 +234,19 @@ const App: React.FC = () => {
 
   if (store.loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col items-center justify-center p-6 gap-6 transition-colors">
-        <div className="w-16 h-16 border-4 border-indigo-100 dark:border-indigo-900/20 border-t-indigo-500 rounded-full animate-spin shadow-2xl"></div>
+      <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center p-6 gap-6 transition-colors">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-indigo-900/20 border-t-indigo-500 rounded-full animate-spin shadow-2xl"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Box size={24} className="text-indigo-500 animate-pulse" />
+          </div>
+        </div>
         <div className="text-center space-y-5">
-          <p className="text-slate-400 dark:text-slate-500 font-bold text-[11px] uppercase tracking-widest animate-pulse">Opening Your Shop...</p>
+          <p className="text-indigo-500/60 font-black text-[11px] uppercase tracking-[0.2em] animate-pulse">Opening Your Shop...</p>
           <div className="flex flex-col items-center gap-3">
               <button 
                 onClick={handleManualOverride} 
-                className="px-4 py-2 bg-slate-50 dark:bg-slate-900 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-200 dark:border-slate-800"
+                className="px-5 py-2.5 bg-slate-900 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all border border-slate-800"
               >
                 <RotateCcw size={11} className="inline mr-2"/> Start Over
               </button>
@@ -253,8 +259,8 @@ const App: React.FC = () => {
   if (!store.isLoggedIn || activeView === View.Landing || isInfoView) {
     if (isInfoView) {
       return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
-          <nav className="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 h-20">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors flex flex-col">
+          <nav className="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 h-20 pt-[env(safe-area-inset-top)] box-content">
             <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
               <button onClick={() => { setActiveView(View.Landing); setAuthStep('landing'); }} className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg"><Box size={22} className="text-white" /></div>
@@ -269,7 +275,7 @@ const App: React.FC = () => {
               )}
             </div>
           </nav>
-          <div className="pt-32 pb-20 px-6 max-w-4xl mx-auto">
+          <div className="pt-36 pb-20 px-6 max-w-4xl mx-auto flex-1 w-full">
              {activeView === View.AboutUs && <AboutUs />}
              {activeView === View.HelpCenter && <HelpCenter />}
              {activeView === View.TermsOfService && <TermsOfService />}
@@ -295,8 +301,8 @@ const App: React.FC = () => {
 
     if (!store.isLoggedIn) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4">
-          <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-2xl animate-in zoom-in-95 duration-500 overflow-y-auto max-h-[95vh]">
+        <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+          <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-2xl animate-in zoom-in-95 duration-500 overflow-y-auto max-h-[95vh] scrollbar-hide">
             <div className="flex flex-col items-center mb-10 text-center">
               <button onClick={() => { setAuthStep('landing'); setActiveView(View.Landing); }} className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-xl active:scale-95 transition-all">
                 <Box size={32} className="text-white" />
@@ -454,10 +460,10 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors overflow-x-hidden">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors overflow-x-hidden flex-col">
       <Sidebar activeView={activeView} onViewChange={setActiveView} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} user={store.currentUser} onLogout={handleLogout} onInstall={handleInstallApp} isAppInstalled={isAppInstalled} settings={store.settings} />
       <main className={`flex-1 flex flex-col min-w-0 relative transition-all duration-500 ease-in-out ${isSidebarOpen ? 'lg:pl-72' : 'pl-0'}`}>
-        <header className="no-print h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 px-4 md:px-10 flex items-center justify-between sticky top-0 z-30 transition-colors">
+        <header className="no-print bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 px-4 md:px-10 flex items-center justify-between sticky top-0 z-30 transition-colors pt-[env(safe-area-inset-top)] box-content h-20">
           <div className="flex items-center gap-3 md:gap-5 min-w-0">
             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl active:scale-95 shrink-0">
               <Menu size={20} />
@@ -490,7 +496,7 @@ const App: React.FC = () => {
             </div>
           </div>
         </header>
-        <div className="p-3 md:p-10 flex-1 overflow-x-hidden min-h-0">{renderView()}</div>
+        <div className="p-3 md:p-10 flex-1 overflow-x-hidden min-h-0 pb-[env(safe-area-inset-bottom)]">{renderView()}</div>
       </main>
     </div>
   );
