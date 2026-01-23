@@ -20,7 +20,8 @@ import {
   Scale,
   DownloadCloud
 } from 'lucide-react';
-import { View, User as UserType } from '../types';
+import { View, User as UserType, Settings as SettingsType } from '../types';
+import { TRANSLATIONS } from '../constants/translations';
 
 interface SidebarProps {
   activeView: View;
@@ -31,6 +32,7 @@ interface SidebarProps {
   onLogout: () => void;
   onInstall: () => void;
   isAppInstalled: boolean;
+  settings: SettingsType;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -41,50 +43,52 @@ const Sidebar: React.FC<SidebarProps> = ({
   user, 
   onLogout,
   onInstall,
-  isAppInstalled
+  isAppInstalled,
+  settings
 }) => {
   const isStaff = user?.role === 'staff';
+  const t = TRANSLATIONS[settings.language || 'en'];
 
   const sections = [
     {
       label: 'Main Menu',
       items: [
-        { id: View.Dashboard, icon: LayoutDashboard, label: 'Home Dashboard' },
-        { id: View.Inventory, icon: Box, label: 'My Stock', hidden: isStaff },
-        { id: View.Sales, icon: ShoppingCart, label: 'Sell Items (POS)' },
-        { id: View.Returns, icon: ArrowLeftRight, label: 'Returns', hidden: isStaff },
+        { id: View.Dashboard, icon: LayoutDashboard, label: t.dashboard },
+        { id: View.Inventory, icon: Box, label: t.inventory, hidden: isStaff },
+        { id: View.Sales, icon: ShoppingCart, label: t.sales },
+        { id: View.Returns, icon: ArrowLeftRight, label: t.returns, hidden: isStaff },
       ]
     },
     {
       label: 'AI & Analysis',
       hidden: isStaff,
       items: [
-        { id: View.AIInsights, icon: Sparkles, label: 'AI Help & Tips', hidden: isStaff },
-        { id: View.Reports, icon: BarChart3, label: 'Sales Reports', hidden: isStaff },
+        { id: View.AIInsights, icon: Sparkles, label: t.ai_insights, hidden: isStaff },
+        { id: View.Reports, icon: BarChart3, label: t.reports, hidden: isStaff },
       ]
     },
     {
       label: 'Tools',
       hidden: isStaff,
       items: [
-        { id: View.Stocktake, icon: ClipboardCheck, label: 'Check Stock', hidden: isStaff },
-        { id: View.Suppliers, icon: Users, label: 'Suppliers', hidden: isStaff },
+        { id: View.Stocktake, icon: ClipboardCheck, label: t.stocktake, hidden: isStaff },
+        { id: View.Suppliers, icon: Users, label: t.suppliers, hidden: isStaff },
       ]
     },
     {
       label: 'Support',
       hidden: isStaff,
       items: [
-        { id: View.AboutUs, icon: Info, label: 'About Us' },
-        { id: View.HelpCenter, icon: HelpCircle, label: 'Help Center' },
+        { id: View.AboutUs, icon: Info, label: t.about_us },
+        { id: View.HelpCenter, icon: HelpCircle, label: t.help_center },
       ]
     },
     {
       label: 'App Settings',
       hidden: isStaff,
       items: [
-        { id: View.Settings, icon: Settings, label: 'My Settings', hidden: isStaff },
-        { id: View.LaunchCenter, icon: Rocket, label: 'Advanced Settings', hidden: user?.role !== 'admin' },
+        { id: View.Settings, icon: Settings, label: t.settings, hidden: isStaff },
+        { id: View.LaunchCenter, icon: Rocket, label: t.launch_center, hidden: user?.role !== 'admin' },
       ]
     }
   ];

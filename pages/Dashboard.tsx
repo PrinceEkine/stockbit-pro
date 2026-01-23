@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import { AppState, View } from '../types';
 import { getTrialStatus } from '../store';
+import { TRANSLATIONS } from '../constants/translations';
 
 interface DashboardProps {
   state: AppState;
@@ -15,6 +16,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
   const [timeFrame, setTimeFrame] = useState<'day' | 'week' | 'month'>('day');
+  const t = TRANSLATIONS[state.settings.language || 'en'];
   
   // Safety guards for calculation
   const totalStockValue = (state?.products || []).reduce((acc, p) => acc + (p.price * p.quantity), 0);
@@ -58,10 +60,10 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
         </div>
       )}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-        <StatsCard title="Value of Stock" value={totalStockValue} symbol={state?.settings?.currency || '₦'} icon={DollarSign} color="bg-indigo-600" />
-        <StatsCard title="Total Money Made" value={totalSalesRevenue} symbol={state?.settings?.currency || '₦'} icon={TrendingUp} color="bg-emerald-600" />
-        <StatsCard title="Total Sales" value={state?.sales?.length || 0} icon={ShoppingCart} color="bg-amber-600" />
-        <StatsCard title="Stock Warning" value={lowStockItems.length} icon={AlertTriangle} color="bg-rose-600" isAlert={lowStockItems.length > 0} />
+        <StatsCard title={t.value_stock} value={totalStockValue} symbol={state?.settings?.currency || '₦'} icon={DollarSign} color="bg-indigo-600" />
+        <StatsCard title={t.total_money} value={totalSalesRevenue} symbol={state?.settings?.currency || '₦'} icon={TrendingUp} color="bg-emerald-600" />
+        <StatsCard title={t.total_sales} value={state?.sales?.length || 0} icon={ShoppingCart} color="bg-amber-600" />
+        <StatsCard title={t.stock_warning} value={lowStockItems.length} icon={AlertTriangle} color="bg-rose-600" isAlert={lowStockItems.length > 0} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
@@ -110,8 +112,8 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
         <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm h-fit">
           <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Quick Shortcuts</h3>
           <div className="space-y-3">
-            <ActionBtn onClick={() => onNavigate(View.Sales)} label="Open Sales Counter" sub="Sell items to customers" icon={Plus} />
-            <ActionBtn onClick={() => onNavigate(View.Inventory)} label="My Stock Room" sub="View items and quantities" icon={ArrowRight} />
+            <ActionBtn onClick={() => onNavigate(View.Sales)} label={t.new_sale} sub="Sell items to customers" icon={Plus} />
+            <ActionBtn onClick={() => onNavigate(View.Inventory)} label={t.inventory} sub="View items and quantities" icon={ArrowRight} />
           </div>
           <div className="mt-8 p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2rem] border border-indigo-100 dark:border-indigo-800">
              <div className="flex items-center gap-3 mb-2">

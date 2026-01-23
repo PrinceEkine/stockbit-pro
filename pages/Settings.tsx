@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Building, 
@@ -25,9 +24,11 @@ import {
   Share2,
   ChevronRight,
   Loader2,
-  Key
+  Key,
+  Languages
 } from 'lucide-react';
-import { Settings as SettingsType, User, SubscriptionPlan } from '../types';
+import { Settings as SettingsType, User, SubscriptionPlan, AppLanguage } from '../types';
+import { TRANSLATIONS } from '../constants/translations';
 
 interface SettingsProps {
   settings: SettingsType;
@@ -50,6 +51,8 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
   const [staffFormData, setStaffFormData] = useState({ name: '', email: '', password: '' });
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+
+  const t = TRANSLATIONS[settings.language || 'en'];
 
   useEffect(() => {
     if (settings) {
@@ -134,7 +137,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
     <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700 max-w-5xl no-print mx-auto px-2 md:px-4">
       <header>
         <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase flex items-center gap-3">
-          Business Settings <SettingsIcon className="text-indigo-600" size={24} />
+          {t.settings} <SettingsIcon className="text-indigo-600" size={24} />
         </h1>
         <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[9px] md:text-[10px] mt-1">Operational Protocol Management</p>
       </header>
@@ -163,6 +166,22 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block tracking-widest">Business Name</label>
                       <input className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl font-bold text-sm dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all" value={companyName} onChange={e => setCompanyName(e.target.value)} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block tracking-widest flex items-center gap-2">
+                        <Languages size={12} className="text-indigo-500" /> {t.language_protocol}
+                      </label>
+                      <select 
+                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl font-bold text-sm dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all cursor-pointer" 
+                        value={settings.language} 
+                        onChange={e => onUpdate({ language: e.target.value as AppLanguage })}
+                      >
+                        <option value="en">{t.lang_en}</option>
+                        <option value="yo">{t.lang_yo}</option>
+                        <option value="ha">{t.lang_ha}</option>
+                        <option value="ig">{t.lang_ig}</option>
+                      </select>
                     </div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -216,7 +235,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
                 </section>
 
                 <button onClick={handleApplyChanges} disabled={isSaving} className={`w-full py-5 rounded-3xl font-black uppercase text-[10px] md:text-[11px] tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-50 ${saveSuccess ? 'bg-emerald-600 text-white' : 'bg-indigo-600 text-white shadow-indigo-600/20'}`}>
-                  {saveSuccess ? <><CheckCircle2 size={18} /> Protocol Updated</> : <>{isSaving ? <Loader2 size={18} className="animate-spin"/> : <Save size={18} />} {isSaving ? 'Synchronizing...' : 'Save All Changes'}</>}
+                  {saveSuccess ? <><CheckCircle2 size={18} /> Protocol Updated</> : <>{isSaving ? <Loader2 size={18} className="animate-spin"/> : <Save size={18} />} {isSaving ? t.syncing : t.save}</>}
                 </button>
               </div>
             </div>

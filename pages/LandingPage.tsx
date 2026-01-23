@@ -111,10 +111,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-300 overflow-x-hidden">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-2xl border-b border-slate-100 h-16 md:h-20">
+      <nav className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-2xl border-b border-slate-100 h-16 md:h-20">
         <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-[1.2rem] flex items-center justify-center shadow-lg shadow-indigo-600/30 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <Box size={22} className="text-white" />
             </div>
             <span className="font-black text-lg md:text-xl tracking-tighter uppercase text-slate-900 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>StockBit Pro</span>
@@ -129,79 +129,59 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
 
           <div className="flex items-center gap-3 md:gap-4">
             {isLoggedIn ? (
-              <button onClick={onEnterTerminal} className="px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-2">
-                <Terminal size={14} /> My Shop
+              <button onClick={onEnterTerminal} className="px-5 py-2.5 bg-[#0a0f1d] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center gap-2">
+                <Terminal size={14} /> Terminal
               </button>
             ) : (
-              <>
-                <button onClick={() => onAuth('login')} className="hidden sm:block text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-indigo-600 transition-colors">Login</button>
-                <button onClick={() => onAuth('register')} className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 hover:bg-slate-800 transition-all">Start Free</button>
-              </>
+              <button onClick={() => onAuth('register')} className="px-6 py-2.5 bg-[#0a0f1d] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">Start Free</button>
             )}
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-32 md:pt-48 pb-20 px-6 overflow-hidden min-h-[90vh] flex items-center">
-        <div className="absolute inset-0 z-[-2]">
-          <img 
-            src="https://images.unsplash.com/photo-1551288049-bbbda595c7b8?auto=format&fit=crop&q=80&w=2000" 
-            alt="Hero Background" 
-            className="w-full h-full object-cover opacity-[0.05]"
-            loading="eager"
-          />
-        </div>
-        
-        <div className="absolute top-20 right-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] -z-10 animate-pulse"></div>
-        <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] bg-emerald-500/5 rounded-full blur-[120px] -z-10"></div>
-        
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-center relative z-10">
-          <div className="space-y-8 text-left">
-            <div className="inline-flex items-center gap-3 px-4 py-2 bg-indigo-50 rounded-full border border-indigo-100">
+      <section className="relative pt-24 md:pt-48 pb-20 px-6 min-h-[90vh] flex items-center">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center relative z-10">
+          <div className="space-y-8 md:space-y-10 text-left">
+            <div className="inline-flex items-center gap-3 px-5 py-2 bg-indigo-50/50 rounded-full border border-indigo-100">
               <Sparkles size={14} className="text-indigo-600" />
-              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.25em]">Version 2025 Online</span>
+              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">Version 2025 Online</span>
             </div>
             
-            <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.9] uppercase text-slate-900">
-              Industrial Grade <br/>
-              <span className="text-indigo-600">Stock & Sales <br/> Infrastructure.</span>
-            </h1>
+            <div className="space-y-1">
+              <h1 className="text-4xl md:text-7xl font-black tracking-tight leading-[1.1] uppercase text-slate-900 break-words">
+                Industrial Grade
+              </h1>
+              <h1 className="text-4xl md:text-7xl font-black tracking-tight leading-[1.1] uppercase text-indigo-600 break-words">
+                Stock & Sales Infrastructure
+              </h1>
+            </div>
             
             <p className="max-w-md text-sm md:text-base text-slate-500 font-medium leading-relaxed">
               The ultimate logistics ecosystem for Nigerian enterprise. 
               Deploy high-velocity stock tracking, AI-driven auditing, and unified sales terminals across all your devices.
             </p>
 
-            <div className="pt-4 flex flex-col sm:flex-row gap-4">
+            <div className="pt-2">
               <button 
                 onClick={isLoggedIn ? onEnterTerminal : () => onAuth('register')}
-                className="group px-10 py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase text-[10px] md:text-[11px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4"
+                className="w-full md:w-auto px-10 md:px-12 py-5 bg-[#0a0f1d] text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4"
               >
-                {isLoggedIn ? 'Go to My Shop' : 'Open My Shop'} <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                {isLoggedIn ? 'Open My Shop' : 'Open My Shop'} <ArrowRight size={20} />
               </button>
-              
-              {!isAppInstalled && (
-                <button 
-                  onClick={onInstall}
-                  className="px-10 py-5 bg-white text-slate-900 border-2 border-slate-100 rounded-[2rem] font-black uppercase text-[10px] md:text-[11px] tracking-[0.2em] hover:bg-slate-50 active:scale-95 transition-all flex items-center justify-center gap-4"
-                >
-                  Get the App <DownloadCloud size={18} />
-                </button>
-              )}
             </div>
 
-            <div className="flex items-center gap-8 pt-8 border-t border-slate-100">
-              <div className="flex -space-x-3">
+            <div className="flex items-center gap-6 pt-8 border-t border-slate-100">
+              <div className="flex -space-x-2 shrink-0">
                 {[1,2,3,4].map(i => (
                   <div key={i} className="w-10 h-10 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center overflow-hidden">
                     <img src={`https://i.pravatar.cc/150?u=stockbit_user_${i}`} alt="User" />
                   </div>
                 ))}
               </div>
-              <div className="flex flex-col">
-                <p className="text-[11px] font-black uppercase text-slate-900">500+ Shops</p>
-                <p className="text-[9px] font-bold uppercase text-slate-400">Already using StockBit Pro</p>
+              <div className="flex flex-col min-w-0">
+                <p className="text-[11px] font-black uppercase text-slate-900 leading-none mb-1">500+ Shops</p>
+                <p className="text-[9px] font-bold uppercase text-slate-400 truncate">Already using StockBit Pro</p>
               </div>
             </div>
           </div>
@@ -226,7 +206,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
         <div className="max-w-7xl mx-auto space-y-20">
           <div className="text-center space-y-4 max-w-2xl mx-auto">
             <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">Core Capabilities</h2>
-            <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">Enterprise Engineering</h3>
+            <h3 className="text-3xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">Enterprise Engineering</h3>
             <p className="text-sm md:text-base text-slate-500 font-medium">Sophisticated tools designed to optimize asset velocity and operational transparency.</p>
           </div>
 
@@ -286,7 +266,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
           <div className="order-1 lg:order-2 space-y-10">
             <div className="space-y-4">
               <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">Unified Deployment</h2>
-              <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">Universal <br/> Access Protocol.</h3>
+              <h3 className="text-3xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">Universal <br/> Access Protocol.</h3>
               <p className="text-base text-slate-500 font-medium leading-relaxed">Eliminate proprietary hardware overhead. Deploy industrial-grade point-of-sale functionality on any mobile device or desktop workstation.</p>
             </div>
 
@@ -307,7 +287,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
       {/* CTA Section */}
       <section className="py-24 px-6 bg-[#020617] relative overflow-hidden">
         <div className="max-w-4xl mx-auto text-center space-y-10 relative z-10">
-          <h2 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter leading-none">
+          <h2 className="text-3xl md:text-6xl font-black text-white uppercase tracking-tighter leading-none">
             Ready to Scale <br/> <span className="text-indigo-400">Your Enterprise?</span>
           </h2>
           <p className="text-slate-400 text-sm md:text-base font-medium max-w-xl mx-auto">
@@ -380,7 +360,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
         </button>
         
         {isChatOpen && (
-          <div className="absolute bottom-20 right-0 w-[350px] md:w-[450px] bg-white rounded-[2.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-500">
+          <div className="absolute bottom-20 right-0 w-[300px] md:w-[450px] bg-white rounded-[2.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.15)] border border-slate-100 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-500">
             <div className="p-8 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
@@ -461,7 +441,7 @@ const FeatureCard = ({ icon, title, desc, color, bg }: any) => (
 
 const Point = ({ icon, text }: any) => (
   <div className="flex items-center gap-4 group">
-    <div className="text-emerald-500 group-hover:scale-125 transition-transform duration-300">{icon}</div>
+    <div className="text-emerald-500 group-hover:scale-125 transition-transform duration-300 shrink-0">{icon}</div>
     <span className="text-[11px] font-black uppercase tracking-widest text-slate-700">{text}</span>
   </div>
 );
@@ -487,12 +467,12 @@ const FooterSection = ({ title, links }: any) => (
 
 const ContactLink = ({ icon, label, value, onClick }: any) => (
   <div className="flex items-center gap-4 group cursor-pointer" onClick={onClick}>
-    <div className="w-9 h-9 bg-slate-100 text-indigo-600 rounded-lg flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+    <div className="w-9 h-9 bg-slate-100 text-indigo-600 rounded-lg flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all shrink-0">
       {icon}
     </div>
-    <div>
+    <div className="min-w-0">
       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
-      <p className="text-[11px] font-bold text-slate-900">{value}</p>
+      <p className="text-[11px] font-bold text-slate-900 truncate">{value}</p>
     </div>
   </div>
 );
