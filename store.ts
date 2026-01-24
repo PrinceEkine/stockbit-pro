@@ -196,13 +196,20 @@ export const useStore = () => {
 
   // Business Actions
   const updateSettings = async (updates: Partial<Settings>) => {
-    if (!currentUser) return;
+    // UPDATED: Allow local settings updates even if not logged in
     const newSettings = { ...settings, ...updates };
     setSettings(newSettings);
-    await supabase.from('settings').upsert({ 
-      user_id: currentUser.role === 'staff' ? currentUser.parentId : currentUser.id, 
-      config: newSettings 
-    });
+    
+    // Only attempt Supabase sync if user is authenticated
+    if (currentUser) {
+      const targetId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+      if (targetId) {
+        await supabase.from('settings').upsert({ 
+          user_id: targetId, 
+          config: newSettings 
+        });
+      }
+    }
   };
 
   const addProduct = async (product: Omit<Product, 'id' | 'last_updated' | 'created_at' | 'user_id'>) => {

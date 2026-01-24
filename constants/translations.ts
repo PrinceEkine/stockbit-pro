@@ -33,7 +33,12 @@ export const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     lang_en: "English (Global)",
     lang_yo: "Yorùbá",
     lang_ha: "Hausa",
-    lang_ig: "Igbo"
+    lang_ig: "Igbo",
+    get_app: "Get App",
+    start: "Start",
+    hero_cta: "OPEN MY SHOP NOW",
+    see_how: "SEE HOW IT WORKS",
+    install_app: "INSTALL MOBILE APP"
   },
   yo: {
     dashboard: "Dashboard Ile",
@@ -67,7 +72,12 @@ export const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     lang_en: "Gẹẹsi",
     lang_yo: "Yorùbá",
     lang_ha: "Hausa",
-    lang_ig: "Igbo"
+    lang_ig: "Igbo",
+    get_app: "Gbà App",
+    start: "Bẹ̀rẹ̀",
+    hero_cta: "ṢÍ ILÉ ÌTA MI NÍSÌYÍ",
+    see_how: "WÒ BÍ Ó ṢE Ń ṢIṢẸ́",
+    install_app: "FI APP SÍ ORÍ FOONU"
   },
   ha: {
     dashboard: "Gidan Dashboard",
@@ -101,7 +111,12 @@ export const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     lang_en: "Turanci",
     lang_yo: "Yorùbá",
     lang_ha: "Hausa",
-    lang_ig: "Igbo"
+    lang_ig: "Igbo",
+    get_app: "Samu App",
+    start: "Fara",
+    hero_cta: "BUDE SHAGANA YANZU",
+    see_how: "DUBA YADDA AKE YI",
+    install_app: "SANYA APP A WAYA"
   },
   ig: {
     dashboard: "Dashboard Mbụ",
@@ -135,6 +150,11 @@ export const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     lang_en: "Bekee",
     lang_yo: "Yorùbá",
     lang_ha: "Hausa",
-    lang_ig: "Igbo"
+    lang_ig: "Igbo",
+    get_app: "Nweta App",
+    start: "Bido",
+    hero_cta: "MEPE ỤLỌ AHỊA M UGBU A",
+    see_how: "LEE OTÚ Ọ NA-ARỤ ỌRỤ",
+    install_app: "WUNYE APP NA FOONU"
   }
 };
