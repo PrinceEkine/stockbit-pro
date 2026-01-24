@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { View, User as UserType, SubscriptionPlan, Product } from './types';
+import { View, User as UserType, SubscriptionPlan, Product, AppLanguage } from './types';
 import { useStore, getTrialStatus } from './store';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -291,6 +290,8 @@ const App: React.FC = () => {
         <LandingPage 
           isLoggedIn={store.isLoggedIn}
           isAppInstalled={isAppInstalled}
+          language={store.settings.language}
+          onLanguageChange={(lang: AppLanguage) => store.updateSettings({ language: lang })}
           onAuth={(step) => { setAuthStep(step); setActiveView(View.Landing); }} 
           onNavigateInfo={setActiveView} 
           onInstall={handleInstallApp}

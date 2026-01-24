@@ -1,13 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Box, 
-  ShieldCheck, 
   Sparkles, 
-  ShoppingCart, 
-  Globe, 
   Smartphone,
   CheckCircle2,
   BarChart3,
+  // Fix: Added missing ShoppingCart icon import
+  ShoppingCart,
   MessageSquare,
   Twitter,
   Phone,
@@ -15,37 +14,46 @@ import {
   X,
   Send,
   Users,
-  Eye,
   Activity,
-  Plus,
-  Play,
   ArrowRight,
   DownloadCloud,
   Terminal,
-  Zap,
-  Layers,
   Cpu,
-  Shield,
   CreditCard,
-  QrCode,
   Scan,
-  Database
+  Database,
+  TrendingUp,
+  Languages,
+  ChevronDown
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
-import { View } from '../types';
+import { View, AppLanguage } from '../types';
+import { TRANSLATIONS } from '../constants/translations';
 
 interface LandingPageProps {
   isLoggedIn: boolean;
   isAppInstalled: boolean;
+  language: AppLanguage;
+  onLanguageChange: (lang: AppLanguage) => void;
   onAuth: (step: 'login' | 'register') => void;
   onNavigateInfo: (view: View) => void;
   onInstall: () => void;
   onEnterTerminal: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, onAuth, onNavigateInfo, onInstall, onEnterTerminal }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ 
+  isLoggedIn, 
+  isAppInstalled, 
+  language,
+  onLanguageChange,
+  onAuth, 
+  onNavigateInfo, 
+  onInstall, 
+  onEnterTerminal 
+}) => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
+  const [isLangOpen, setIsLangOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<{role: 'user' | 'bot', text: string}[]>([
     { role: 'bot', text: 'Hello! I am StockBot. How can I help you manage your shop today?' }
   ]);
@@ -53,13 +61,24 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const architectureRef = useRef<HTMLElement>(null);
+  const langRef = useRef<HTMLDivElement>(null);
   const isMounted = useRef(true);
+
+  const t = TRANSLATIONS[language];
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(event.target as Node)) {
+        setIsLangOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
+    return () => { isMounted.current = false; };
   }, []);
 
   const scrollToSection = (ref: React.RefObject<HTMLElement>) => {
@@ -89,7 +108,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
         model: 'gemini-3-flash-preview',
         contents: userMsg,
         config: {
-          systemInstruction: "You are StockBot, the official shop assistant for StockBit Pro. Professional contact: Call: 07010698264, WhatsApp: 07072127949. Keep answers simple, professional, and helpful for market people.",
+          systemInstruction: `You are StockBot, the official shop assistant for StockBit Pro. Contact: 07010698264. Response language should match the user's inquiry. Currently in ${language} mode.`,
         }
       });
       
@@ -112,66 +131,118 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
     <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-300 overflow-x-hidden flex flex-col">
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-2xl border-b border-slate-100 pt-[env(safe-area-inset-top)] box-content h-16 md:h-20">
-        <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <Box size={22} className="text-white" />
             </div>
-            <span className="font-black text-lg md:text-xl tracking-tighter uppercase text-slate-900 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>StockBit Pro</span>
+            <span className="font-black text-sm md:text-xl tracking-tighter uppercase text-slate-900 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>StockBit Pro</span>
           </div>
           
           <div className="hidden lg:flex items-center gap-10">
-            <NavOption label="Features" onClick={() => scrollToSection(architectureRef)} />
-            <NavOption label="Privacy" onClick={() => onNavigateInfo(View.PrivacyPolicy)} />
-            <NavOption label="About" onClick={() => onNavigateInfo(View.AboutUs)} />
-            <NavOption label="Support" onClick={() => onNavigateInfo(View.HelpCenter)} />
+            <NavOption label={t.inventory} onClick={() => scrollToSection(architectureRef)} />
+            <NavOption label={t.about_us} onClick={() => onNavigateInfo(View.AboutUs)} />
+            <NavOption label={t.help_center} onClick={() => onNavigateInfo(View.HelpCenter)} />
           </div>
 
-          <div className="flex items-center gap-3 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* Language Switcher */}
+            <div className="relative" ref={langRef}>
+              <button 
+                onClick={() => setIsLangOpen(!isLangOpen)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 transition-all"
+              >
+                <Languages size={14} className="text-indigo-600" />
+                <span className="hidden xs:inline">{language}</span>
+                <ChevronDown size={12} className={`transition-transform duration-300 ${isLangOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {isLangOpen && (
+                <div className="absolute top-full right-0 mt-2 w-32 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  {(['en', 'yo', 'ha', 'ig'] as AppLanguage[]).map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => { onLanguageChange(lang); setIsLangOpen(false); }}
+                      className={`w-full px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-colors ${language === lang ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-500'}`}
+                    >
+                      {t[`lang_${lang}` as keyof typeof t] || lang}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {!isAppInstalled && (
+              <button 
+                onClick={onInstall}
+                className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all border border-indigo-100"
+              >
+                <DownloadCloud size={14} /> {t.lang_en === "English (Global)" ? "Get App" : "Gbà App"}
+              </button>
+            )}
+            
             {isLoggedIn ? (
-              <button onClick={onEnterTerminal} className="px-5 py-2.5 bg-[#0a0f1d] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center gap-2">
-                <Terminal size={14} /> Terminal
+              <button onClick={onEnterTerminal} className="px-4 md:px-5 py-2.5 bg-[#4f46e5] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center gap-2">
+                <Terminal size={14} /> <span className="hidden xs:inline">{t.dashboard}</span>
               </button>
             ) : (
-              <button onClick={() => onAuth('register')} className="px-6 py-2.5 bg-[#0a0f1d] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">Start Free</button>
+              <button onClick={() => onAuth('register')} className="px-5 md:px-6 py-2.5 bg-[#4f46e5] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+                {t.lang_en === "English (Global)" ? "Start" : "Bẹ̀rẹ̀"}
+              </button>
             )}
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-24 md:pt-48 pb-20 px-4 sm:px-6 min-h-[90vh] flex items-center overflow-x-hidden">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center relative z-10 w-full overflow-x-hidden">
-          <div className="space-y-6 md:space-y-12 text-left w-full">
+      <section className="relative pt-28 md:pt-48 pb-20 px-4 sm:px-8 min-h-[90vh] flex items-center overflow-hidden">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center relative z-10 w-full">
+          <div className="space-y-8 md:space-y-12 text-left w-full">
             <div className="inline-flex items-center gap-3 px-5 py-2 bg-indigo-50/50 rounded-full border border-indigo-100">
               <Sparkles size={14} className="text-indigo-600" />
-              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">Version 2025 Online</span>
+              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">{t.ai_insights}</span>
             </div>
             
-            <div className="space-y-3 w-full max-w-full">
-              <h1 className="text-[clamp(2.5rem,12vw,5rem)] md:text-[clamp(4rem,8vw,6rem)] font-black tracking-tighter leading-[0.9] uppercase text-slate-900 drop-shadow-sm text-balance hyphens-auto break-words">
-                INDUSTRIAL GRADE
-              </h1>
-              <h1 className="text-[clamp(1.8rem,10vw,4.5rem)] md:text-[clamp(3.5rem,7vw,5.5rem)] font-black tracking-tighter leading-[0.95] uppercase text-indigo-600 drop-shadow-sm text-balance break-words">
-                STOCK & SALES INFRASTRUCTURE
+            <div className="space-y-4 w-full">
+              <h1 className="text-[clamp(2.5rem,10vw,4rem)] md:text-[clamp(3.5rem,7vw,5.5rem)] font-black tracking-tight leading-[1] uppercase text-slate-900 drop-shadow-sm text-balance">
+                STOP LOSING MONEY TO <span className="text-indigo-600">STOCK LEAKAGE.</span>
               </h1>
             </div>
             
-            <p className="max-w-xl text-base md:text-lg text-slate-500 font-medium leading-relaxed text-pretty">
-              The ultimate logistics ecosystem for Nigerian enterprise. 
-              Deploy high-velocity stock tracking, AI-driven auditing, and unified sales terminals across all your devices.
+            <p className="max-w-xl text-base md:text-lg text-slate-600 font-medium leading-relaxed">
+              Paper ledgers are for the past. Track your stock, monitor staff, and record every single sale in real-time. Experience the most reliable shop manager in your pocket.
             </p>
 
-            <div className="pt-4 pr-4">
-              <button 
-                onClick={isLoggedIn ? onEnterTerminal : () => onAuth('register')}
-                className="w-full md:w-auto px-10 md:px-16 py-5 md:py-6 bg-[#0a0f1d] text-white rounded-[1.5rem] md:rounded-[2rem] font-black uppercase text-[11px] md:text-[12px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4"
-              >
-                OPEN MY SHOP <ArrowRight size={20} />
-              </button>
+            <div className="pt-4 pr-2 space-y-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button 
+                  onClick={isLoggedIn ? onEnterTerminal : () => onAuth('register')}
+                  className="w-full md:w-auto px-10 md:px-16 py-5 md:py-6 bg-[#4f46e5] text-white rounded-[1.5rem] md:rounded-[2rem] font-black uppercase text-[11px] md:text-[12px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4"
+                >
+                  {t.lang_en === "English (Global)" ? "OPEN MY SHOP NOW" : "ṢÍ ILÉ ÌTA MI NÍSÌYÍ"} <ArrowRight size={20} />
+                </button>
+                <button 
+                  onClick={() => scrollToSection(architectureRef)}
+                  className="w-full md:w-auto px-10 md:px-16 py-5 md:py-6 bg-slate-100 text-slate-900 rounded-[1.5rem] md:rounded-[2rem] font-black uppercase text-[11px] md:text-[12px] tracking-[0.2em] active:scale-95 transition-all flex items-center justify-center gap-4 border border-slate-200"
+                >
+                  {t.lang_en === "English (Global)" ? "SEE HOW IT WORKS" : "WÒ BÍ Ó ṢE Ń ṢIṢẸ́"}
+                </button>
+              </div>
+              
+              {!isAppInstalled && (
+                <button 
+                  onClick={onInstall}
+                  className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-white text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 border-indigo-100 hover:bg-indigo-50 transition-all shadow-sm group"
+                >
+                  <div className="p-1 bg-indigo-100 rounded-lg group-hover:scale-110 transition-transform">
+                    <DownloadCloud size={18} />
+                  </div>
+                  {t.lang_en === "English (Global)" ? "INSTALL MOBILE APP" : "FI APP SÍ ORÍ FOONU"}
+                </button>
+              )}
             </div>
 
-            <div className="flex items-center gap-6 md:gap-8 pt-10 border-t border-slate-100">
+            <div className="flex flex-col xs:flex-row items-start xs:items-center gap-6 md:gap-8 pt-10 border-t border-slate-100">
               <div className="flex -space-x-3 shrink-0">
                 {[1,2,3,4].map(i => (
                   <div key={i} className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-100 border-4 border-white flex items-center justify-center overflow-hidden shadow-sm">
@@ -180,8 +251,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
                 ))}
               </div>
               <div className="flex flex-col min-w-0">
-                <p className="text-[13px] font-black uppercase text-slate-900 leading-none mb-1">500+ SHOPS</p>
-                <p className="text-[9px] md:text-[10px] font-bold uppercase text-slate-400 tracking-widest truncate">ALREADY USING STOCKBIT PRO</p>
+                <p className="text-[13px] font-black uppercase text-slate-900 leading-none mb-1">PROUDLY NIGERIAN</p>
+                <p className="text-[9px] md:text-[10px] font-bold uppercase text-slate-500 tracking-widest truncate">TRUSTED BY 500+ SHOP OWNERS ACROSS NIGERIA</p>
               </div>
             </div>
           </div>
@@ -190,133 +261,179 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
             <div className="absolute inset-0 bg-indigo-600/5 rounded-[5rem] rotate-3 scale-105 group-hover:rotate-6 transition-transform duration-1000"></div>
             <div className="relative bg-white rounded-[5rem] p-5 border border-slate-100 shadow-2xl overflow-hidden aspect-[4/3]">
               <img 
-                src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200" 
+                src="https://images.unsplash.com/photo-1556742044-3c52d6e88c62?auto=format&fit=crop&q=80&w=1200" 
                 alt="StockBit Shop Dashboard" 
                 className="w-full h-full object-cover rounded-[4rem] opacity-95 transition-transform duration-[2s] group-hover:scale-105"
                 loading="eager"
               />
               <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/20 to-transparent"></div>
+              {/* Overlay Badge */}
+              <div className="absolute bottom-10 left-10 p-6 bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-2xl animate-bounce-slow">
+                 <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white">
+                       <TrendingUp size={24} />
+                    </div>
+                    <div>
+                       <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">{t.total_money}</p>
+                       <p className="text-xl font-black text-slate-900">₦245,800.00</p>
+                    </div>
+                 </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Feature Grid */}
-      <section ref={architectureRef} className="py-24 md:py-32 px-6 bg-slate-50 pb-[env(safe-area-inset-bottom)]">
-        <div className="max-w-7xl mx-auto space-y-20">
+      {/* Visual Benefits Section */}
+      <section ref={architectureRef} className="py-24 md:py-32 px-6 bg-slate-50">
+        <div className="max-w-7xl mx-auto space-y-24">
           <div className="text-center space-y-4 max-w-3xl mx-auto">
-            <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">CORE CAPABILITIES</h2>
-            <h3 className="text-4xl md:text-6xl font-black text-slate-900 uppercase tracking-tighter leading-none">ENTERPRISE ENGINEERING</h3>
-            <p className="text-base md:text-lg text-slate-500 font-medium">Sophisticated tools designed to optimize asset velocity and operational transparency.</p>
+            <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">PROFESSIONAL GRADE TOOLS</h2>
+            <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">EVERYTHING YOUR SHOP NEEDS</h3>
+            <p className="text-base md:text-lg text-slate-500 font-medium">Simple enough for a small kiosk, powerful enough for an industrial warehouse.</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <FeatureCard 
-              icon={<Scan size={28} />}
-              title="Computer Vision SKU Tracking"
-              desc="Leverage high-precision optical recognition to synchronize inventory nodes instantly via mobile camera."
-              color="text-indigo-600"
-              bg="bg-indigo-50"
+          <div className="grid md:grid-cols-3 gap-10">
+            <FeatureImageCard 
+              image="https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&q=80&w=800"
+              title={t.sales}
+              desc="Record sales in seconds. Print professional receipts for customers instantly."
+              icon={<ShoppingCart size={20} />}
             />
-            <FeatureCard 
-              icon={<Database size={28} />}
-              title="Cloud Ledger Persistence"
-              desc="Real-time multi-terminal synchronization ensures data integrity across all decentralized warehouse nodes."
-              color="text-emerald-600"
-              bg="bg-emerald-50"
+            <FeatureImageCard 
+              image="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800"
+              title={t.inventory}
+              desc="Know exactly what is in your shop. Get alerts when stock is running low."
+              icon={<Box size={20} />}
             />
-            <FeatureCard 
-              icon={<Shield size={28} />}
-              title="Military-Grade Security"
-              desc="End-to-end encryption and Row-Level Security protocols safeguard your proprietary enterprise intelligence."
-              color="text-slate-900"
-              bg="bg-slate-200"
-            />
-            <FeatureCard 
-              icon={<BarChart3 size={28} />}
-              title="Fiscal Intelligence"
-              desc="Generate exhaustive financial audits and predictive analytics to visualize capital flow and seasonal trends."
-              color="text-amber-600"
-              bg="bg-amber-50"
+            <FeatureImageCard 
+              image="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=800"
+              title={t.reports}
+              desc="See your profit and loss at a glance. Make better decisions with AI reports."
+              icon={<BarChart3 size={20} />}
             />
           </div>
         </div>
       </section>
 
-      {/* Unified Terminal Showcase */}
-      <section className="py-24 md:py-32 px-6 overflow-hidden">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
-          <div className="order-2 lg:order-1 relative flex justify-center">
-            <div className="grid grid-cols-2 gap-3 max-w-xs md:max-w-md scale-90 lg:scale-[0.85] transform-origin-center">
-              <div className="space-y-3 pt-8">
-                <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80" className="w-full aspect-square object-cover rounded-[1.5rem] shadow-xl" alt="Retail" />
-                <img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=600&q=80" className="w-full aspect-[2/3] object-cover rounded-[1.5rem] shadow-xl" alt="Fashion" />
-              </div>
-              <div className="space-y-3">
-                <img src="https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&w=600&q=80" className="w-full aspect-[2/3] object-cover rounded-[1.5rem] shadow-xl" alt="Tech" />
-                <img src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80" className="w-full aspect-square object-cover rounded-[1.5rem] shadow-xl" alt="Warehouse" />
-              </div>
+      {/* Trust Section - Nigerian Market Focus */}
+      <section className="py-24 md:py-32 px-6 bg-white overflow-hidden">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
+          <div className="space-y-12">
+            <div className="space-y-6">
+              <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">BUILT FOR NIGERIA</h2>
+              <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-[0.95]">
+                MANAGE YOUR <br/> SHOP FROM <br/> <span className="text-indigo-600 underline decoration-indigo-200">ANYWHERE.</span>
+              </h3>
+              <p className="text-lg text-slate-600 font-medium leading-relaxed">
+                Whether you're at home in Abuja or in the shop in Lagos, StockBit keeps you connected. 
+                Monitor your staff, check your profit, and verify your stock levels across all your branches in real-time.
+              </p>
             </div>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-indigo-600 rounded-full border-[8px] border-white shadow-2xl flex flex-col items-center justify-center text-white p-2 text-center z-10 transition-transform hover:scale-110">
-              <p className="text-[16px] font-black leading-none mb-0.5">SYNC</p>
-              <p className="text-[8px] font-bold uppercase opacity-80 leading-tight">Persistence Node</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              <BenefitItem 
+                title="Staff Accountability" 
+                desc="See exactly who sold what and when." 
+                icon={<Users className="text-indigo-600" />} 
+              />
+              <BenefitItem 
+                title="Secure Payments" 
+                desc="Integrated with Paystack for safe digital transactions." 
+                icon={<CreditCard className="text-emerald-600" />} 
+              />
+              <BenefitItem 
+                title="Phone Scanning" 
+                desc="Turn any smartphone into a professional barcode scanner." 
+                icon={<Smartphone className="text-amber-600" />} 
+              />
+              <BenefitItem 
+                title="Cloud Backup" 
+                desc="Your records are safe even if you lose your phone." 
+                icon={<Database className="text-indigo-600" />} 
+              />
             </div>
+
+            <button onClick={() => onAuth('register')} className="inline-flex items-center gap-4 text-[12px] font-black uppercase tracking-[0.3em] text-indigo-600 hover:text-indigo-800 transition-all py-4 group">
+              START YOUR 60-DAY TRIAL <ArrowRight size={18} className="transition-transform group-hover:translate-x-2" />
+            </button>
           </div>
 
-          <div className="order-1 lg:order-2 space-y-12">
-            <div className="space-y-6">
-              <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">UNIFIED DEPLOYMENT</h2>
-              <h3 className="text-4xl md:text-6xl font-black text-slate-900 uppercase tracking-tighter leading-none">UNIVERSAL <br/> ACCESS PROTOCOL.</h3>
-              <p className="text-lg text-slate-500 font-medium leading-relaxed">Eliminate proprietary hardware overhead. Deploy industrial-grade point-of-sale functionality on any mobile device or desktop workstation.</p>
+          <div className="relative group">
+            <div className="bg-slate-100 rounded-[5rem] overflow-hidden aspect-[4/5] shadow-2xl relative">
+              <img 
+                src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=1000" 
+                alt="Nigerian Retail Excellence" 
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3s]"
+              />
+              <div className="absolute inset-0 bg-indigo-900/20"></div>
+              {/* Floating UI Element */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] bg-white p-8 rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.15)] space-y-6">
+                 <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Inventory Status</span>
+                    <Activity size={18} className="text-indigo-600 animate-pulse" />
+                 </div>
+                 <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                       <span className="text-sm font-black text-slate-900 uppercase">INDOMIE NOODLES</span>
+                       <span className="text-sm font-black text-emerald-600">120 PKTS</span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                       <div className="h-full bg-emerald-500 w-[80%]"></div>
+                    </div>
+                 </div>
+                 <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                       <span className="text-sm font-black text-slate-900 uppercase">DANEO MILK 400G</span>
+                       <span className="text-sm font-black text-rose-500">4 UNITS LEFT</span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                       <div className="h-full bg-rose-500 w-[15%]"></div>
+                    </div>
+                 </div>
+              </div>
             </div>
-
-            <div className="space-y-6">
-              <Point icon={<CheckCircle2 size={24} />} text="INTEGRATED PAYSTACK GATEWAY SETTLEMENT." />
-              <Point icon={<CheckCircle2 size={24} />} text="ESC/POS THERMAL PRINTER COMPATIBILITY." />
-              <Point icon={<CheckCircle2 size={24} />} text="OPTIMIZED FOR LATENCY-SENSITIVE ENVIRONMENTS." />
-              <Point icon={<CheckCircle2 size={24} />} text="HIERARCHICAL ROLE-BASED ACCESS CONTROL." />
-            </div>
-
-            <button onClick={() => onNavigateInfo(View.HelpCenter)} className="inline-flex items-center gap-4 text-[12px] font-black uppercase tracking-[0.3em] text-indigo-600 hover:text-indigo-800 transition-all py-4 group">
-              EXAMINE SPECIFICATIONS <ArrowRight size={18} className="transition-transform group-hover:translate-x-2" />
-            </button>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-32 px-6 bg-[#020617] relative overflow-hidden">
+      <section className="py-32 px-6 bg-[#4f46e5] relative overflow-hidden">
         <div className="max-w-4xl mx-auto text-center space-y-12 relative z-10">
           <h2 className="text-4xl md:text-7xl font-black text-white uppercase tracking-tighter leading-none">
-            READY TO SCALE <br/> <span className="text-indigo-400">YOUR ENTERPRISE?</span>
+            READY TO GROW <br/> <span className="text-indigo-200">YOUR BUSINESS?</span>
           </h2>
-          <p className="text-slate-400 text-base md:text-lg font-medium max-w-xl mx-auto leading-relaxed">
-            Onboard your business to the StockBit Pro ecosystem and gain absolute control over your operational logistics.
+          <p className="text-white/80 text-base md:text-lg font-medium max-w-xl mx-auto leading-relaxed">
+            Join hundreds of Nigerian shop owners who have stopped losing money to errors and started making smarter business decisions today.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-6">
-            <button onClick={() => onAuth('register')} className="w-full sm:w-auto px-16 py-7 bg-indigo-600 text-white rounded-[2.5rem] font-black uppercase text-[12px] tracking-[0.3em] shadow-[0_20px_60px_-15px_rgba(79,70,229,0.5)] active:scale-95 transition-all">
-              INITIALIZE DEPLOYMENT
+            <button onClick={() => onAuth('register')} className="w-full sm:w-auto px-16 py-8 bg-white text-indigo-600 rounded-[2.5rem] font-black uppercase text-[12px] tracking-[0.3em] shadow-2xl active:scale-95 transition-all">
+              {t.lang_en === "English (Global)" ? "CREATE MY ACCOUNT NOW" : "ṢÍ ILÉ ÌTA MI NÍSÌYÍ"}
             </button>
+            {!isAppInstalled && (
+              <button onClick={onInstall} className="w-full sm:w-auto px-16 py-8 bg-indigo-800/40 text-white rounded-[2.5rem] font-black uppercase text-[12px] tracking-[0.3em] backdrop-blur-xl border border-white/10 active:scale-95 transition-all">
+                {t.lang_en === "English (Global)" ? "DOWNLOAD MOBILE APP" : "GBÀ APP SÍ FOONU MI"}
+              </button>
+            )}
           </div>
         </div>
-        <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
+        <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
             <Database className="w-full h-full scale-150 rotate-12" />
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-24 px-6 bg-white border-t border-slate-100 pb-[env(safe-area-inset-bottom)]">
+      <footer className="py-24 px-6 bg-white border-t border-slate-100">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 lg:gap-24">
           <div className="space-y-10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30">
                 <Box size={22} className="text-white" />
               </div>
-              <span className="font-black text-xl tracking-tighter uppercase cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>StockBit Pro</span>
+              <span className="font-black text-xl tracking-tighter uppercase">StockBit Pro</span>
             </div>
             <p className="text-[11px] text-slate-500 font-bold leading-relaxed uppercase tracking-widest">
-              High-performance logistics intelligence for African retail. 
-              Reliable. Scalable. Precise.
+              The professional operating system for the modern Nigerian retailer.
             </p>
             <div className="flex items-center gap-5">
               <SocialIcon icon={<Twitter size={20}/>} onClick={() => window.open('https://twitter.com/stockbit', '_blank')} />
@@ -324,31 +441,31 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
             </div>
           </div>
 
-          <FooterSection title="INTELLIGENCE SUITE" links={[
-            { label: 'Inventory Control', onClick: () => scrollToSection(architectureRef) },
-            { label: 'Sales Terminal', onClick: () => scrollToSection(architectureRef) },
-            { label: 'AI Analytics', onClick: () => scrollToSection(architectureRef) },
-            { label: isAppInstalled ? 'Console Login' : 'Download Client', onClick: isAppInstalled ? onEnterTerminal : onInstall },
+          <FooterSection title="PRODUCTS" links={[
+            { label: t.inventory, onClick: () => scrollToSection(architectureRef) },
+            { label: t.sales, onClick: () => scrollToSection(architectureRef) },
+            { label: 'Marketplace Sync', onClick: () => scrollToSection(architectureRef) },
+            { label: 'PWA Mobile App', onClick: onInstall },
           ]} />
 
-          <FooterSection title="CORPORATE" links={[
-            { label: 'Platform Story', onClick: () => onNavigateInfo(View.AboutUs) },
-            { label: 'Knowledge Base', onClick: () => onNavigateInfo(View.HelpCenter) },
-            { label: 'Service Protocol', onClick: () => onNavigateInfo(View.TermsOfService) },
-            { label: 'Privacy Doctrine', onClick: () => onNavigateInfo(View.PrivacyPolicy) },
+          <FooterSection title="RESOURCES" links={[
+            { label: t.about_us, onClick: () => onNavigateInfo(View.AboutUs) },
+            { label: t.help_center, onClick: () => onNavigateInfo(View.HelpCenter) },
+            { label: 'Terms & Privacy', onClick: () => onNavigateInfo(View.TermsOfService) },
+            { label: 'Launch Protocol', onClick: onEnterTerminal },
           ]} />
 
           <div className="space-y-10">
-            <h4 className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-900">SUPPORT DESK</h4>
+            <h4 className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-900">DIRECT SUPPORT</h4>
             <div className="space-y-6">
-              <ContactLink icon={<Phone size={16} />} label="Voice Channel" value="07010698264" onClick={() => window.open('tel:07010698264')} />
-              <ContactLink icon={<MessageCircle size={16} />} label="Digital Channel" value="07072127949" onClick={() => window.open('https://wa.me/2347072127949')} />
+              <ContactLink icon={<Phone size={16} />} label="24/7 Helpline" value="07010698264" onClick={() => window.open('tel:07010698264')} />
+              <ContactLink icon={<MessageCircle size={16} />} label="WhatsApp Concierge" value="07072127949" onClick={() => window.open('https://wa.me/2347072127949')} />
             </div>
           </div>
         </div>
         
         <div className="max-w-7xl mx-auto pt-20 mt-20 border-t border-slate-100 text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400">© 2025 STOCKBIT TECHNOLOGIES. ALL RIGHTS RESERVED.</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400">© 2025 STOCKBIT TECHNOLOGIES NIGERIA. ALL RIGHTS RESERVED.</p>
         </div>
       </footer>
 
@@ -371,7 +488,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
                 </div>
                 <div>
                   <h3 className="text-sm md:text-base font-black uppercase tracking-widest leading-none">STOCKBOT AI</h3>
-                  <p className="text-[8px] md:text-[10px] font-bold uppercase opacity-60 mt-1">INTELLIGENCE HUB ONLINE</p>
+                  <p className="text-[8px] md:text-[10px] font-bold uppercase opacity-60 mt-1">NIGERIA SHOP ASSISTANT</p>
                 </div>
               </div>
               <Activity size={20} className="text-emerald-500 animate-pulse md:w-6 md:h-6" />
@@ -405,7 +522,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ isLoggedIn, isAppInstalled, o
               <div className="relative">
                 <input 
                   type="text" 
-                  placeholder="INQUIRE..." 
+                  placeholder="ASK ME A QUESTION..." 
                   className="w-full pl-6 md:pl-8 pr-16 md:pr-20 py-4 md:py-5 bg-slate-50 border-none rounded-[1.5rem] md:rounded-[1.8rem] text-[10px] md:text-xs font-black uppercase outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-slate-400"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
@@ -432,20 +549,31 @@ const NavOption = ({ label, onClick }: any) => (
   </button>
 );
 
-const FeatureCard = ({ icon, title, desc, color, bg }: any) => (
-  <div className="bg-white p-10 md:p-12 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all group active:scale-95 duration-700">
-    <div className={`w-14 h-14 md:w-16 md:h-16 ${bg} ${color} rounded-[1.5rem] md:rounded-[1.8rem] flex items-center justify-center mb-8 md:mb-10 shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-all`}>
-      {icon}
-    </div>
-    <h4 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tighter mb-4 leading-tight">{title}</h4>
-    <p className="text-[12px] md:text-[13px] text-slate-500 font-medium leading-relaxed">{desc}</p>
+const FeatureImageCard = ({ image, title, desc, icon }: any) => (
+  <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group overflow-hidden">
+     <div className="h-48 overflow-hidden relative">
+        <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+        <div className="absolute inset-0 bg-indigo-600/10"></div>
+        <div className="absolute bottom-4 left-4 p-3 bg-white/90 backdrop-blur-md rounded-xl text-indigo-600 shadow-xl">
+           {icon}
+        </div>
+     </div>
+     <div className="p-10 space-y-3">
+        <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter">{title}</h4>
+        <p className="text-[12px] text-slate-500 font-medium leading-relaxed">{desc}</p>
+     </div>
   </div>
 );
 
-const Point = ({ icon, text }: any) => (
-  <div className="flex items-center gap-4 md:gap-5 group cursor-default">
-    <div className="text-emerald-500 group-hover:scale-125 transition-transform duration-500 shrink-0">{icon}</div>
-    <span className="text-[11px] md:text-[12px] font-black uppercase tracking-[0.15em] text-slate-700 leading-tight">{text}</span>
+const BenefitItem = ({ title, desc, icon }: any) => (
+  <div className="flex items-start gap-4 group">
+    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+      {icon}
+    </div>
+    <div>
+      <h5 className="text-[12px] font-black uppercase text-slate-900 tracking-tight">{title}</h5>
+      <p className="text-[10px] text-slate-500 font-bold leading-relaxed">{desc}</p>
+    </div>
   </div>
 );
 
