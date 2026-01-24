@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   ShoppingCart, Search, Plus, Minus, X, Scan, User, Edit3, ChevronRight, Loader2, Printer, 
@@ -166,7 +167,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
       
       if (success) {
         setIsProcessing(false);
-        // Ensure UI state resets immediately after initiating print
         setTimeout(() => {
           window.print();
           handleCloseCart(activeCartIndex);
@@ -338,12 +338,15 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
       {isTerminalOpen && (
         <div className="fixed inset-0 z-[60] bg-white dark:bg-[#020617] flex flex-col animate-in zoom-in-95 duration-300 no-print transition-colors">
           
-          <div className="h-16 md:h-14 bg-slate-100 dark:bg-[#0a0f1d] flex items-end px-4 gap-1.5 shrink-0 overflow-x-auto scrollbar-hide border-b border-slate-200 dark:border-none relative">
-             {carts.map((cart, idx) => (
-               <div key={cart.id} className="flex items-center">
+          {/* TERMINAL HEADER - FIXED ROW */}
+          <div className="h-16 bg-slate-100 dark:bg-[#0a0f1d] flex items-stretch border-b border-slate-200 dark:border-white/5 shrink-0 overflow-hidden">
+             {/* Left: Scrollable Tabs Container */}
+             <div className="flex-1 flex items-end px-4 gap-1.5 overflow-x-auto scrollbar-hide">
+                {carts.map((cart, idx) => (
                   <button 
+                    key={cart.id} 
                     onClick={() => setActiveCartIndex(idx)}
-                    className={`h-10 px-6 rounded-t-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 relative whitespace-nowrap ${
+                    className={`h-11 px-6 rounded-t-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 relative whitespace-nowrap shrink-0 ${
                       activeCartIndex === idx 
                       ? 'bg-white dark:bg-[#4f46e5] text-[#4f46e5] dark:text-white shadow-lg' 
                       : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 bg-white/50 dark:bg-white/5'
@@ -361,21 +364,22 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                         </button>
                      )}
                   </button>
-               </div>
-             ))}
-             <button onClick={handleAddNewCart} className="h-10 px-4 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-all mb-0.5 shrink-0"><Plus size={18}/></button>
-             
-             <div className="ml-auto mb-2 flex items-center gap-4 pr-2">
+                ))}
+                <button onClick={handleAddNewCart} className="h-11 px-4 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-all shrink-0"><Plus size={18}/></button>
+             </div>
+
+             {/* Right: Fixed Action Controls */}
+             <div className="flex items-center gap-4 px-4 bg-slate-100 dark:bg-[#0a0f1d] border-l border-slate-200 dark:border-white/5">
                 <div className="hidden md:block text-right">
                    <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">OPERATOR</p>
-                   <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase">{currentUser?.name || 'ADMIN'}</p>
+                   <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[100px]">{currentUser?.name || 'ADMIN'}</p>
                 </div>
                 <button 
                   onClick={() => setIsTerminalOpen(false)} 
-                  className="w-10 h-10 bg-rose-600/10 text-rose-600 rounded-xl hover:bg-rose-600 transition-all flex items-center justify-center group shrink-0"
-                  aria-label="Exit Terminal"
+                  className="w-11 h-11 bg-rose-600/10 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center shadow-sm active:scale-95"
+                  title="Close Terminal"
                 >
-                   <X size={20} className="group-hover:text-white" />
+                   <X size={24} />
                 </button>
              </div>
           </div>

@@ -6,9 +6,12 @@ import {
   CheckCircle2,
   BarChart3,
   ShoppingCart,
+  MessageSquare,
   Twitter,
   Phone,
   MessageCircle,
+  X,
+  Send,
   Users,
   Activity,
   ArrowRight,
@@ -20,8 +23,10 @@ import {
   Database,
   TrendingUp,
   Languages,
-  ChevronDown
+  ChevronDown,
+  LogIn
 } from 'lucide-react';
+import { GoogleGenAI } from "@google/genai";
 import { View, AppLanguage } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
 
@@ -46,9 +51,18 @@ const LandingPage: React.FC<LandingPageProps> = ({
   onInstall, 
   onEnterTerminal 
 }) => {
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
   const [isLangOpen, setIsLangOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<{role: 'user' | 'bot', text: string}[]>([
+    { role: 'bot', text: 'Hello! I am StockBot. How can I help you manage your shop today?' }
+  ]);
+  const [isTyping, setIsTyping] = useState(false);
+  
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const architectureRef = useRef<HTMLElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
+  const isMounted = useRef(true);
 
   const t = TRANSLATIONS[language] || TRANSLATIONS.en;
 
@@ -62,8 +76,56 @@ const LandingPage: React.FC<LandingPageProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
+
   const scrollToSection = (ref: React.RefObject<HTMLElement>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || isTyping) return;
+
+    const userMsg = chatInput;
+    setChatInput('');
+    setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setIsTyping(true);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: [{ role: 'user', parts: [{ text: userMsg }] }],
+        config: {
+          systemInstruction: `You are StockBot, the official shop assistant for StockBit Pro. Contact: 07010698264. Response language should match the user's inquiry. Currently in ${language} mode. Always be professional, helpful, and focused on shop management benefits for Nigerian market people.`,
+        }
+      });
+      
+      if (isMounted.current) {
+        const botText = response.text || "I'm having trouble connecting. Please call our support line directly at 07010698264.";
+        setChatMessages(prev => [...prev, { role: 'bot', text: botText }]);
+      }
+    } catch (error: any) {
+      console.error("StockBot Call Failed:", error);
+      if (isMounted.current) {
+        setChatMessages(prev => [...prev, { role: 'bot', text: "Service is temporarily unavailable. Please call our direct helpline 07010698264 for immediate business support." }]);
+      }
+    } finally {
+      if (isMounted.current) {
+        setIsTyping(false);
+      }
+    }
   };
 
   return (
@@ -125,9 +187,14 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 <Terminal size={14} /> <span className="hidden xs:inline">{t.dashboard}</span>
               </button>
             ) : (
-              <button onClick={() => onAuth('register')} className="px-5 md:px-6 py-2.5 bg-[#4f46e5] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-                {t.start}
-              </button>
+              <div className="flex items-center gap-1">
+                <button onClick={() => onAuth('login')} className="px-3 md:px-5 py-2.5 text-slate-500 hover:text-indigo-600 font-black uppercase text-[10px] tracking-widest transition-all">
+                  {t.login}
+                </button>
+                <button onClick={() => onAuth('register')} className="px-5 md:px-6 py-2.5 bg-[#4f46e5] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+                  {t.start}
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -168,17 +235,27 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 </button>
               </div>
               
-              {!isAppInstalled && (
-                <button 
-                  onClick={onInstall}
-                  className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-white text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 border-indigo-100 hover:bg-indigo-50 transition-all shadow-sm group"
-                >
-                  <div className="p-1 bg-indigo-100 rounded-lg group-hover:scale-110 transition-transform">
-                    <DownloadCloud size={18} />
-                  </div>
-                  {t.install_app}
-                </button>
-              )}
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                {!isAppInstalled && (
+                  <button 
+                    onClick={onInstall}
+                    className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-white text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 border-indigo-100 hover:bg-indigo-50 transition-all shadow-sm group"
+                  >
+                    <div className="p-1 bg-indigo-100 rounded-lg group-hover:scale-110 transition-transform">
+                      <DownloadCloud size={18} />
+                    </div>
+                    {t.install_app}
+                  </button>
+                )}
+                {!isLoggedIn && (
+                  <button 
+                    onClick={() => onAuth('login')}
+                    className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 font-black uppercase text-[11px] tracking-widest transition-colors py-2"
+                  >
+                    <LogIn size={16} /> Already have a shop? {t.login}
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="flex flex-col xs:flex-row items-start xs:items-center gap-6 md:gap-8 pt-10 border-t border-slate-100">
@@ -406,6 +483,77 @@ const LandingPage: React.FC<LandingPageProps> = ({
           <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400">© 2025 STOCKBIT TECHNOLOGIES NIGERIA. ALL RIGHTS RESERVED.</p>
         </div>
       </footer>
+
+      {/* Floating AI ChatBot Bubble */}
+      <div className="fixed bottom-10 right-10 z-[100] group">
+        <button 
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 relative ${isChatOpen ? 'bg-slate-900 text-white rotate-90 scale-110' : 'bg-indigo-600 text-white hover:scale-110'}`}
+        >
+          {isChatOpen ? <X size={28} /> : <MessageSquare size={28} />}
+          {!isChatOpen && <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-white rounded-full"></span>}
+        </button>
+        
+        {isChatOpen && (
+          <div className="absolute bottom-24 right-0 w-[300px] xs:w-[320px] md:w-[480px] bg-white rounded-[2.5rem] md:rounded-[3rem] shadow-[0_40px_120px_rgba(0,0,0,0.25)] border border-slate-100 flex flex-col overflow-hidden animate-in slide-in-from-bottom-12 fade-in duration-500 z-[150]">
+            <div className="p-6 md:p-10 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-4 md:gap-5">
+                <div className="w-10 h-10 md:w-14 md:h-14 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl">
+                  <Cpu size={22} className="md:w-7 md:h-7" />
+                </div>
+                <div>
+                  <h3 className="text-sm md:text-base font-black uppercase tracking-widest leading-none">STOCKBOT AI</h3>
+                  <p className="text-[8px] md:text-[10px] font-bold uppercase opacity-60 mt-1">NIGERIA SHOP ASSISTANT</p>
+                </div>
+              </div>
+              <Activity size={20} className="text-emerald-500 animate-pulse md:w-6 md:h-6" />
+            </div>
+
+            <div className="flex-1 p-6 md:p-10 overflow-y-auto max-h-[400px] md:max-h-[450px] space-y-6 md:space-y-8 scrollbar-hide bg-slate-50/50">
+              {chatMessages.map((m, i) => (
+                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-4 duration-500`}>
+                  <div className={`max-w-[90%] md:max-w-[85%] p-5 md:p-6 rounded-[1.8rem] md:rounded-[2.2rem] text-[12px] md:text-[13px] font-semibold leading-relaxed shadow-sm ${
+                    m.role === 'user' 
+                    ? 'bg-indigo-600 text-white rounded-tr-none' 
+                    : 'bg-white text-slate-600 rounded-tl-none border border-slate-100'
+                  }`}>
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-white p-5 md:p-6 rounded-[1.8rem] md:rounded-[2.2rem] rounded-tl-none border border-slate-100 shadow-sm flex gap-1.5 items-center">
+                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce"></div>
+                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce delay-100"></div>
+                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce delay-200"></div>
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            <form onSubmit={handleSendMessage} className="p-6 md:p-8 bg-white border-t border-slate-100">
+              <div className="relative">
+                <input 
+                  type="text" 
+                  placeholder="ASK ME A QUESTION..." 
+                  className="w-full pl-6 md:pl-8 pr-16 md:pr-20 py-4 md:py-5 bg-slate-50 border-none rounded-[1.5rem] md:rounded-[1.8rem] text-[10px] md:text-xs font-black uppercase outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-slate-400"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                />
+                <button 
+                  type="submit"
+                  disabled={!chatInput.trim() || isTyping}
+                  className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 bg-slate-900 text-white rounded-xl md:rounded-2xl flex items-center justify-center hover:bg-indigo-600 transition-all disabled:opacity-20 active:scale-90"
+                >
+                  <Send size={18} className="md:w-5 md:h-5" />
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
