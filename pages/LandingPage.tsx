@@ -6,12 +6,9 @@ import {
   CheckCircle2,
   BarChart3,
   ShoppingCart,
-  MessageSquare,
   Twitter,
   Phone,
   MessageCircle,
-  X,
-  Send,
   Users,
   Activity,
   ArrowRight,
@@ -25,7 +22,6 @@ import {
   Languages,
   ChevronDown
 } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
 import { View, AppLanguage } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
 
@@ -50,20 +46,11 @@ const LandingPage: React.FC<LandingPageProps> = ({
   onInstall, 
   onEnterTerminal 
 }) => {
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatInput, setChatInput] = useState('');
   const [isLangOpen, setIsLangOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState<{role: 'user' | 'bot', text: string}[]>([
-    { role: 'bot', text: 'Hello! I am StockBot. How can I help you manage your shop today?' }
-  ]);
-  const [isTyping, setIsTyping] = useState(false);
-  
-  const chatEndRef = useRef<HTMLDivElement>(null);
   const architectureRef = useRef<HTMLElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
-  const isMounted = useRef(true);
 
-  const t = TRANSLATIONS[language];
+  const t = TRANSLATIONS[language] || TRANSLATIONS.en;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -75,61 +62,14 @@ const LandingPage: React.FC<LandingPageProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    isMounted.current = true;
-    return () => { isMounted.current = false; };
-  }, []);
-
   const scrollToSection = (ref: React.RefObject<HTMLElement>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [chatMessages]);
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim() || isTyping) return;
-
-    const userMsg = chatInput;
-    setChatInput('');
-    setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
-    setIsTyping(true);
-
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: userMsg,
-        config: {
-          systemInstruction: `You are StockBot, the official shop assistant for StockBit Pro. Contact: 07010698264. Response language should match the user's inquiry. Currently in ${language} mode.`,
-        }
-      });
-      
-      if (isMounted.current) {
-        const botText = response.text || "I'm having trouble connecting. Please call our support line directly.";
-        setChatMessages(prev => [...prev, { role: 'bot', text: botText }]);
-      }
-    } catch (error: any) {
-      if (isMounted.current) {
-        setChatMessages(prev => [...prev, { role: 'bot', text: "Service is a bit slow. Please call 07010698264 for immediate help." }]);
-      }
-    } finally {
-      if (isMounted.current) {
-        setIsTyping(false);
-      }
-    }
   };
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-300 overflow-x-hidden flex flex-col">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-2xl border-b border-slate-100 pt-[env(safe-area-inset-top)] box-content h-16 md:h-20">
+      <nav className="fixed top-0 w-full z-[100] bg-white/90 backdrop-blur-2xl border-b border-slate-100 pt-[env(safe-area-inset-top)] box-content h-16 md:h-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
@@ -157,7 +97,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
               </button>
               
               {isLangOpen && (
-                <div className="absolute top-full right-0 mt-2 w-36 bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2 z-[60]">
+                <div className="absolute top-full right-0 mt-2 w-40 bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.20)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2 z-[110]">
                   {(['en', 'yo', 'ha', 'ig'] as AppLanguage[]).map((lang) => (
                     <button
                       key={lang}
@@ -199,17 +139,17 @@ const LandingPage: React.FC<LandingPageProps> = ({
           <div className="space-y-8 md:space-y-12 text-left w-full">
             <div className="inline-flex items-center gap-3 px-5 py-2 bg-indigo-50/50 rounded-full border border-indigo-100">
               <Sparkles size={14} className="text-indigo-600" />
-              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">{t.ai_insights}</span>
+              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">{t.smart_biz}</span>
             </div>
             
             <div className="space-y-4 w-full">
-              <h1 className="text-[clamp(2.5rem,10vw,4rem)] md:text-[clamp(3.5rem,7vw,5.5rem)] font-black tracking-tight leading-[1] uppercase text-slate-900 drop-shadow-sm text-balance">
-                STOP LOSING MONEY TO <span className="text-indigo-600">STOCK LEAKAGE.</span>
+              <h1 className="text-[clamp(2.5rem,10vw,4rem)] md:text-[clamp(3.5rem,7vw,5.5rem)] font-black tracking-tight leading-[1.1] uppercase text-slate-900 drop-shadow-sm text-balance">
+                {t.hero_title_1} <span className="text-indigo-600">{t.hero_title_2}</span>
               </h1>
             </div>
             
             <p className="max-w-xl text-base md:text-lg text-slate-600 font-medium leading-relaxed">
-              Paper ledgers are for the past. Track your stock, monitor staff, and record every single sale in real-time. Experience the most reliable shop manager in your pocket.
+              {t.hero_subtitle}
             </p>
 
             <div className="pt-4 pr-2 space-y-4">
@@ -287,28 +227,28 @@ const LandingPage: React.FC<LandingPageProps> = ({
       <section ref={architectureRef} className="py-24 md:py-32 px-6 bg-slate-50">
         <div className="max-w-7xl mx-auto space-y-24">
           <div className="text-center space-y-4 max-w-3xl mx-auto">
-            <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">PROFESSIONAL GRADE TOOLS</h2>
-            <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">EVERYTHING YOUR SHOP NEEDS</h3>
-            <p className="text-base md:text-lg text-slate-500 font-medium">Simple enough for a small kiosk, powerful enough for an industrial warehouse.</p>
+            <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">{t.professional_grade}</h2>
+            <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">{t.everything_needs}</h3>
+            <p className="text-base md:text-lg text-slate-500 font-medium">{t.simple_powerful}</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-10">
             <FeatureImageCard 
               image="https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&q=80&w=800"
               title={t.sales}
-              desc="Record sales in seconds. Print professional receipts for customers instantly."
+              desc={t.fast_sales_desc || "Record sales in seconds. Print professional receipts for customers instantly."}
               icon={<ShoppingCart size={20} />}
             />
             <FeatureImageCard 
               image="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800"
               title={t.inventory}
-              desc="Know exactly what is in your shop. Get alerts when stock is running low."
+              desc={t.smart_inv_desc || "Know exactly what is in your shop. Get alerts when stock is running low."}
               icon={<Box size={20} />}
             />
             <FeatureImageCard 
               image="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=800"
               title={t.reports}
-              desc="See your profit and loss at a glance. Make better decisions with AI reports."
+              desc={t.biz_insights_desc || "See your profit and loss at a glance. Make better decisions with AI reports."}
               icon={<BarChart3 size={20} />}
             />
           </div>
@@ -320,35 +260,34 @@ const LandingPage: React.FC<LandingPageProps> = ({
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
           <div className="space-y-12">
             <div className="space-y-6">
-              <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">BUILT FOR NIGERIA</h2>
+              <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">{t.built_for_nigeria}</h2>
               <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-[0.95]">
-                MANAGE YOUR <br/> SHOP FROM <br/> <span className="text-indigo-600 underline decoration-indigo-200">ANYWHERE.</span>
+                {t.manage_anywhere}
               </h3>
               <p className="text-lg text-slate-600 font-medium leading-relaxed">
-                Whether you're at home in Abuja or in the shop in Lagos, StockBit keeps you connected. 
-                Monitor your staff, check your profit, and verify your stock levels across all your branches in real-time.
+                {t.nigeria_desc}
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               <BenefitItem 
-                title="Staff Accountability" 
-                desc="See exactly who sold what and when." 
+                title={t.staff_acc} 
+                desc={t.staff_acc_desc} 
                 icon={<Users className="text-indigo-600" />} 
               />
               <BenefitItem 
-                title="Secure Payments" 
-                desc="Integrated with Paystack for safe digital transactions." 
+                title={t.secure_pay} 
+                desc={t.secure_pay_desc} 
                 icon={<CreditCard className="text-emerald-600" />} 
               />
               <BenefitItem 
-                title="Phone Scanning" 
-                desc="Turn any smartphone into a professional barcode scanner." 
+                title={t.phone_scan} 
+                desc={t.phone_scan_desc} 
                 icon={<Smartphone className="text-amber-600" />} 
               />
               <BenefitItem 
-                title="Cloud Backup" 
-                desc="Your records are safe even if you lose your phone." 
+                title={t.cloud_backup} 
+                desc={t.cloud_backup_desc} 
                 icon={<Database className="text-indigo-600" />} 
               />
             </div>
@@ -400,18 +339,18 @@ const LandingPage: React.FC<LandingPageProps> = ({
       <section className="py-32 px-6 bg-[#4f46e5] relative overflow-hidden">
         <div className="max-w-4xl mx-auto text-center space-y-12 relative z-10">
           <h2 className="text-4xl md:text-7xl font-black text-white uppercase tracking-tighter leading-none">
-            READY TO GROW <br/> <span className="text-indigo-200">YOUR BUSINESS?</span>
+            {t.ready_grow}
           </h2>
           <p className="text-white/80 text-base md:text-lg font-medium max-w-xl mx-auto leading-relaxed">
-            Join hundreds of Nigerian shop owners who have stopped losing money to errors and started making smarter business decisions today.
+            {t.join_hundreds}
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-6">
             <button onClick={() => onAuth('register')} className="w-full sm:w-auto px-16 py-8 bg-white text-indigo-600 rounded-[2.5rem] font-black uppercase text-[12px] tracking-[0.3em] shadow-2xl active:scale-95 transition-all">
-              {t.lang_en === "English (Global)" ? "CREATE MY ACCOUNT NOW" : "ṢÍ ILÉ ÌTA MI NÍSÌYÍ"}
+              {t.create_account}
             </button>
             {!isAppInstalled && (
               <button onClick={onInstall} className="w-full sm:w-auto px-16 py-8 bg-indigo-800/40 text-white rounded-[2.5rem] font-black uppercase text-[12px] tracking-[0.3em] backdrop-blur-xl border border-white/10 active:scale-95 transition-all">
-                {t.lang_en === "English (Global)" ? "DOWNLOAD MOBILE APP" : "GBÀ APP SÍ FOONU MI"}
+                {t.download_app}
               </button>
             )}
           </div>
@@ -467,77 +406,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
           <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400">© 2025 STOCKBIT TECHNOLOGIES NIGERIA. ALL RIGHTS RESERVED.</p>
         </div>
       </footer>
-
-      {/* Floating AI ChatBot Bubble */}
-      <div className="fixed bottom-10 right-10 z-[100] group">
-        <button 
-          onClick={() => setIsChatOpen(!isChatOpen)}
-          className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 relative ${isChatOpen ? 'bg-slate-900 text-white rotate-90 scale-110' : 'bg-indigo-600 text-white hover:scale-110'}`}
-        >
-          {isChatOpen ? <X size={28} /> : <MessageSquare size={28} />}
-          {!isChatOpen && <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-white rounded-full"></span>}
-        </button>
-        
-        {isChatOpen && (
-          <div className="absolute bottom-20 right-0 w-[300px] xs:w-[320px] md:w-[480px] bg-white rounded-[2.5rem] md:rounded-[3rem] shadow-[0_40px_120px_rgba(0,0,0,0.25)] border border-slate-100 flex flex-col overflow-hidden animate-in slide-in-from-bottom-12 fade-in duration-500">
-            <div className="p-6 md:p-10 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-4 md:gap-5">
-                <div className="w-10 h-10 md:w-14 md:h-14 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl">
-                  <Cpu size={22} className="md:w-7 md:h-7" />
-                </div>
-                <div>
-                  <h3 className="text-sm md:text-base font-black uppercase tracking-widest leading-none">STOCKBOT AI</h3>
-                  <p className="text-[8px] md:text-[10px] font-bold uppercase opacity-60 mt-1">NIGERIA SHOP ASSISTANT</p>
-                </div>
-              </div>
-              <Activity size={20} className="text-emerald-500 animate-pulse md:w-6 md:h-6" />
-            </div>
-
-            <div className="flex-1 p-6 md:p-10 overflow-y-auto max-h-[400px] md:max-h-[450px] space-y-6 md:space-y-8 scrollbar-hide bg-slate-50/50">
-              {chatMessages.map((m, i) => (
-                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-4 duration-500`}>
-                  <div className={`max-w-[90%] md:max-w-[85%] p-5 md:p-6 rounded-[1.8rem] md:rounded-[2.2rem] text-[12px] md:text-[13px] font-semibold leading-relaxed shadow-sm ${
-                    m.role === 'user' 
-                    ? 'bg-indigo-600 text-white rounded-tr-none' 
-                    : 'bg-white text-slate-600 rounded-tl-none border border-slate-100'
-                  }`}>
-                    {m.text}
-                  </div>
-                </div>
-              ))}
-              {isTyping && (
-                <div className="flex justify-start">
-                  <div className="bg-white p-5 md:p-6 rounded-[1.8rem] md:rounded-[2.2rem] rounded-tl-none border border-slate-100 shadow-sm flex gap-1.5 items-center">
-                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce"></div>
-                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce delay-100"></div>
-                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce delay-200"></div>
-                  </div>
-                </div>
-              )}
-              <div ref={chatEndRef} />
-            </div>
-
-            <form onSubmit={handleSendMessage} className="p-6 md:p-8 bg-white border-t border-slate-100">
-              <div className="relative">
-                <input 
-                  type="text" 
-                  placeholder="ASK ME A QUESTION..." 
-                  className="w-full pl-6 md:pl-8 pr-16 md:pr-20 py-4 md:py-5 bg-slate-50 border-none rounded-[1.5rem] md:rounded-[1.8rem] text-[10px] md:text-xs font-black uppercase outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-slate-400"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                />
-                <button 
-                  type="submit"
-                  disabled={!chatInput.trim() || isTyping}
-                  className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 bg-slate-900 text-white rounded-xl md:rounded-2xl flex items-center justify-center hover:bg-indigo-600 transition-all disabled:opacity-20 active:scale-90"
-                >
-                  <Send size={18} className="md:w-5 md:h-5" />
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-      </div>
     </div>
   );
 };

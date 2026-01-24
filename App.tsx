@@ -15,7 +15,7 @@ import UserManagement from './pages/UserManagement';
 import LaunchCenter from './pages/LaunchCenter';
 import LandingPage from './pages/LandingPage';
 import NotificationPanel from './components/NotificationPanel';
-import ScannerModal from './components/ScannerModal';
+import AIStockBot from './components/AIStockBot';
 import AboutUs from './pages/AboutUs';
 import HelpCenter from './pages/HelpCenter';
 import TermsOfService from './pages/TermsOfService';
@@ -255,7 +255,7 @@ const App: React.FC = () => {
     );
   }
 
-  if (!store.isLoggedIn || activeView === View.Landing || isInfoView) {
+  const renderAuthOrInfo = () => {
     if (isInfoView) {
       return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors flex flex-col">
@@ -281,139 +281,146 @@ const App: React.FC = () => {
              {activeView === View.PrivacyPolicy && <PrivacyPolicy />}
              {activeView === View.Governance && <Governance />}
           </div>
+          <AIStockBot language={store.settings.language} user={store.currentUser} />
         </div>
       );
     }
 
     if (authStep === 'landing') {
       return (
-        <LandingPage 
-          isLoggedIn={store.isLoggedIn}
-          isAppInstalled={isAppInstalled}
-          language={store.settings.language}
-          onLanguageChange={(lang: AppLanguage) => store.updateSettings({ language: lang })}
-          onAuth={(step) => { setAuthStep(step); setActiveView(View.Landing); }} 
-          onNavigateInfo={setActiveView} 
-          onInstall={handleInstallApp}
-          onEnterTerminal={() => setActiveView(View.Dashboard)}
-        />
+        <>
+          <LandingPage 
+            isLoggedIn={store.isLoggedIn}
+            isAppInstalled={isAppInstalled}
+            language={store.settings.language}
+            onLanguageChange={(lang: AppLanguage) => store.updateSettings({ language: lang })}
+            onAuth={(step) => { setAuthStep(step); setActiveView(View.Landing); }} 
+            onNavigateInfo={setActiveView} 
+            onInstall={handleInstallApp}
+            onEnterTerminal={() => setActiveView(View.Dashboard)}
+          />
+          <AIStockBot language={store.settings.language} user={store.currentUser} />
+        </>
       );
     }
 
-    if (!store.isLoggedIn) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-          <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-2xl animate-in zoom-in-95 duration-500 overflow-y-auto max-h-[95vh] scrollbar-hide">
-            <div className="flex flex-col items-center mb-10 text-center">
-              <button onClick={() => { setAuthStep('landing'); setActiveView(View.Landing); }} className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-xl active:scale-95 transition-all">
-                <Box size={32} className="text-white" />
-              </button>
-              <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase">StockBit Pro</h1>
-              <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">
-                {authStep === 'forgot' ? 'Find your account' : 'Sign in to your shop'}
-              </p>
-            </div>
-
-            {authError && (
-              <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-900 rounded-2xl text-[12px] font-bold text-rose-600 flex items-center gap-3">
-                <ShieldAlert size={18} className="shrink-0" /> {authError}
-              </div>
-            )}
-
-            {authStep === 'login' && (
-              <form onSubmit={handleLoginSubmit} className="space-y-6">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">Email Address</label>
-                  <input name="email" type="email" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" placeholder="name@email.com" />
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center px-1">
-                    <label className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Password</label>
-                    <button type="button" onClick={() => setAuthStep('forgot')} className="text-[10px] font-bold text-indigo-600 hover:underline uppercase">Forgot Password?</button>
-                  </div>
-                  <div className="relative">
-                    <input name="password" type={showPassword ? "text" : "password"} required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" placeholder="••••••••" />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 p-2">
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
-                </div>
-                <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-indigo-600 text-white font-black uppercase tracking-widest text-[12px] rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
-                  {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <LogIn size={18} />}
-                  {isSubmitting ? 'Checking Details...' : 'Sign In Now'}
-                </button>
-                <div className="pt-4 text-center">
-                  <p className="text-sm font-bold text-slate-400">
-                    New business? <button type="button" onClick={() => setAuthStep('register')} className="text-indigo-600 hover:underline font-black">Create Shop</button>
-                  </p>
-                </div>
-              </form>
-            )}
-
-            {authStep === 'forgot' && (
-              <form onSubmit={handleResetSubmit} className="space-y-6">
-                <div className="bg-indigo-50 dark:bg-indigo-900/10 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-800/50 flex gap-4">
-                  <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center text-indigo-600 shrink-0 shadow-sm">
-                    <KeyRound size={20} />
-                  </div>
-                  <p className="text-xs text-indigo-900/70 dark:text-indigo-300 font-medium leading-relaxed">
-                    Enter the email address you used to register. We will send you a secure link to reset your password.
-                  </p>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">Email Address</label>
-                  <input name="email" type="email" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" placeholder="your@email.com" />
-                </div>
-                <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-indigo-600 text-white font-black uppercase tracking-widest text-[12px] rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
-                  {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Mail size={18} />}
-                  {isSubmitting ? 'Sending Link...' : 'Send Recovery Link'}
-                </button>
-                <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[11px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest text-center flex items-center justify-center gap-2">
-                  <ArrowLeft size={16} /> Back to Sign In
-                </button>
-              </form>
-            )}
-
-            {authStep === 'register' && (
-              <form onSubmit={handleRegisterSubmit} className="space-y-5">
-                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl mb-2">
-                  <button type="button" onClick={() => setIsStaffSignup(false)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isStaffSignup ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Owner</button>
-                  <button type="button" onClick={() => setIsStaffSignup(true)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isStaffSignup ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Staff</button>
-                </div>
-
-                <div className="space-y-4">
-                  <input name="name" placeholder="Full Name" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 rounded-xl border-none font-bold dark:text-white" />
-                  {!isStaffSignup ? (
-                    <input name="companyName" placeholder="Shop Name" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 rounded-xl border-none font-bold dark:text-white" />
-                  ) : (
-                    <input name="inviteId" placeholder="Invite ID from Admin" required className="w-full px-6 py-4 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-100 dark:border-indigo-800 rounded-xl font-bold dark:text-white" />
-                  )}
-                  <input name="email" type="email" placeholder="Email Address" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 rounded-xl border-none font-bold dark:text-white" />
-                  <input name="password" type="password" placeholder="Choose Password" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 rounded-xl border-none font-bold dark:text-white" />
-                </div>
-
-                <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-indigo-600 text-white font-black uppercase tracking-widest text-[12px] rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
-                  {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <UserPlus size={18} />}
-                  {isSubmitting ? 'Starting Up...' : 'Register Business'}
-                </button>
-                <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[11px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest text-center flex items-center justify-center gap-2">
-                  <ChevronLeft size={16} /> Back to Sign In
-                </button>
-              </form>
-            )}
-
-            {authStep === 'verify_otp' && (
-              <div className="space-y-8 text-center">
-                <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner"><MailCheck size={32} /></div>
-                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase">Check Your Email</h3>
-                <p className="text-sm text-slate-500 font-medium">We sent a link to <span className="text-slate-900 dark:text-white font-bold">{pendingEmail}</span>. Click it to reset your password or activate your shop.</p>
-                <button onClick={() => setAuthStep('login')} className="w-full py-5 bg-indigo-600 text-white font-black uppercase text-[12px] rounded-2xl shadow-xl active:scale-95">Go to Login</button>
-              </div>
-            )}
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+        <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-2xl animate-in zoom-in-95 duration-500 overflow-y-auto max-h-[95vh] scrollbar-hide">
+          <div className="flex flex-col items-center mb-10 text-center">
+            <button onClick={() => { setAuthStep('landing'); setActiveView(View.Landing); }} className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-xl active:scale-95 transition-all">
+              <Box size={32} className="text-white" />
+            </button>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase">StockBit Pro</h1>
+            <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">
+              {authStep === 'forgot' ? 'Find your account' : 'Sign in to your shop'}
+            </p>
           </div>
+
+          {authError && (
+            <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-900 rounded-2xl text-[12px] font-bold text-rose-600 flex items-center gap-3">
+              <ShieldAlert size={18} className="shrink-0" /> {authError}
+            </div>
+          )}
+
+          {authStep === 'login' && (
+            <form onSubmit={handleLoginSubmit} className="space-y-6">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">Email Address</label>
+                <input name="email" type="email" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" placeholder="name@email.com" />
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center px-1">
+                  <label className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Password</label>
+                  <button type="button" onClick={() => setAuthStep('forgot')} className="text-[10px] font-bold text-indigo-600 hover:underline uppercase">Forgot Password?</button>
+                </div>
+                <div className="relative">
+                  <input name="password" type={showPassword ? "text" : "password"} required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" placeholder="••••••••" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 p-2">
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+              <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-indigo-600 text-white font-black uppercase tracking-widest text-[12px] rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
+                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <LogIn size={18} />}
+                {isSubmitting ? 'Checking Details...' : 'Sign In Now'}
+              </button>
+              <div className="pt-4 text-center">
+                <p className="text-sm font-bold text-slate-400">
+                  New business? <button type="button" onClick={() => setAuthStep('register')} className="text-indigo-600 hover:underline font-black">Create Shop</button>
+                </p>
+              </div>
+            </form>
+          )}
+
+          {authStep === 'forgot' && (
+            <form onSubmit={handleResetSubmit} className="space-y-6">
+              <div className="bg-indigo-50 dark:bg-indigo-900/10 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-800/50 flex gap-4">
+                <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center text-indigo-600 shrink-0 shadow-sm">
+                  <KeyRound size={20} />
+                </div>
+                <p className="text-xs text-indigo-900/70 dark:text-indigo-300 font-medium leading-relaxed">
+                  Enter the email address you used to register. We will send you a secure link to reset your password.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">Email Address</label>
+                <input name="email" type="email" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" placeholder="your@email.com" />
+              </div>
+              <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-indigo-600 text-white font-black uppercase tracking-widest text-[12px] rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
+                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Mail size={18} />}
+                {isSubmitting ? 'Sending Link...' : 'Send Recovery Link'}
+              </button>
+              <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[11px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest text-center flex items-center justify-center gap-2">
+                <ArrowLeft size={16} /> Back to Sign In
+              </button>
+            </form>
+          )}
+
+          {authStep === 'register' && (
+            <form onSubmit={handleRegisterSubmit} className="space-y-5">
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl mb-2">
+                <button type="button" onClick={() => setIsStaffSignup(false)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isStaffSignup ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Owner</button>
+                <button type="button" onClick={() => setIsStaffSignup(true)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isStaffSignup ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Staff</button>
+              </div>
+
+              <div className="space-y-4">
+                <input name="name" placeholder="Full Name" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 rounded-xl border-none font-bold dark:text-white" />
+                {!isStaffSignup ? (
+                  <input name="companyName" placeholder="Shop Name" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 rounded-xl border-none font-bold dark:text-white" />
+                ) : (
+                  <input name="inviteId" placeholder="Invite ID from Admin" required className="w-full px-6 py-4 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-100 dark:border-indigo-800 rounded-xl font-bold dark:text-white" />
+                )}
+                <input name="email" type="email" placeholder="Email Address" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 rounded-xl border-none font-bold dark:text-white" />
+                <input name="password" type="password" placeholder="Choose Password" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 rounded-xl border-none font-bold dark:text-white" />
+              </div>
+
+              <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-indigo-600 text-white font-black uppercase tracking-widest text-[12px] rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
+                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <UserPlus size={18} />}
+                {isSubmitting ? 'Starting Up...' : 'Register Business'}
+              </button>
+              <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[11px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest text-center flex items-center justify-center gap-2">
+                <ChevronLeft size={16} /> Back to Sign In
+              </button>
+            </form>
+          )}
+
+          {authStep === 'verify_otp' && (
+            <div className="space-y-8 text-center">
+              <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner"><MailCheck size={32} /></div>
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase">Check Your Email</h3>
+              <p className="text-sm text-slate-500 font-medium">We sent a link to <span className="text-slate-900 dark:text-white font-bold">{pendingEmail}</span>. Click it to reset your password or activate your shop.</p>
+              <button onClick={() => setAuthStep('login')} className="w-full py-5 bg-indigo-600 text-white font-black uppercase text-[12px] rounded-2xl shadow-xl active:scale-95">Go to Login</button>
+            </div>
+          )}
         </div>
-      );
-    }
+        <AIStockBot language={store.settings.language} user={null} />
+      </div>
+    );
+  };
+
+  if (!store.isLoggedIn || activeView === View.Landing || isInfoView) {
+    return renderAuthOrInfo();
   }
 
   // Loading screen for data sync
@@ -481,7 +488,7 @@ const App: React.FC = () => {
 
           <div className="flex items-center gap-2 md:gap-4 shrink-0">
             {!isAppInstalled && (
-              <button onClick={handleInstallApp} className="hidden sm:flex items-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-xl hover:bg-indigo-100 active:scale-95 transition-all">
+              <button onClick={handleInstallApp} className="hidden sm:flex items-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl hover:bg-indigo-100 active:scale-95 transition-all">
                 <DownloadCloud size={14} />
                 <span className="text-[10px] font-black uppercase tracking-widest">Get the App</span>
               </button>
@@ -499,6 +506,7 @@ const App: React.FC = () => {
         </header>
         <div className="p-3 md:p-10 flex-1 overflow-x-hidden min-h-0 pb-[env(safe-area-inset-bottom)]">{renderView()}</div>
       </main>
+      <AIStockBot language={store.settings.language} user={store.currentUser} />
     </div>
   );
 };

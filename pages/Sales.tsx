@@ -338,7 +338,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
       {isTerminalOpen && (
         <div className="fixed inset-0 z-[60] bg-white dark:bg-[#020617] flex flex-col animate-in zoom-in-95 duration-300 no-print transition-colors">
           
-          <div className="h-14 bg-slate-100 dark:bg-[#0a0f1d] flex items-end px-4 gap-1.5 shrink-0 overflow-x-auto scrollbar-hide border-b border-slate-200 dark:border-none">
+          <div className="h-16 md:h-14 bg-slate-100 dark:bg-[#0a0f1d] flex items-end px-4 gap-1.5 shrink-0 overflow-x-auto scrollbar-hide border-b border-slate-200 dark:border-none relative">
              {carts.map((cart, idx) => (
                <div key={cart.id} className="flex items-center">
                   <button 
@@ -365,14 +365,15 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
              ))}
              <button onClick={handleAddNewCart} className="h-10 px-4 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-all mb-0.5 shrink-0"><Plus size={18}/></button>
              
-             <div className="ml-auto mb-3 hidden md:flex items-center gap-4 pr-2">
-                <div className="text-right">
+             <div className="ml-auto mb-2 flex items-center gap-4 pr-2">
+                <div className="hidden md:block text-right">
                    <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">OPERATOR</p>
                    <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase">{currentUser?.name || 'ADMIN'}</p>
                 </div>
                 <button 
                   onClick={() => setIsTerminalOpen(false)} 
-                  className="w-10 h-10 bg-rose-600/10 text-rose-600 rounded-xl hover:bg-rose-600 transition-all flex items-center justify-center group"
+                  className="w-10 h-10 bg-rose-600/10 text-rose-600 rounded-xl hover:bg-rose-600 transition-all flex items-center justify-center group shrink-0"
+                  aria-label="Exit Terminal"
                 >
                    <X size={20} className="group-hover:text-white" />
                 </button>
