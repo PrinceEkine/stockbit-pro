@@ -103,7 +103,14 @@ const LandingPage: React.FC<LandingPageProps> = ({
     setIsTyping(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      // In Vercel environment, API_KEY must be correctly mapped to process.env.API_KEY
+      const apiKey = process.env.API_KEY;
+      
+      if (!apiKey) {
+        throw new Error("API_KEY_MISSING");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: [{ role: 'user', parts: [{ text: userMsg }] }],
@@ -119,7 +126,13 @@ const LandingPage: React.FC<LandingPageProps> = ({
     } catch (error: any) {
       console.error("StockBot Call Failed:", error);
       if (isMounted.current) {
-        setChatMessages(prev => [...prev, { role: 'bot', text: "Service is temporarily unavailable. Please call our direct helpline 07010698264 for immediate business support." }]);
+        let errorText = "Service is temporarily unavailable. Please call our direct helpline 07010698264 for immediate business support.";
+        
+        if (error.message === "API_KEY_MISSING") {
+          errorText = "Deployment Alert: Chatbot requires the API_KEY to be defined in your Vercel Project Settings. Please add it to restore service.";
+        }
+        
+        setChatMessages(prev => [...prev, { role: 'bot', text: errorText }]);
       }
     } finally {
       if (isMounted.current) {
@@ -460,7 +473,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
             { label: t.inventory, onClick: () => scrollToSection(architectureRef) },
             { label: t.sales, onClick: () => scrollToSection(architectureRef) },
             { label: 'Marketplace Sync', onClick: () => scrollToSection(architectureRef) },
-            { label: 'PWA Mobile App', onClick: onInstall },
+            ...(!isAppInstalled ? [{ label: 'PWA Mobile App', onClick: onInstall }] : []),
           ]} />
 
           <FooterSection title="RESOURCES" links={[

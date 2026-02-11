@@ -125,7 +125,8 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
         price: res.price?.toString() || prev.price,
         category: CATEGORIES.includes(res.category) ? res.category : prev.category,
         batch_number: res.batchNumber || prev.batch_number,
-        expiry_date: res.expiryDate || prev.expiry_date
+        expiry_date: res.expiryDate || prev.expiry_date,
+        sustainability_score: res.sustainabilityScore?.toString() || prev.sustainability_score
       }));
       setIsModalOpen(true);
       setIsScannerOpen(false);
@@ -178,6 +179,12 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
 
   const displayCompanyName = currentUser?.companyName || settings.companyName;
 
+  const getScoreColor = (score: number) => {
+    if (score >= 70) return 'text-emerald-500';
+    if (score >= 40) return 'text-amber-500';
+    return 'text-rose-500';
+  };
+
   return (
     <div className="space-y-6 md:space-y-10 animate-in fade-in duration-700 max-w-full overflow-x-hidden">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 no-print px-4">
@@ -200,84 +207,11 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
         </div>
       </header>
 
-      {/* PRINT VIEW: LEDGER */}
-      {printMode === 'ledger' && (
-        <div className="print-only">
-          <div className="inventory-ledger-print p-10">
-            <h1 className="text-2xl font-black mb-8 uppercase text-center border-b-2 border-slate-900 pb-4">{displayCompanyName} - Inventory Ledger</h1>
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-slate-100 text-[10px] font-black uppercase text-left">
-                  <th className="p-3 border">SKU</th>
-                  <th className="p-3 border">Product Name</th>
-                  <th className="p-3 border">Category</th>
-                  <th className="p-3 border">Price</th>
-                  <th className="p-3 border">Qty</th>
-                  <th className="p-3 border">Location</th>
-                </tr>
-              </thead>
-              <tbody>
-                {printProducts.map(p => (
-                  <tr key={p.id} className="text-[10px] border-b">
-                    <td className="p-3 border font-mono">{p.sku}</td>
-                    <td className="p-3 border font-bold uppercase">{p.name}</td>
-                    <td className="p-3 border uppercase">{p.category}</td>
-                    <td className="p-3 border font-bold">{settings.currency}{p.price.toLocaleString()}</td>
-                    <td className="p-3 border">{p.quantity}</td>
-                    <td className="p-3 border">{p.location}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* PRINT VIEW: ADVANCED BARCODE LABELS */}
-      {printMode === 'labels' && (
-        <div className="print-only">
-          {printProducts.map(p => (
-            <div key={p.id} className="qr-label-print bg-white border border-black">
-               <div className="flex justify-between items-center border-b border-black/20 pb-0.5 mb-1 px-1">
-                  <span className="text-[9px] font-black uppercase tracking-tight truncate w-32">{displayCompanyName}</span>
-                  <span className="text-[7px] font-black uppercase border border-black px-1 rounded-sm">RETAIL</span>
-               </div>
-               
-               <div className="flex-1 flex flex-col items-center justify-center overflow-hidden">
-                  <h4 className="text-[9px] font-black uppercase leading-tight truncate w-full text-center mb-1">{p.name}</h4>
-                  
-                  {/* PROFESSIONAL LINEAR BARCODE - SCALE 3 for better clarity */}
-                  <div className="w-full h-[14mm] flex items-center justify-center overflow-hidden bg-white">
-                     <img 
-                        src={`https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(p.sku)}&scale=3&rotate=N&includetext=false&backgroundcolor=ffffff&barcolor=000000`} 
-                        alt="Barcode" 
-                        className="h-full object-contain" 
-                        style={{ imageRendering: 'pixelated' }}
-                     />
-                  </div>
-                  
-                  <div className="text-[10px] font-mono font-black tracking-[0.25em] mt-1 text-black">
-                     {p.sku.toUpperCase()}
-                  </div>
-               </div>
-
-               <div className="flex items-center justify-between border-t border-black/20 pt-1 mt-1 px-1">
-                  <div className="flex flex-col">
-                     <span className="text-[14px] font-black tracking-tighter leading-none text-black">{settings.currency}{p.price.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                     <span className="text-[7px] font-black uppercase bg-black text-white px-1 rounded-sm">{p.category}</span>
-                  </div>
-               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
+      {/* SEARCH BAR */}
       <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-4 no-print shadow-sm mx-4">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-          <input type="text" placeholder="Filter Assets..." className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-sm font-bold placeholder:text-slate-400 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          <input type="text" placeholder="Filter Assets..." className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-sm font-bold placeholder:text-slate-400 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
         {selectedIds.size > 0 && (
           <button onClick={() => handlePrintLabels()} className="px-5 py-4 bg-indigo-600 text-white rounded-2xl flex items-center justify-center gap-3 font-black text-[9px] uppercase tracking-widest shadow-xl active:scale-95 transition-all animate-in slide-in-from-right-2">
@@ -286,7 +220,7 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
         )}
       </div>
 
-      {/* MOBILE OPTIMIZED LIST */}
+      {/* MOBILE LIST */}
       <div className="lg:hidden space-y-5 px-4 pb-24 no-print">
         {filteredProducts.map((p) => {
           const isLow = p.quantity <= p.min_threshold;
@@ -303,33 +237,23 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                     <span className="px-2 py-0.5 bg-white/5 text-indigo-400 rounded-md text-[8px] font-black uppercase tracking-widest border border-white/5">
                       {p.category}
                     </span>
+                    <span className={`px-2 py-0.5 bg-white/5 ${getScoreColor(p.sustainability_score || 0)} rounded-md text-[8px] font-black uppercase tracking-widest border border-white/5 flex items-center gap-1`}>
+                      <Leaf size={8}/> {p.sustainability_score || 0}% ECO
+                    </span>
                   </div>
                   <h4 className="font-black text-white uppercase text-sm leading-tight tracking-tight pr-4">
                     {p.name}
                   </h4>
-                  <p className="font-mono text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-2">
-                    SKU: {p.sku}
-                  </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <input 
-                    type="checkbox" 
-                    className="rounded-lg border-white/10 bg-white/5 text-indigo-600 focus:ring-indigo-500 w-6 h-6 transition-all" 
-                    checked={selectedIds.has(p.id)} 
-                    onChange={(e) => { e.stopPropagation(); toggleSelection(p.id); }} 
-                  />
-                </div>
+                <input type="checkbox" className="rounded-lg border-white/10 bg-white/5 text-indigo-600 focus:ring-indigo-500 w-6 h-6 transition-all" checked={selectedIds.has(p.id)} onChange={(e) => { e.stopPropagation(); toggleSelection(p.id); }} />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-black/20 p-4 rounded-3xl border border-white/5 flex flex-col justify-between h-24">
                   <p className="text-[7px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Stock Position</p>
-                  <div className="flex items-end justify-between">
-                    <span className={`text-xl font-black tracking-tighter ${isOut ? 'text-rose-500' : isLow ? 'text-amber-500' : 'text-emerald-400'}`}>
-                      {p.quantity} <span className="text-[10px] uppercase ml-1">Units</span>
-                    </span>
-                    {isLow && <AlertTriangle size={16} className="text-amber-500 mb-1 animate-pulse" />}
-                  </div>
+                  <span className={`text-xl font-black tracking-tighter ${isOut ? 'text-rose-500' : isLow ? 'text-amber-500' : 'text-emerald-400'}`}>
+                    {p.quantity} <span className="text-[10px] uppercase ml-1">Units</span>
+                  </span>
                 </div>
                 <div className="bg-black/20 p-4 rounded-3xl border border-white/5 flex flex-col justify-between h-24">
                   <p className="text-[7px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Asset Value</p>
@@ -338,40 +262,12 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                   </span>
                 </div>
               </div>
-
-              <div className="flex items-center justify-between pt-5 border-t border-white/5">
-                <div className="flex items-center gap-2 text-slate-500">
-                  <div className="w-8 h-8 bg-white/5 rounded-xl flex items-center justify-center">
-                    <MapPin size={14} className="text-indigo-400" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[7px] font-black uppercase text-slate-600 leading-none mb-1">Location Node</span>
-                    <span className="text-[9px] font-black uppercase text-slate-300 truncate max-w-[140px]">{p.location}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handlePrintLabels([p]); }} 
-                    className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-slate-400 active:bg-indigo-600 active:text-white transition-all border border-white/5"
-                    aria-label="Print Barcode"
-                  >
-                    <QrCode size={20} />
-                  </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); if(confirm(`Confirm deletion of asset ${p.sku}?`)) onDelete(p.id); }} 
-                    className="w-12 h-12 bg-rose-500/10 rounded-2xl flex items-center justify-center text-rose-500 active:bg-rose-600 active:text-white transition-all border border-rose-500/10"
-                    aria-label="Delete Asset"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </div>
-              </div>
             </div>
           );
         })}
       </div>
 
-      {/* DESKTOP TABLE VIEW */}
+      {/* DESKTOP TABLE */}
       <div className="hidden lg:block bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden no-print mx-4 mb-20">
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-[800px]">
@@ -385,6 +281,7 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                 </th>
                 <th className="px-10 py-6">Asset Intelligence</th>
                 <th className="px-10 py-6 text-center">Location</th>
+                <th className="px-10 py-6 text-center">Eco Score</th>
                 <th className="px-10 py-6 text-center">Health</th>
                 <th className="px-10 py-6 text-center">Price</th>
                 <th className="px-10 py-6 text-right">Ops</th>
@@ -395,7 +292,7 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                 const isLow = p.quantity <= p.min_threshold;
                 const isOut = p.quantity === 0;
                 return (
-                  <tr key={p.id} id={`prod-${p.id}`} className={`transition-all duration-500 ${highlightedId === p.id ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-4 ring-indigo-500/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+                  <tr key={p.id} className={`transition-all duration-500 ${highlightedId === p.id ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-4 ring-indigo-500/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
                     <td className="pl-10 py-6">
                       <input type="checkbox" className="rounded-md border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 bg-transparent" checked={selectedIds.has(p.id)} onChange={() => toggleSelection(p.id)} />
                     </td>
@@ -409,9 +306,13 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                       <span className="text-[9px] font-black uppercase tracking-widest px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-full">{p.location}</span>
                     </td>
                     <td className="px-10 py-6 text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <p className={`font-black text-sm ${isOut ? 'text-rose-600' : isLow ? 'text-amber-600' : 'text-slate-900 dark:text-white'}`}>{p.quantity} Units</p>
+                      <div className="flex items-center justify-center gap-1">
+                        <Leaf size={14} className={getScoreColor(p.sustainability_score || 0)} />
+                        <span className={`text-[11px] font-black ${getScoreColor(p.sustainability_score || 0)}`}>{p.sustainability_score || 0}%</span>
                       </div>
+                    </td>
+                    <td className="px-10 py-6 text-center">
+                      <p className={`font-black text-sm ${isOut ? 'text-rose-600' : isLow ? 'text-amber-600' : 'text-slate-900 dark:text-white'}`}>{p.quantity} Units</p>
                     </td>
                     <td className="px-10 py-6 text-center font-black text-indigo-600">{settings.currency}{(p.price || 0).toLocaleString()}</td>
                     <td className="px-10 py-6 text-right">
@@ -428,6 +329,7 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
         </div>
       </div>
 
+      {/* ADD/EDIT MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl no-print">
           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] md:rounded-[3.5rem] w-full max-w-4xl p-6 md:p-12 shadow-2xl animate-in zoom-in-95 overflow-y-auto max-h-[95vh] border border-white/5">
@@ -446,16 +348,16 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                 <div className="md:col-span-2 space-y-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><Tag size={12}/> Product Identity</label>
-                    <input required className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-500" placeholder="Product Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                    <input required className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500" placeholder="Product Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase ml-1">SKU / Barcode</label>
-                      <input required className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-500" placeholder="SKU0000" value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} />
+                      <input required className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500" placeholder="SKU0000" value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Category</label>
-                      <select className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-500" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                      <select className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
                         {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
@@ -467,17 +369,21 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
                     <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest ml-1 flex items-center gap-2"><Layers size={12}/> On-Hand Qty</label>
                     <input required type="number" className="w-full px-5 py-3 bg-white dark:bg-slate-900 rounded-xl border-none font-black text-xl text-indigo-600 focus:ring-2 focus:ring-indigo-500" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest ml-1 flex items-center gap-2"><Leaf size={12}/> Sustainability %</label>
+                    <input type="number" min="0" max="100" className="w-full px-5 py-3 bg-white dark:bg-slate-900 rounded-xl border-none font-black text-xl text-emerald-600 focus:ring-2 focus:ring-emerald-500" value={formData.sustainability_score} onChange={e => setFormData({...formData, sustainability_score: e.target.value})} />
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Selling Price ({settings.currency})</label>
-                  <input required type="number" step="0.01" className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-500" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+                  <input required type="number" step="0.01" className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><MapPin size={12}/> Warehouse Location</label>
-                  <select className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold dark:text-white focus:ring-2 focus:ring-indigo-500" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})}>
+                  <select className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})}>
                     {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </div>

@@ -7,9 +7,6 @@ const SUPER_ADMIN_EMAILS = [
   'princedagogoekine@gmail.com'
 ];
 
-/**
- * Maps database profile record to the User type used in the frontend.
- */
 const mapProfile = (dbProfile: any): User => ({
   id: dbProfile.id,
   email: dbProfile.email,
@@ -24,10 +21,6 @@ const mapProfile = (dbProfile: any): User => ({
   plan: dbProfile.plan
 });
 
-/**
- * Calculates trial status for a user based on their registration date.
- * Assumes a 60-day trial period.
- */
 export const getTrialStatus = (user: User | null) => {
   if (!user) return { isSubscribed: false, daysLeft: 0 };
   if (user.isSubscribed) return { isSubscribed: true, daysLeft: 0 };
@@ -42,9 +35,6 @@ export const getTrialStatus = (user: User | null) => {
   return { isSubscribed: false, daysLeft };
 };
 
-/**
- * Main application store hook for managing global state and Supabase data operations.
- */
 export const useStore = () => {
   const [loading, setLoading] = useState(true);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
@@ -73,9 +63,6 @@ export const useStore = () => {
 
   const isLoggedIn = !!currentUser;
 
-  /**
-   * Loads all application data for the authenticated user or their parent business.
-   */
   const loadData = useCallback(async (userId: string, isStaff: boolean, parentId?: string) => {
     setLoading(true);
     const targetUserId = isStaff ? parentId : userId;
@@ -114,7 +101,6 @@ export const useStore = () => {
     }
   }, [settings]);
 
-  // Initial authentication check and session listener
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -152,7 +138,6 @@ export const useStore = () => {
     return () => subscription.unsubscribe();
   }, [loadData]);
 
-  // Authentication Actions
   const login = async (email: string, pass: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
     return { data, error };
@@ -194,13 +179,10 @@ export const useStore = () => {
     return await supabase.auth.resetPasswordForEmail(email);
   };
 
-  // Business Actions
   const updateSettings = async (updates: Partial<Settings>) => {
-    // UPDATED: Allow local settings updates even if not logged in
     const newSettings = { ...settings, ...updates };
     setSettings(newSettings);
     
-    // Only attempt Supabase sync if user is authenticated
     if (currentUser) {
       const targetId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
       if (targetId) {
@@ -215,6 +197,7 @@ export const useStore = () => {
   const addProduct = async (product: Omit<Product, 'id' | 'last_updated' | 'created_at' | 'user_id'>) => {
     if (!currentUser) return;
     const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+    if (!userId) return;
     const { data, error } = await supabase.from('products').insert([{ ...product, user_id: userId }]).select().single();
     if (data) setProducts(prev => [...prev, data]);
   };
@@ -233,6 +216,11 @@ export const useStore = () => {
     if (!currentUser) return false;
     const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
     
+    if (!userId) {
+      console.error("Critical Failure: No target business owner ID found for transaction.");
+      return false;
+    }
+
     const totalPrice = items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
     const totalCost = items.reduce((sum, i) => sum + (i.costPrice * i.quantity), 0);
     const taxAmount = totalPrice * (settings.taxRate / 100);
@@ -254,7 +242,6 @@ export const useStore = () => {
     
     if (data) {
       setSales(prev => [data, ...prev]);
-      // Update inventory levels
       for (const item of items) {
         const p = products.find(prod => prod.id === item.productId);
         if (p) {
@@ -269,6 +256,7 @@ export const useStore = () => {
   const recordReturn = async (data: Omit<ProductReturn, 'id' | 'date' | 'user_id'>) => {
     if (!currentUser) return;
     const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+    if (!userId) return;
     const { data: ret, error } = await supabase.from('returns').insert([{ ...data, user_id: userId }]).select().single();
     if (ret) {
       setReturns(prev => [ret, ...prev]);
@@ -288,6 +276,7 @@ export const useStore = () => {
   const addSupplier = async (supplier: Omit<Supplier, 'id' | 'user_id'>) => {
     if (!currentUser) return;
     const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+    if (!userId) return;
     const { data, error } = await supabase.from('suppliers').insert([{ ...supplier, user_id: userId }]).select().single();
     if (data) setSuppliers(prev => [...prev, data]);
   };

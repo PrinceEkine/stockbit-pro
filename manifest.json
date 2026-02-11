@@ -10,21 +10,21 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/5832/5832416.png",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Cpath d='M50 25L25 37.5V62.5L50 75L75 62.5V37.5L50 25Z' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M25 37.5L50 50L75 37.5' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M50 50V75' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/5832/5832416.png",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Cpath d='M50 25L25 37.5V62.5L50 75L75 62.5V37.5L50 25Z' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M25 37.5L50 50L75 37.5' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M50 50V75' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/5832/5832416.png",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Cpath d='M50 25L25 37.5V62.5L50 75L75 62.5V37.5L50 25Z' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M25 37.5L50 50L75 37.5' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M50 50V75' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "maskable"
     }
   ],

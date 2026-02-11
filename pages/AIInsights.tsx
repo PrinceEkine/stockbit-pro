@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, RefreshCw, Zap, TrendingUp, AlertTriangle, ShieldCheck, PieChart, Activity, ExternalLink, Globe, BookOpen } from 'lucide-react';
+import { Sparkles, RefreshCw, Zap, TrendingUp, AlertTriangle, ShieldCheck, PieChart, Activity, ExternalLink, Globe, BookOpen, Leaf, Lock } from 'lucide-react';
 import { AppState } from '../types';
 import { getInventoryInsights, InsightResult } from '../services/geminiService';
 
@@ -11,8 +11,11 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
   const [insightData, setInsightData] = useState<InsightResult | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const isMegaPro = state.currentUser?.plan === 'mega_pro';
+
   const fetchInsights = async () => {
     setLoading(true);
+    // Passing sustainability score context into the AI engine
     const result = await getInventoryInsights(state?.products || [], state?.sales || []);
     setInsightData(result);
     setLoading(false);
@@ -38,6 +41,10 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
     .filter(p => p.quantity <= (p.min_threshold || 0))
     .slice(0, 3);
 
+  const lowSustainabilityItems = (state?.products || [])
+    .filter(p => (p.sustainability_score || 0) < 40)
+    .slice(0, 3);
+
   return (
     <div className="space-y-10 animate-in fade-in duration-700 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -61,6 +68,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
+          {/* Main Insights Panel */}
           <div className="bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
             <Sparkles className="absolute -top-10 -right-10 text-indigo-500/5 w-64 h-64 rotate-12 group-hover:scale-110 transition-transform duration-1000" />
             
@@ -129,14 +137,52 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
             )}
           </div>
 
-          <div className="bg-gradient-to-br from-slate-900 to-indigo-950 p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group">
-            <PieChart className="absolute -bottom-10 -right-10 w-48 h-48 text-white/5 rotate-12 group-hover:scale-125 transition-transform duration-1000" />
-            <h3 className="text-lg font-black uppercase tracking-tighter mb-4 flex items-center gap-3">
-               <Zap className="text-amber-400" size={20} /> Smart Velocity Engine
-            </h3>
-            <p className="text-indigo-100/80 font-medium leading-relaxed max-w-md">
-              Your inventory is currently processed through a cross-weighted algorithm. We prioritize items with high historical movement during seasonal shifts in the Nigerian retail calendar.
-            </p>
+          {/* Sustainability Audit Section - MEGA PRO ONLY */}
+          <div className="bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[3rem] border-2 border-emerald-500/20 shadow-sm relative overflow-hidden group">
+            <Leaf className={`absolute -top-10 -right-10 text-emerald-500/5 w-64 h-64 rotate-12 group-hover:scale-110 transition-transform duration-1000 ${!isMegaPro ? 'grayscale opacity-10' : ''}`} />
+            
+            <div className="flex items-center justify-between mb-8">
+               <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 ${isMegaPro ? 'bg-emerald-600' : 'bg-slate-200 dark:bg-slate-800'} text-white rounded-2xl flex items-center justify-center shadow-lg`}>
+                     <Leaf size={24} />
+                  </div>
+                  <div>
+                     <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Sustainability Audit</h2>
+                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Environmental Risk Analysis</p>
+                  </div>
+               </div>
+               {!isMegaPro && (
+                 <div className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                   <Lock size={12} /> Upgrade to Mega Pro
+                 </div>
+               )}
+            </div>
+
+            {isMegaPro ? (
+              <div className="space-y-6">
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400 leading-relaxed">
+                  The AI is evaluating the supply chain footprint and eco-reliability of your current stock. High priority is placed on items with a Sustainability Score below 40%.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                   <div className="p-5 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100 dark:border-emerald-800/50">
+                      <p className="text-[9px] font-black uppercase text-emerald-600 mb-2 tracking-widest">Average Portfolio Score</p>
+                      <h4 className="text-3xl font-black text-emerald-700">
+                        {Math.round((state.products.reduce((a,b)=>a+(b.sustainability_score||0),0) / (state.products.length||1)))}%
+                      </h4>
+                   </div>
+                   <div className="p-5 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-800/50">
+                      <p className="text-[9px] font-black uppercase text-amber-600 mb-2 tracking-widest">Eco-Risks Detected</p>
+                      <h4 className="text-3xl font-black text-amber-700">{lowSustainabilityItems.length} Items</h4>
+                   </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-10">
+                <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest max-w-xs mx-auto">
+                  Unlock the Sustainability Hub to track ecological impact and minimize supply chain waste.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   ShoppingCart, Search, Plus, Minus, X, Scan, User, Edit3, ChevronRight, Loader2, Printer, 
@@ -338,9 +337,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
       {isTerminalOpen && (
         <div className="fixed inset-0 z-[60] bg-white dark:bg-[#020617] flex flex-col animate-in zoom-in-95 duration-300 no-print transition-colors">
           
-          {/* TERMINAL HEADER - FIXED ROW */}
           <div className="h-16 bg-slate-100 dark:bg-[#0a0f1d] flex items-stretch border-b border-slate-200 dark:border-white/5 shrink-0 overflow-hidden">
-             {/* Left: Scrollable Tabs Container */}
              <div className="flex-1 flex items-end px-4 gap-1.5 overflow-x-auto scrollbar-hide">
                 {carts.map((cart, idx) => (
                   <button 
@@ -368,7 +365,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                 <button onClick={handleAddNewCart} className="h-11 px-4 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-all shrink-0"><Plus size={18}/></button>
              </div>
 
-             {/* Right: Fixed Action Controls */}
              <div className="flex items-center gap-4 px-4 bg-slate-100 dark:bg-[#0a0f1d] border-l border-slate-200 dark:border-white/5">
                 <div className="hidden md:block text-right">
                    <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">OPERATOR</p>
@@ -377,7 +373,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                 <button 
                   onClick={() => setIsTerminalOpen(false)} 
                   className="w-11 h-11 bg-rose-600/10 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center shadow-sm active:scale-95"
-                  title="Close Terminal"
                 >
                    <X size={24} />
                 </button>
@@ -630,35 +625,35 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-[#020617]/98 backdrop-blur-3xl no-print">
           <div className="bg-white rounded-[4rem] w-full max-w-lg p-10 md:p-16 shadow-2xl text-center animate-in zoom-in-95 duration-500">
              <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner"><CreditCard size={32} /></div>
-             <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 text-slate-900">Checkout Finalization</h3>
+             <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 text-slate-900">CHECKOUT FINALIZATION</h3>
              <p className="text-5xl font-black text-[#4f46e5] mb-8 tracking-tighter leading-none">{settings.currency}{total.toLocaleString()}</p>
              
              {errorMsg && (
-                <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest animate-pulse">
-                   <AlertCircle size={16} /> {errorMsg}
+                <div className="mb-6 p-4 bg-rose-50 text-rose-600 border border-rose-100 rounded-2xl flex items-center justify-center gap-3 text-[11px] font-black uppercase tracking-widest animate-in slide-in-from-top-2">
+                   <AlertCircle size={20} /> {errorMsg}
                 </div>
              )}
 
              <div className="grid grid-cols-2 gap-4 mb-10">
                 <button onClick={() => setPaymentMethod('cash')} className={`py-6 rounded-[2.5rem] border-4 transition-all ${paymentMethod === 'cash' ? 'border-[#4f46e5] bg-indigo-50 text-[#4f46e5] shadow-xl' : 'border-slate-50 text-slate-400 opacity-60'}`}>
                    <Banknote size={32} className="mx-auto mb-2" />
-                   <span className="text-[11px] font-black uppercase">Liquid Cash</span>
+                   <span className="text-[11px] font-black uppercase tracking-widest">LIQUID CASH</span>
                 </button>
                 <button onClick={() => setPaymentMethod('paystack')} className={`py-6 rounded-[2.5rem] border-4 transition-all ${paymentMethod === 'paystack' ? 'border-[#4f46e5] bg-indigo-50 text-[#4f46e5] shadow-xl' : 'border-slate-50 text-slate-400 opacity-60'}`}>
                    <CreditCard size={32} className="mx-auto mb-2" />
-                   <span className="text-[11px] font-black uppercase">Digital Card</span>
+                   <span className="text-[11px] font-black uppercase tracking-widest">DIGITAL CARD</span>
                 </button>
              </div>
              <div className="space-y-4">
                 <button 
                   disabled={isProcessing} 
                   onClick={() => handleCheckout('completed')} 
-                  className="w-full py-6 bg-[#4f46e5] text-white rounded-[2.5rem] font-black uppercase text-xs flex items-center justify-center gap-4 active:scale-95 shadow-2xl shadow-indigo-600/30 transition-all"
+                  className="w-full py-6 bg-[#4f46e5] text-white rounded-[2.5rem] font-black uppercase text-xs flex items-center justify-center gap-4 active:scale-95 shadow-2xl shadow-indigo-600/30 transition-all tracking-[0.2em]"
                 >
                    {isProcessing ? <Loader2 className="animate-spin" /> : <Printer size={22} />}
                    {isProcessing ? 'SYNCHRONIZING...' : 'COMMIT & PRINT'}
                 </button>
-                <button onClick={() => setShowConfirmDialog(false)} className="w-full py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-rose-600 transition-colors">Abort & Return</button>
+                <button onClick={() => setShowConfirmDialog(false)} className="w-full py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-rose-600 transition-colors">ABORT & RETURN</button>
              </div>
           </div>
         </div>

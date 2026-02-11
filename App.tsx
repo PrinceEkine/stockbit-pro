@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { View, User as UserType, SubscriptionPlan, Product, AppLanguage } from './types';
 import { useStore, getTrialStatus } from './store';
@@ -73,12 +72,23 @@ const App: React.FC = () => {
   // Check if app is installed on load
   useEffect(() => {
     const checkInstallStatus = () => {
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                          (window.navigator as any).standalone === true ||
+                          document.referrer.includes('android-app://');
       setIsAppInstalled(isStandalone);
     };
     
     checkInstallStatus();
-    window.addEventListener('appinstalled', () => setIsAppInstalled(true));
+
+    // Re-check on media query change
+    const matcher = window.matchMedia('(display-mode: standalone)');
+    const onChange = (e: MediaQueryListEvent) => setIsAppInstalled(e.matches);
+    matcher.addEventListener('change', onChange);
+
+    window.addEventListener('appinstalled', () => {
+      setIsAppInstalled(true);
+      setDeferredPrompt(null);
+    });
     
     const handler = (e: any) => {
       e.preventDefault();
@@ -87,6 +97,7 @@ const App: React.FC = () => {
     window.addEventListener('beforeinstallprompt', handler);
     
     return () => {
+      matcher.removeEventListener('change', onChange);
       window.removeEventListener('beforeinstallprompt', handler);
     };
   }, []);
@@ -103,10 +114,8 @@ const App: React.FC = () => {
   }, [activeView]);
 
   const handleInstallApp = async () => {
-    if (isAppInstalled) {
-      alert("The app is already installed.");
-      return;
-    }
+    if (isAppInstalled) return;
+    
     if (!deferredPrompt) {
       alert("To install: Tap the browser menu (3 dots or share icon) and select 'Add to Home Screen'.");
       return;
@@ -263,15 +272,15 @@ const App: React.FC = () => {
           <nav className="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 h-20 pt-[env(safe-area-inset-top)] box-content">
             <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
               <button onClick={() => { setActiveView(View.Landing); setAuthStep('landing'); }} className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg"><Box size={22} className="text-white" /></div>
+                <div className="w-10 h-10 bg-[#4f46e5] rounded-xl flex items-center justify-center shadow-lg"><Box size={22} className="text-white" /></div>
                 <span className="font-black text-xl uppercase dark:text-white">StockBit Pro</span>
               </button>
               {store.isLoggedIn ? (
-                <button onClick={() => setActiveView(View.Dashboard)} className="px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2">
+                <button onClick={() => setActiveView(View.Dashboard)} className="px-6 py-2.5 bg-[#4f46e5] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2">
                   <ArrowLeft size={14} /> Back to Dashboard
                 </button>
               ) : (
-                <button onClick={() => { setAuthStep('login'); setActiveView(View.Landing); }} className="px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest">Sign In</button>
+                <button onClick={() => { setAuthStep('login'); setActiveView(View.Landing); }} className="px-6 py-2.5 bg-[#4f46e5] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest">Sign In</button>
               )}
             </div>
           </nav>
@@ -303,114 +312,158 @@ const App: React.FC = () => {
 
     if (!store.isLoggedIn) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-          <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-2xl animate-in zoom-in-95 duration-500 overflow-y-auto max-h-[95vh] scrollbar-hide">
-            <div className="flex flex-col items-center mb-10 text-center">
-              <button onClick={() => { setAuthStep('landing'); setActiveView(View.Landing); }} className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-xl active:scale-95 transition-all">
-                <Box size={32} className="text-white" />
-              </button>
-              <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase">StockBit Pro</h1>
-              <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">
-                {authStep === 'forgot' ? 'Find your account' : 'Sign in to your shop'}
-              </p>
-            </div>
-
-            {authError && (
-              <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-900 rounded-2xl text-[12px] font-bold text-rose-600 flex items-center gap-3">
-                <ShieldAlert size={18} className="shrink-0" /> {authError}
-              </div>
-            )}
-
-            {authStep === 'login' && (
-              <form onSubmit={handleLoginSubmit} className="space-y-6">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">Email Address</label>
-                  <input name="email" type="email" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" placeholder="name@email.com" />
+        <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] relative overflow-hidden transition-colors duration-500">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[3.5rem] p-8 md:p-16 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] animate-in zoom-in-95 duration-500 relative z-10 border border-slate-100 dark:border-slate-800 overflow-y-auto max-h-[95vh] scrollbar-hide">
+             
+             <div className="flex flex-col items-center mb-12 text-center">
+                <div className="w-20 h-20 bg-[#4f46e5] rounded-[1.5rem] flex items-center justify-center mb-6 shadow-2xl shadow-indigo-600/20 active:scale-95 transition-all" onClick={() => { setAuthStep('landing'); setActiveView(View.Landing); }}>
+                  <Box size={40} className="text-white" />
                 </div>
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center px-1">
-                    <label className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Password</label>
-                    <button type="button" onClick={() => setAuthStep('forgot')} className="text-[10px] font-bold text-indigo-600 hover:underline uppercase">Forgot Password?</button>
+                <h1 className="text-4xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">
+                  STOCKBIT PRO
+                </h1>
+                <p className="text-[12px] text-slate-400 font-black uppercase tracking-[0.2em] mt-3">
+                  {authStep === 'forgot' ? 'Find Your Account' : authStep === 'verify_otp' ? 'Verification Step' : 'SIGN IN TO YOUR SHOP'}
+                </p>
+             </div>
+
+             {authError && (
+               <div className="mb-8 p-5 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 rounded-2xl flex items-center gap-4 text-rose-600 dark:text-rose-400 animate-in slide-in-from-top-2">
+                 <ShieldAlert size={20} className="shrink-0" />
+                 <p className="text-xs font-bold uppercase tracking-tight leading-relaxed">{authError}</p>
+               </div>
+             )}
+
+             {authStep === 'login' && (
+               <form onSubmit={handleLoginSubmit} className="space-y-8">
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">EMAIL ADDRESS</label>
+                    <input 
+                      name="email" 
+                      type="email" 
+                      required 
+                      className="w-full px-8 py-5 bg-slate-50 dark:bg-slate-800 rounded-[1.8rem] font-bold text-slate-900 dark:text-white border-none focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all placeholder:text-slate-400" 
+                      placeholder="name@email.com" 
+                    />
                   </div>
-                  <div className="relative">
-                    <input name="password" type={showPassword ? "text" : "password"} required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" placeholder="••••••••" />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 p-2">
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  <div>
+                    <div className="flex justify-between items-center mb-3 ml-1">
+                      <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400">PASSWORD</label>
+                      <button type="button" onClick={() => setAuthStep('forgot')} className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest hover:underline">FORGOT PASSWORD?</button>
+                    </div>
+                    <div className="relative group">
+                      <input 
+                        name="password" 
+                        type={showPassword ? "text" : "password"} 
+                        required 
+                        className="w-full px-8 py-5 bg-slate-50 dark:bg-slate-800 rounded-[1.8rem] font-bold text-slate-900 dark:text-white border-none focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all placeholder:text-slate-400" 
+                        placeholder="••••••••" 
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600 transition-colors p-2"
+                      >
+                        {showPassword ? <EyeOff size={24} /> : <Eye size={24} />}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-[#4f46e5] text-white font-black uppercase tracking-[0.2em] text-[13px] rounded-[2rem] shadow-2xl shadow-indigo-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-70 group">
+                    {isSubmitting ? <Loader2 className="animate-spin" size={22} /> : <LogIn size={22} className="group-hover:translate-x-1 transition-transform" />}
+                    {isSubmitting ? 'SYNCING...' : 'SIGN IN NOW'}
+                  </button>
+                  <div className="pt-6 text-center">
+                    <p className="text-[12px] font-black uppercase text-slate-400 tracking-widest">
+                      New business? <button type="button" onClick={() => { setAuthStep('register'); setAuthError(''); setShowPassword(false); }} className="text-[#4f46e5] dark:text-indigo-400 hover:underline">Create Shop</button>
+                    </p>
+                  </div>
+               </form>
+             )}
+
+             {authStep === 'register' && (
+               <form onSubmit={handleRegisterSubmit} className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                  <div className="flex bg-slate-50 dark:bg-slate-800 p-1.5 rounded-[1.8rem] mb-6">
+                    <button type="button" onClick={() => setIsStaffSignup(false)} className={`flex-1 py-4 rounded-[1.4rem] text-[11px] font-black uppercase tracking-widest transition-all ${!isStaffSignup ? 'bg-white dark:bg-slate-700 text-[#4f46e5] shadow-[0_4px_12px_rgba(0,0,0,0.05)]' : 'text-slate-400'}`}>OWNER</button>
+                    <button type="button" onClick={() => setIsStaffSignup(true)} className={`flex-1 py-4 rounded-[1.4rem] text-[11px] font-black uppercase tracking-widest transition-all ${isStaffSignup ? 'bg-white dark:bg-slate-700 text-[#4f46e5] shadow-[0_4px_12px_rgba(0,0,0,0.05)]' : 'text-slate-400'}`}>STAFF</button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <input name="name" type="text" required className="w-full px-8 py-5 bg-slate-50 dark:bg-slate-800 rounded-[1.8rem] font-bold text-slate-900 dark:text-white border-none focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all placeholder:text-slate-400" placeholder="Full Name" />
+
+                    {isStaffSignup ? (
+                      <input name="inviteId" type="text" required className="w-full px-8 py-5 bg-slate-50 dark:bg-slate-800 rounded-[1.8rem] font-bold text-slate-900 dark:text-white border-none focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all placeholder:text-slate-400" placeholder="Business Invite ID" />
+                    ) : (
+                      <input name="companyName" type="text" required className="w-full px-8 py-5 bg-slate-50 dark:bg-slate-800 rounded-[1.8rem] font-bold text-slate-900 dark:text-white border-none focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all placeholder:text-slate-400" placeholder="Shop Name" />
+                    )}
+
+                    <input name="email" type="email" required className="w-full px-8 py-5 bg-slate-50 dark:bg-slate-800 rounded-[1.8rem] font-bold text-slate-900 dark:text-white border-none focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all placeholder:text-slate-400" placeholder="Email Address" />
+                    
+                    <div className="relative">
+                      <input 
+                        name="password" 
+                        type={showPassword ? "text" : "password"} 
+                        required 
+                        className="w-full px-8 py-5 bg-slate-50 dark:bg-slate-800 rounded-[1.8rem] font-bold text-slate-900 dark:text-white border-none focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all placeholder:text-slate-400" 
+                        placeholder="Choose Password" 
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600 transition-colors p-2"
+                      >
+                        {showPassword ? <EyeOff size={24} /> : <Eye size={24} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-[#4f46e5] text-white font-black uppercase tracking-[0.2em] text-[13px] rounded-[2rem] shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-4 mt-4">
+                    {isSubmitting ? <Loader2 className="animate-spin" size={22} /> : <UserPlus size={22} />}
+                    {isSubmitting ? 'PROVISIONING...' : 'REGISTER BUSINESS'}
+                  </button>
+
+                  <div className="pt-6 text-center">
+                    <button type="button" onClick={() => { setAuthStep('login'); setAuthError(''); setShowPassword(false); }} className="text-[11px] font-black uppercase text-slate-400 hover:text-[#4f46e5] tracking-[0.1em] flex items-center justify-center gap-2 mx-auto transition-colors">
+                      <ChevronLeft size={16} /> BACK TO SIGN IN
                     </button>
                   </div>
-                </div>
-                <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-indigo-600 text-white font-black uppercase tracking-widest text-[12px] rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
-                  {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <LogIn size={18} />}
-                  {isSubmitting ? 'Checking Details...' : 'Sign In Now'}
-                </button>
-                <div className="pt-4 text-center">
-                  <p className="text-sm font-bold text-slate-400">
-                    New business? <button type="button" onClick={() => setAuthStep('register')} className="text-indigo-600 hover:underline font-black">Create Shop</button>
-                  </p>
-                </div>
-              </form>
-            )}
+               </form>
+             )}
 
-            {authStep === 'forgot' && (
-              <form onSubmit={handleResetSubmit} className="space-y-6">
-                <div className="bg-indigo-50 dark:bg-indigo-900/10 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-800/50 flex gap-4">
-                  <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center text-indigo-600 shrink-0 shadow-sm">
-                    <KeyRound size={20} />
+             {authStep === 'forgot' && (
+               <form onSubmit={handleResetSubmit} className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                  <div className="text-center space-y-2 mb-4">
+                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Password Recovery</p>
+                    <p className="text-[10px] text-slate-400 font-medium leading-relaxed">Enter your email to receive a secure recovery link to reset your account.</p>
                   </div>
-                  <p className="text-xs text-indigo-900/70 dark:text-indigo-300 font-medium leading-relaxed">
-                    Enter the email address you used to register. We will send you a secure link to reset your password.
-                  </p>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 block">Email Address</label>
-                  <input name="email" type="email" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white focus:ring-2 focus:ring-indigo-600 transition-all" placeholder="your@email.com" />
-                </div>
-                <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-indigo-600 text-white font-black uppercase tracking-widest text-[12px] rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
-                  {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Mail size={18} />}
-                  {isSubmitting ? 'Sending Link...' : 'Send Recovery Link'}
-                </button>
-                <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[11px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest text-center flex items-center justify-center gap-2">
-                  <ArrowLeft size={16} /> Back to Sign In
-                </button>
-              </form>
-            )}
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">Email Address</label>
+                    <input name="email" type="email" required className="w-full px-8 py-5 bg-slate-50 dark:bg-slate-800 rounded-[1.8rem] font-bold text-slate-900 dark:text-white border-none focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all placeholder:text-slate-400" placeholder="name@email.com" />
+                  </div>
+                  <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-[#4f46e5] text-white font-black uppercase tracking-[0.2em] text-[13px] rounded-[2rem] shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-3">
+                    {isSubmitting ? <Loader2 className="animate-spin" size={22} /> : <Mail size={22} />}
+                    {isSubmitting ? 'Sending...' : 'Send Recovery Link'}
+                  </button>
+                  <button type="button" onClick={() => { setAuthStep('login'); setAuthError(''); }} className="w-full text-[11px] font-black uppercase text-slate-400 tracking-widest flex items-center justify-center gap-2 hover:text-[#4f46e5] transition-colors">
+                    <ChevronLeft size={16} /> Return to Sign In
+                  </button>
+               </form>
+             )}
 
-            {authStep === 'register' && (
-              <form onSubmit={handleRegisterSubmit} className="space-y-5">
-                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl mb-2">
-                  <button type="button" onClick={() => setIsStaffSignup(false)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isStaffSignup ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Owner</button>
-                  <button type="button" onClick={() => setIsStaffSignup(true)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isStaffSignup ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Staff</button>
-                </div>
-
-                <div className="space-y-4">
-                  <input name="name" placeholder="Full Name" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 rounded-xl border-none font-bold dark:text-white" />
-                  {!isStaffSignup ? (
-                    <input name="companyName" placeholder="Shop Name" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 rounded-xl border-none font-bold dark:text-white" />
-                  ) : (
-                    <input name="inviteId" placeholder="Invite ID from Admin" required className="w-full px-6 py-4 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-100 dark:border-indigo-800 rounded-xl font-bold dark:text-white" />
-                  )}
-                  <input name="email" type="email" placeholder="Email Address" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 rounded-xl border-none font-bold dark:text-white" />
-                  <input name="password" type="password" placeholder="Choose Password" required className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-800 rounded-xl border-none font-bold dark:text-white" />
-                </div>
-
-                <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-indigo-600 text-white font-black uppercase tracking-widest text-[12px] rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
-                  {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <UserPlus size={18} />}
-                  {isSubmitting ? 'Starting Up...' : 'Register Business'}
-                </button>
-                <button type="button" onClick={() => setAuthStep('login')} className="w-full text-[11px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest text-center flex items-center justify-center gap-2">
-                  <ChevronLeft size={16} /> Back to Sign In
-                </button>
-              </form>
-            )}
-
-            {authStep === 'verify_otp' && (
-              <div className="space-y-8 text-center">
-                <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner"><MailCheck size={32} /></div>
-                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase">Check Your Email</h3>
-                <p className="text-sm text-slate-500 font-medium">We sent a link to <span className="text-slate-900 dark:text-white font-bold">{pendingEmail}</span>. Click it to reset your password or activate your shop.</p>
-                <button onClick={() => setAuthStep('login')} className="w-full py-5 bg-indigo-600 text-white font-black uppercase text-[12px] rounded-2xl shadow-xl active:scale-95">Go to Login</button>
-              </div>
-            )}
+             {authStep === 'verify_otp' && (
+               <div className="space-y-8 text-center animate-in zoom-in-95 duration-500">
+                  <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner"><MailCheck size={40} /></div>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Check Your Email</h3>
+                  <p className="text-sm text-slate-500 font-medium leading-relaxed">We sent a verification link to <span className="text-indigo-600 dark:text-indigo-400 font-black">{pendingEmail}</span>. Please click it to finalize your deployment.</p>
+                  <button onClick={() => setAuthStep('login')} className="w-full py-6 bg-[#4f46e5] text-white font-black uppercase text-[12px] rounded-[2rem] shadow-2xl active:scale-95 transition-all">Continue to Login</button>
+               </div>
+             )}
+          </div>
+          
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10">
+             <button onClick={() => { setAuthStep('landing'); setActiveView(View.Landing); }} className="text-[10px] font-black uppercase text-slate-400 hover:text-[#4f46e5] tracking-[0.4em] flex items-center gap-3 transition-all opacity-50 hover:opacity-100">
+               Return To StockBit Home
+             </button>
           </div>
         </div>
       );
@@ -421,7 +474,7 @@ const App: React.FC = () => {
   if (!store.initialLoadComplete) {
     return (
       <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-6 gap-8">
-        <div className="w-20 h-20 bg-indigo-600 rounded-[1.5rem] flex items-center justify-center shadow-[0_0_40px_rgba(79,70,229,0.3)] animate-pulse"><Box size={40} className="text-white" /></div>
+        <div className="w-20 h-20 bg-[#4f46e5] rounded-[1.5rem] flex items-center justify-center shadow-[0_0_40px_rgba(79,70,229,0.3)] animate-pulse"><Box size={40} className="text-white" /></div>
         <div className="text-center space-y-4">
            <h2 className="text-white font-black uppercase tracking-widest text-xl">Loading Shop Data</h2>
            <div className="flex flex-col items-center gap-3">
@@ -487,7 +540,7 @@ const App: React.FC = () => {
                 <span className="text-[10px] font-black uppercase tracking-widest">Get the App</span>
               </button>
             )}
-            <button onClick={toggleTheme} className="p-2.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-all">
+            <button onClick={toggleTheme} className="p-2.5 text-slate-400 hover:text-[#4f46e5] dark:hover:text-indigo-400 rounded-xl transition-all">
               {store.settings.theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
             </button>
             <div className="relative">

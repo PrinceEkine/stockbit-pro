@@ -7,13 +7,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="StockBit Pro">
     <meta name="theme-color" content="#4f46e5">
-    <title>StockBit Pro - Inventory Management</title>
+    <title>StockBit Pro - Enterprise Inventory</title>
     
     <link rel="manifest" href="manifest.json">
     
-    <!-- Favicon & Apple Icon -->
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/5832/5832416.png">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5832/5832416.png">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Cpath d='M50 25L25 37.5V62.5L50 75L75 62.5V37.5L50 25Z' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M25 37.5L50 50L75 37.5' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M50 50V75' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Cpath d='M50 25L25 37.5V62.5L50 75L75 62.5V37.5L50 25Z' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M25 37.5L50 50L75 37.5' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M50 50V75' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://js.paystack.co/v1/inline.js"></script>
@@ -22,131 +21,59 @@
         darkMode: 'class',
         theme: {
           extend: {
-            screens: {
-              'xs': '400px',
-            },
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
+            screens: { 'xs': '400px' },
+            fontFamily: { sans: ['Inter', 'sans-serif'] },
             animation: {
               'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'shimmer': 'shimmer 2s infinite linear',
+              'bounce-gentle': 'bounce-gentle 2s infinite',
             },
             keyframes: {
-              shimmer: {
-                '0%': { backgroundPosition: '-200% 0' },
-                '100%': { backgroundPosition: '200% 0' },
+              'bounce-gentle': {
+                '0%, 100%': { transform: 'translateY(-5%)' },
+                '50%': { transform: 'translateY(0)' },
               }
             }
           },
         },
       }
     </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
           --sat: env(safe-area-inset-top);
-          --sar: env(safe-area-inset-right);
           --sab: env(safe-area-inset-bottom);
-          --sal: env(safe-area-inset-left);
         }
-
         body {
             font-family: 'Inter', sans-serif;
-            transition: background-color 0.3s ease, color 0.3s ease;
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: contain;
-            margin: 0;
-            padding: 0;
-            background-color: #f8fafc; 
+            background-color: #f8fafc;
+            padding-top: var(--sat);
+            padding-bottom: var(--sab);
         }
-
-        html.dark body {
-            background-color: #020617;
-        }
-
-        .safe-pb { padding-bottom: max(1rem, var(--sab)); }
-        .safe-pt { padding-top: max(1rem, var(--sat)); }
-        .safe-top-inset { top: var(--sat); }
-
-        @media print {
-            .no-print, .no-print *, nav, header, aside, .fixed, .modal-backdrop, button, section, main, div:not(.print-only):not(.print-only *) { 
-                display: none !important; 
-                visibility: hidden !important;
-                height: 0 !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-            html, body {
-                height: auto !important;
-                background: white !important;
-                color: black !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                overflow: visible !important;
-            }
-            #root { 
-                display: block !important; 
-                visibility: visible !important;
-                height: auto !important;
-            }
-            .print-only { 
-                display: block !important; 
-                visibility: visible !important;
-                position: relative !important;
-                width: 100% !important;
-                background: white !important;
-                z-index: 9999 !important;
-            }
-            @page { margin: 0; }
-            .receipt-print {
-                width: 80mm;
-                margin: 0 auto;
-                padding: 10mm 5mm;
-                font-family: 'Courier New', Courier, monospace;
-                font-size: 12px;
-                line-height: 1.4;
-                color: black !important;
-                background: white !important;
-                border: none !important;
-            }
-            .qr-label-print {
-                width: 50mm;
-                height: 30mm;
-                padding: 2mm;
-                margin: 0 auto 5mm auto;
-                border: 0.1mm solid #000;
-                page-break-after: always;
-                display: flex;
-                flex-direction: column;
-                background: white !important;
-                color: black !important;
-            }
-        }
-        
-        .print-only { display: none; }
+        html.dark body { background-color: #020617; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.3/client",
     "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
     "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
     "recharts": "https://esm.sh/recharts@^3.6.0",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.90.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
     "vite": "https://esm.sh/vite@^7.3.1",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
 </head>
-<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased">
+<body class="antialiased">
     <div id="root"></div>
     <script type="module" src="index.tsx"></script>
 </body>

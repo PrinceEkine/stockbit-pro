@@ -1,18 +1,22 @@
-import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { Product, Sale } from "../types";
 import { DEFAULT_CATEGORIES } from "../constants";
-
-const getAIClient = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
-};
 
 const cleanBase64 = (base64: string) => {
   return base64.replace(/^data:image\/(png|jpeg|jpg);base64,/, '').replace(/\s/g, '');
 };
 
+// Singleton-style initialization for better performance on Vercel Edge
+const getAIClient = () => {
+  const key = process.env.API_KEY;
+  if (!key) {
+    console.error("CRITICAL: API_KEY is missing from environment variables.");
+  }
+  return new GoogleGenAI({ apiKey: key || '' });
+};
+
 export const identifyProductFromImage = async (base64Image: string): Promise<string | null> => {
   const ai = getAIClient();
-  if (!ai) return null;
   
   try {
     const response = await ai.models.generateContent({
@@ -43,7 +47,6 @@ export const identifyProductFromImage = async (base64Image: string): Promise<str
 
 export const extractProductDetailsFromImage = async (base64Image: string) => {
   const ai = getAIClient();
-  if (!ai) return null;
   
   try {
     const response = await ai.models.generateContent({
@@ -92,9 +95,7 @@ export interface InsightResult {
 
 export const getInventoryInsights = async (products: Product[], sales: Sale[]): Promise<InsightResult> => {
   const ai = getAIClient();
-  if (!ai) return { text: "Engine unavailable.", sources: [] };
   
-  // Create a granular map of what sold and when
   const itemSalesHistory = sales.slice(0, 50).map(s => ({
     d: s.date,
     items: s.items.map(i => ({ n: i.productName, q: i.quantity, p: i.price }))
@@ -108,18 +109,6 @@ export const getInventoryInsights = async (products: Product[], sales: Sale[]): 
     c: p.category
   }));
 
-  const systemInstruction = `You are an elite retail logistics analyst for Nigerian businesses. 
-  Your goal is to provide predictive stock recommendations.
-  Use Google Search to factor in:
-  1. Current inflation rates in Nigeria and their impact on retail pricing.
-  2. Upcoming holidays or seasonal events in Nigeria (e.g., Ramadan, Christmas, School Resumption).
-  3. Supply chain or currency (Naira) trends that might affect stock availability.
-  
-  Analyze the provided data and suggest:
-  - High priority restocks (items moving fast vs current low stock).
-  - Risk warnings (items expiring soon or stagnant capital).
-  - Market opportunities (new categories to enter based on search data).`;
-
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
@@ -127,7 +116,9 @@ export const getInventoryInsights = async (products: Product[], sales: Sale[]): 
       SHOP INVENTORY: ${JSON.stringify(inventoryState)}
       HISTORICAL SALES (Last 50): ${JSON.stringify(itemSalesHistory)}
       
-      Based on this data and your research of current market trends in Nigeria, provide a detailed predictive audit.`,
+      You are an elite retail logistics analyst for Nigerian businesses. 
+      Based on this data and your research of current market trends in Nigeria, provide a detailed predictive audit.
+      Suggest high priority restocks, risk warnings for expiry, and market opportunities.`,
       config: {
         tools: [{ googleSearch: {} }]
       }
@@ -150,6 +141,6 @@ export const getInventoryInsights = async (products: Product[], sales: Sale[]): 
     };
   } catch (error) {
     console.error("Insight Error:", error);
-    return { text: "Error connecting to logic server.", sources: [] };
+    return { text: "Error connecting to logic server. Please check your API key in Vercel settings.", sources: [] };
   }
 };
