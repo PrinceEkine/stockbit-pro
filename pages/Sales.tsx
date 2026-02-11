@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   ShoppingCart, Search, Plus, Minus, X, Scan, User, Edit3, ChevronRight, Loader2, Printer, 
   Trash2, ReceiptText, Banknote, CreditCard, History, Package, ChevronUp, ChevronDown, ShieldCheck,
-  CheckCircle2, AlertCircle
+  CheckCircle2, AlertCircle, Monitor
 } from 'lucide-react';
 import { Sale, Product, Settings, SaleItem, User as UserType, PaymentMethod } from '../types';
 import ScannerModal from '../components/ScannerModal';
@@ -35,6 +35,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [lastSaleForPrint, setLastSaleForPrint] = useState<CartTab | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [receiptSize, setReceiptSize] = useState<'80mm' | '58mm'>('80mm');
   
   const [scanFeedback, setScanFeedback] = useState<{name: string, qty: number} | null>(null);
   
@@ -211,7 +212,8 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
   const tax = subtotal * (settings.taxRate / 100);
   const total = subtotal + tax;
 
-  const displayCompanyName = currentUser?.companyName || settings.companyName;
+  // PRIORITY: Use the business owner's company name on the receipt
+  const displayCompanyName = currentUser?.companyName || settings.companyName || 'StockBit Enterprise';
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white transition-colors overflow-hidden">
@@ -232,33 +234,36 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
         </div>
       )}
 
+      {/* REFINED PROFESSIONAL THERMAL RECEIPT TEMPLATE */}
       {lastSaleForPrint && (
         <div className="print-only">
-          <div className="receipt-print p-8 text-black bg-white max-w-[80mm] mx-auto">
+          <div className={`receipt-container ${receiptSize === '58mm' ? 'size-58mm' : ''} text-black bg-white mx-auto font-mono`}>
              <div className="text-center mb-6">
-                <h2 className="text-xl font-black uppercase tracking-tight leading-none mb-1">{displayCompanyName}</h2>
-                <p className="text-[10px] font-bold uppercase opacity-80">Retail Sales Receipt</p>
-                <div className="w-full border-b border-black border-dashed my-4"></div>
+                {/* PRIMARY BUSINESS NAME - REPLACING GENERIC BRANDING */}
+                <h1 className={`${receiptSize === '58mm' ? 'text-base' : 'text-xl'} font-black uppercase tracking-tight leading-none mb-2`}>
+                   {displayCompanyName}
+                </h1>
+                <p className="text-[10px] font-bold uppercase opacity-90 border-t border-b border-black border-dotted py-1 mb-2">Official Sales Receipt</p>
              </div>
              
-             <div className="space-y-1 mb-6 text-[10px] font-mono">
-                <div className="flex justify-between uppercase"><span>REF NO:</span> <span>{lastSaleForPrint.ref}</span></div>
-                <div className="flex justify-between uppercase"><span>DATE:</span> <span>{new Date(lastSaleForPrint.date || Date.now()).toLocaleDateString()} {new Date(lastSaleForPrint.date || Date.now()).toLocaleTimeString()}</span></div>
-                <div className="flex justify-between uppercase"><span>CLIENT:</span> <span className="truncate max-w-[150px]">{lastSaleForPrint.customerName || 'WALK-IN'}</span></div>
-                <div className="flex justify-between uppercase"><span>OPERATOR:</span> <span>{currentUser?.name || 'ADMIN'}</span></div>
+             <div className="space-y-1 mb-4 text-[10px] uppercase">
+                <div className="flex justify-between"><span>TRANSACTION:</span> <span>{lastSaleForPrint.ref}</span></div>
+                <div className="flex justify-between"><span>TIMESTAMP:</span> <span>{new Date(lastSaleForPrint.date || Date.now()).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'})}</span></div>
+                <div className="flex justify-between"><span>CUSTOMER:</span> <span className="truncate max-w-[120px]">{lastSaleForPrint.customerName || 'WALK-IN CLIENT'}</span></div>
+                <div className="flex justify-between"><span>OPERATOR:</span> <span className="truncate max-w-[120px]">{currentUser?.name || 'ADMIN'}</span></div>
              </div>
 
-             <div className="w-full border-b border-black border-dashed mb-4"></div>
+             <div className="w-full border-b-2 border-black mb-3"></div>
              
              <div className="space-y-3 mb-6">
                 {lastSaleForPrint.items.map((item, i) => (
-                  <div key={i} className="text-[10px] uppercase font-mono">
-                     <div className="flex justify-between font-bold">
-                        <span className="truncate max-w-[180px]">{item.productName}</span>
-                        <span>{settings.currency}{(item.price * item.quantity).toLocaleString()}</span>
+                  <div key={i} className="text-[10px] uppercase">
+                     <div className="flex justify-between font-black">
+                        <span className="truncate flex-1 pr-4">{item.productName}</span>
+                        <span className="shrink-0">{settings.currency}{(item.price * item.quantity).toLocaleString()}</span>
                      </div>
-                     <div className="text-[8px] opacity-80">
-                        {item.quantity} X {settings.currency}{item.price.toLocaleString()}
+                     <div className="text-[9px] font-bold opacity-80 mt-0.5">
+                        {item.quantity} QTY x {settings.currency}{item.price.toLocaleString()}
                      </div>
                   </div>
                 ))}
@@ -266,15 +271,25 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
 
              <div className="w-full border-b border-black border-dashed mb-4"></div>
 
-             <div className="space-y-1 text-[11px] uppercase font-mono">
-                <div className="flex justify-between"><span>SUBTOTAL</span> <span>{settings.currency}{lastSaleForPrint.items.reduce((a,c)=>a+(c.price*c.quantity),0).toLocaleString()}</span></div>
-                <div className="flex justify-between"><span>VAT ({settings.taxRate}%)</span> <span>{settings.currency}{(lastSaleForPrint.items.reduce((a,c)=>a+(c.price*c.quantity),0) * (settings.taxRate/100)).toLocaleString()}</span></div>
-                <div className="flex justify-between font-black text-sm border-t border-black pt-2 mt-2"><span>TOTAL</span> <span>{settings.currency}{(lastSaleForPrint.items.reduce((a,c)=>a+(c.price*c.quantity),0) * (1 + settings.taxRate/100)).toLocaleString()}</span></div>
+             <div className="space-y-1.5 text-[11px] uppercase">
+                <div className="flex justify-between font-bold"><span>SUBTOTAL</span> <span>{settings.currency}{lastSaleForPrint.items.reduce((a,c)=>a+(c.price*c.quantity),0).toLocaleString()}</span></div>
+                <div className="flex justify-between font-bold text-[10px]"><span>VAT ({settings.taxRate}%)</span> <span>{settings.currency}{(lastSaleForPrint.items.reduce((a,c)=>a+(c.price*c.quantity),0) * (settings.taxRate/100)).toLocaleString()}</span></div>
+                
+                <div className={`flex justify-between font-black ${receiptSize === '58mm' ? 'text-lg' : 'text-2xl'} border-t-2 border-black pt-2 mt-2 leading-none`}>
+                  <span>TOTAL</span> 
+                  <span>{settings.currency}{(lastSaleForPrint.items.reduce((a,c)=>a+(c.price*c.quantity),0) * (1 + settings.taxRate/100)).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-[10px] font-bold mt-1">
+                   <span>PAID VIA:</span>
+                   <span>{paymentMethod.toUpperCase()}</span>
+                </div>
              </div>
 
-             <div className="text-center mt-12">
-                <p className="text-[8px] font-black uppercase tracking-widest mb-1">Thank you for your patronage</p>
-                <p className="text-[7px] font-bold opacity-70">Generated by StockBit Pro AI</p>
+             <div className="text-center mt-10 pb-8 space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest">*** THANK YOU FOR YOUR PATRONAGE ***</p>
+                <div className="w-full border-b border-black border-dotted my-2"></div>
+                <p className="text-[7px] font-bold opacity-40 uppercase tracking-widest">Digital Ledger ID: {lastSaleForPrint.id}</p>
+                <p className="text-[6px] font-bold opacity-30">Infrastructure by StockBit Pro Solutions</p>
              </div>
           </div>
         </div>
@@ -306,7 +321,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                      <tr>
                         <th className="px-8 py-5">REF</th>
                         <th className="px-8 py-5">Customer</th>
-                        <th className="px-8 py-5">Value</th>
                         <th className="px-8 py-5 text-right">Ops</th>
                      </tr>
                   </thead>
@@ -626,6 +640,17 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
           <div className="bg-white rounded-[4rem] w-full max-w-lg p-10 md:p-16 shadow-2xl text-center animate-in zoom-in-95 duration-500">
              <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner"><CreditCard size={32} /></div>
              <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 text-slate-900">CHECKOUT FINALIZATION</h3>
+             
+             {/* Receipt Size Toggle */}
+             <div className="flex bg-slate-100 p-1 rounded-xl mb-6 max-w-[240px] mx-auto">
+                <button onClick={() => setReceiptSize('80mm')} className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase transition-all flex items-center justify-center gap-2 ${receiptSize === '80mm' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
+                  <Monitor size={12}/> 80mm Roll
+                </button>
+                <button onClick={() => setReceiptSize('58mm')} className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase transition-all flex items-center justify-center gap-2 ${receiptSize === '58mm' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
+                  <CreditCard size={12}/> 58mm Roll
+                </button>
+             </div>
+
              <p className="text-5xl font-black text-[#4f46e5] mb-8 tracking-tighter leading-none">{settings.currency}{total.toLocaleString()}</p>
              
              {errorMsg && (

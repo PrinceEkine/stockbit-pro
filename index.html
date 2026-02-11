@@ -11,8 +11,9 @@
     
     <link rel="manifest" href="manifest.json">
     
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Cpath d='M50 25L25 37.5V62.5L50 75L75 62.5V37.5L50 25Z' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M25 37.5L50 50L75 37.5' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M50 50V75' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Cpath d='M50 25L25 37.5V62.5L50 75L75 62.5V37.5L50 25Z' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M25 37.5L50 50L75 37.5' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M50 50V75' stroke='white' stroke-width='6' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <!-- App Logo Icon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Cpath d='M50 28L28 40V60L50 72L72 60V40L50 28Z' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M28 40L50 52L72 40' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M50 52V72' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Cpath d='M50 28L28 40V60L50 72L72 60V40L50 28Z' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M28 40L50 52L72 40' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M50 52V72' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://js.paystack.co/v1/inline.js"></script>
@@ -54,6 +55,64 @@
         html.dark body { background-color: #020617; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Professional POS Printing Styles */
+        @media print {
+            body { 
+                background: white !important; 
+                margin: 0; 
+                padding: 0; 
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            
+            @page {
+                margin: 0;
+            }
+
+            /* Receipt Sizing */
+            .receipt-container {
+                width: 72mm; /* Standard printable width for 80mm roll */
+                margin: 0 auto;
+                padding: 2mm;
+                box-sizing: border-box;
+                overflow: hidden;
+            }
+
+            .receipt-container.size-58mm {
+                width: 48mm; /* Standard printable width for 58mm roll */
+                padding: 1mm;
+            }
+
+            /* Barcode Label Sizing (1.5" x 1" = 38.1mm x 25.4mm) */
+            .label-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, 38.1mm);
+                gap: 2mm;
+                padding: 5mm;
+                justify-content: center;
+            }
+
+            .barcode-label {
+                width: 38.1mm;
+                height: 25.4mm;
+                border: 0.1mm solid #eee;
+                padding: 1.5mm;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: space-between;
+                page-break-inside: avoid;
+                overflow: hidden;
+                box-sizing: border-box;
+            }
+            
+            /* Remove standard browser headers/footers */
+            @page { size: auto;  margin: 0mm; }
+        }
+        .print-only { display: none; }
     </style>
 <script type="importmap">
 {
