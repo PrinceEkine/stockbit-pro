@@ -6,19 +6,9 @@ const cleanBase64 = (base64: string) => {
   return base64.replace(/^data:image\/(png|jpeg|jpg);base64,/, '').replace(/\s/g, '');
 };
 
-// Singleton-style initialization for better performance on Vercel Edge
-const getAIClient = () => {
-  const key = process.env.API_KEY;
-  if (!key) {
-    console.error("CRITICAL: API_KEY is missing from environment variables.");
-  }
-  return new GoogleGenAI({ apiKey: key || '' });
-};
-
 export const identifyProductFromImage = async (base64Image: string): Promise<string | null> => {
-  const ai = getAIClient();
-  
   try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: {
@@ -46,9 +36,8 @@ export const identifyProductFromImage = async (base64Image: string): Promise<str
 };
 
 export const extractProductDetailsFromImage = async (base64Image: string) => {
-  const ai = getAIClient();
-  
   try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: {
@@ -94,8 +83,6 @@ export interface InsightResult {
 }
 
 export const getInventoryInsights = async (products: Product[], sales: Sale[]): Promise<InsightResult> => {
-  const ai = getAIClient();
-  
   const itemSalesHistory = sales.slice(0, 50).map(s => ({
     d: s.date,
     items: s.items.map(i => ({ n: i.productName, q: i.quantity, p: i.price }))
@@ -110,6 +97,7 @@ export const getInventoryInsights = async (products: Product[], sales: Sale[]): 
   }));
 
   try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: `
@@ -141,6 +129,6 @@ export const getInventoryInsights = async (products: Product[], sales: Sale[]): 
     };
   } catch (error) {
     console.error("Insight Error:", error);
-    return { text: "Error connecting to logic server. Please check your API key in Vercel settings.", sources: [] };
+    return { text: "Error connecting to logic server. Please check your network connection.", sources: [] };
   }
 };

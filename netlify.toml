@@ -1,5 +1,5 @@
 [[redirects]]
   from = "/*"
-  to = "https://stockbit-pro.vercel.app/:splat"
+  to = "https://stockbitpro.vercel.app/:splat"
   status = 301
   force = true

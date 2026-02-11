@@ -103,17 +103,11 @@ const LandingPage: React.FC<LandingPageProps> = ({
     setIsTyping(true);
 
     try {
-      // In Vercel environment, API_KEY must be correctly mapped to process.env.API_KEY
-      const apiKey = process.env.API_KEY;
-      
-      if (!apiKey) {
-        throw new Error("API_KEY_MISSING");
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
+      // Create a new GoogleGenAI instance right before making an API call
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: [{ role: 'user', parts: [{ text: userMsg }] }],
+        contents: userMsg,
         config: {
           systemInstruction: `You are StockBot, the official shop assistant for StockBit Pro. Contact: 07010698264. Response language should match the user's inquiry. Currently in ${language} mode. Always be professional, helpful, and focused on shop management benefits for Nigerian market people.`,
         }
@@ -126,13 +120,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
     } catch (error: any) {
       console.error("StockBot Call Failed:", error);
       if (isMounted.current) {
-        let errorText = "Service is temporarily unavailable. Please call our direct helpline 07010698264 for immediate business support.";
-        
-        if (error.message === "API_KEY_MISSING") {
-          errorText = "Deployment Alert: Chatbot requires the API_KEY to be defined in your Vercel Project Settings. Please add it to restore service.";
-        }
-        
-        setChatMessages(prev => [...prev, { role: 'bot', text: errorText }]);
+        setChatMessages(prev => [...prev, { role: 'bot', text: "Service is temporarily unavailable. Please call our direct helpline 07010698264 for immediate business support." }]);
       }
     } finally {
       if (isMounted.current) {

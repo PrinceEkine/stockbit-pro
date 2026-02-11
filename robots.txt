@@ -8,4 +8,4 @@ Disallow: /inventory
 Disallow: /sales
 Disallow: /settings
 
-Sitemap: https://stockbit-pro.vercel.app/sitemap.xml
+Sitemap: https://stockbitpro.vercel.app/sitemap.xml
