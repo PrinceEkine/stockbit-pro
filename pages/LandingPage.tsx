@@ -103,7 +103,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
     setIsTyping(true);
 
     try {
-      // Create a new GoogleGenAI instance right before making an API call
+      // Create a new GoogleGenAI instance right before making an API call using process.env.API_KEY
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -120,7 +120,11 @@ const LandingPage: React.FC<LandingPageProps> = ({
     } catch (error: any) {
       console.error("StockBot Call Failed:", error);
       if (isMounted.current) {
-        setChatMessages(prev => [...prev, { role: 'bot', text: "Service is temporarily unavailable. Please call our direct helpline 07010698264 for immediate business support." }]);
+        // More specific error handling for missing API_KEY in deployment environment
+        const errorText = error.message?.includes('API_KEY') 
+          ? "Deployment Alert: Chatbot requires the API_KEY to be defined in your Vercel Project Settings. Please add it to restore service." 
+          : "Service is temporarily unavailable. Please call our direct helpline 07010698264 for immediate business support.";
+        setChatMessages(prev => [...prev, { role: 'bot', text: errorText }]);
       }
     } finally {
       if (isMounted.current) {
