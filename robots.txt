@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Allow: /#about
+Allow: /#help
+Allow: /#legal
+Disallow: /dashboard
+Disallow: /inventory
+Disallow: /sales
+Disallow: /settings
+
+Sitemap: https://stockbit-pro.vercel.app/sitemap.xml
