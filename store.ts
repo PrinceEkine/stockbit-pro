@@ -1,11 +1,8 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabase';
 import { Product, Sale, Supplier, AppState, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod } from './types';
 import { DEFAULT_CATEGORIES } from './constants';
-
-const SUPER_ADMIN_EMAILS = [
-  'princedagogoekine@gmail.com'
-];
 
 const mapProfile = (dbProfile: any): User => ({
   id: dbProfile.id,
@@ -45,6 +42,7 @@ export const useStore = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [settings, setSettings] = useState<Settings>({
     companyName: 'StockBit Shop',
     currency: '₦',
@@ -101,7 +99,35 @@ export const useStore = () => {
     }
   }, [settings]);
 
+  // Real-time Subscriptions setup
   useEffect(() => {
+    if (!currentUser) return;
+    const targetUserId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+    if (!targetUserId) return;
+
+    const productChannel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `user_id=eq.${targetUserId}` }, (payload) => {
+        if (payload.eventType === 'INSERT') setProducts(prev => [...prev, payload.new as Product]);
+        if (payload.eventType === 'UPDATE') setProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new as Product : p));
+        if (payload.eventType === 'DELETE') setProducts(prev => prev.filter(p => p.id === payload.old.id));
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sales', filter: `user_id=eq.${targetUserId}` }, (payload) => {
+        setSales(prev => [payload.new as Sale, ...prev]);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(productChannel);
+    };
+  }, [currentUser]);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => {
@@ -135,7 +161,11 @@ export const useStore = () => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, [loadData]);
 
   const login = async (email: string, pass: string) => {
@@ -198,18 +228,15 @@ export const useStore = () => {
     if (!currentUser) return;
     const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
     if (!userId) return;
-    const { data, error } = await supabase.from('products').insert([{ ...product, user_id: userId }]).select().single();
-    if (data) setProducts(prev => [...prev, data]);
+    await supabase.from('products').insert([{ ...product, user_id: userId }]);
   };
 
   const updateProduct = async (id: string, updates: Partial<Product>) => {
-    const { error } = await supabase.from('products').update(updates).eq('id', id);
-    if (!error) setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    await supabase.from('products').update(updates).eq('id', id);
   };
 
   const deleteProduct = async (id: string) => {
-    const { error } = await supabase.from('products').delete().eq('id', id);
-    if (!error) setProducts(prev => prev.filter(p => p.id !== id));
+    await supabase.from('products').delete().eq('id', id);
   };
 
   const recordSale = async (items: SaleItem[], customerName?: string, location?: string, paymentMethod: PaymentMethod = 'cash', status: 'completed' | 'pending' = 'completed') => {
@@ -241,7 +268,7 @@ export const useStore = () => {
     const { data, error } = await supabase.from('sales').insert([saleRecord]).select().single();
     
     if (data) {
-      setSales(prev => [data, ...prev]);
+      // Optimistic updates are handled by the Realtime useEffect but we decrease stock here
       for (const item of items) {
         const p = products.find(prod => prod.id === item.productId);
         if (p) {
@@ -257,7 +284,7 @@ export const useStore = () => {
     if (!currentUser) return;
     const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
     if (!userId) return;
-    const { data: ret, error } = await supabase.from('returns').insert([{ ...data, user_id: userId }]).select().single();
+    const { data: ret } = await supabase.from('returns').insert([{ ...data, user_id: userId }]).select().single();
     if (ret) {
       setReturns(prev => [ret, ...prev]);
       const p = products.find(prod => prod.id === data.product_id);
@@ -277,7 +304,7 @@ export const useStore = () => {
     if (!currentUser) return;
     const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
     if (!userId) return;
-    const { data, error } = await supabase.from('suppliers').insert([{ ...supplier, user_id: userId }]).select().single();
+    const { data } = await supabase.from('suppliers').insert([{ ...supplier, user_id: userId }]).select().single();
     if (data) setSuppliers(prev => [...prev, data]);
   };
 
@@ -304,7 +331,7 @@ export const useStore = () => {
   };
 
   return {
-    loading, initialLoadComplete, currentUser, products, sales, returns, suppliers, notifications, users, settings, error, isLoggedIn,
+    loading, initialLoadComplete, currentUser, products, sales, returns, suppliers, notifications, users, settings, error, isLoggedIn, isOnline,
     login, register, resetPassword, logout, updateSettings, addProduct, updateProduct, deleteProduct, recordSale, reconcileInventory, recordReturn, addSupplier, addStaffMember, removeStaffMember, activateSubscription
   };
 };

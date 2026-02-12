@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { 
-  DollarSign, TrendingUp, AlertTriangle, ShoppingCart, Plus, ArrowRight, Activity, ShieldCheck
+  DollarSign, TrendingUp, AlertTriangle, ShoppingCart, Plus, ArrowRight, Activity, ShieldCheck, History, Clock
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -59,6 +59,10 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
     return data;
   }, [state?.sales, timeFrame]);
 
+  const recentSales = useMemo(() => {
+    return (state?.sales || []).slice(0, 5);
+  }, [state?.sales]);
+
   const periodTotal = useMemo(() => chartData.reduce((acc, curr) => acc + curr.sales, 0), [chartData]);
 
   return (
@@ -69,7 +73,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
         </div>
       )}
       
-      {/* Stats Overview Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         <StatsCard title={t.value_stock} value={totalStockValue} symbol={currency} icon={DollarSign} color="bg-indigo-600" />
         <StatsCard title={t.total_money} value={totalSalesRevenue} symbol={currency} icon={TrendingUp} color="bg-emerald-600" />
@@ -78,7 +81,6 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-        {/* Sales Chart Section */}
         <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 md:p-10 rounded-[2rem] md:rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.02)] transition-colors">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-12 gap-8">
             <div className="flex items-center gap-5">
@@ -95,18 +97,8 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
             </div>
             
             <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-[1.2rem] w-full sm:w-auto shadow-inner border border-slate-200 dark:border-slate-700/50">
-              <button 
-                onClick={() => setTimeFrame('day')} 
-                className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${timeFrame === 'day' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-lg' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-              >
-                Weekly
-              </button>
-              <button 
-                onClick={() => setTimeFrame('month')} 
-                className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${timeFrame === 'month' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-lg' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-              >
-                Yearly
-              </button>
+              <button onClick={() => setTimeFrame('day')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${timeFrame === 'day' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-lg' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>Weekly</button>
+              <button onClick={() => setTimeFrame('month')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${timeFrame === 'month' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-lg' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>Yearly</button>
             </div>
           </div>
           
@@ -121,13 +113,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} stroke={state.settings.theme === 'dark' ? '#ffffff' : '#000000'} />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 900}} 
-                  dy={15} 
-                />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 900}} dy={15} />
                 <YAxis hide domain={['auto', 'auto']} padding={{ top: 20, bottom: 20 }} />
                 <Tooltip 
                   cursor={{ stroke: '#4f46e5', strokeWidth: 2, strokeDasharray: '6 6' }}
@@ -138,9 +124,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
                           <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400 mb-2">{label}</p>
                           <div className="flex items-baseline gap-1">
                             <span className="text-[10px] font-black text-white/50">{currency}</span>
-                            <span className="text-lg font-black text-white leading-none">
-                              {(payload[0].value as number).toLocaleString()}
-                            </span>
+                            <span className="text-lg font-black text-white leading-none">{(payload[0].value as number).toLocaleString()}</span>
                           </div>
                         </div>
                       );
@@ -148,30 +132,36 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
                     return null;
                   }} 
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="sales" 
-                  stroke="#4f46e5" 
-                  strokeWidth={5} 
-                  fillOpacity={1} 
-                  fill="url(#chartGradient)" 
-                  activeDot={{ r: 8, strokeWidth: 4, stroke: state.settings.theme === 'dark' ? '#0f172a' : '#ffffff', fill: '#4f46e5' }}
-                  animationDuration={1800}
-                />
+                <Area type="monotone" dataKey="sales" stroke="#4f46e5" strokeWidth={5} fillOpacity={1} fill="url(#chartGradient)" activeDot={{ r: 8, strokeWidth: 4, stroke: state.settings.theme === 'dark' ? '#0f172a' : '#ffffff', fill: '#4f46e5' }} animationDuration={1800} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Shortcuts & Trial Panel */}
         <div className="lg:col-span-4 space-y-6 md:space-y-8">
           <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
             <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-              <Plus size={12} className="text-indigo-500" /> Operational Shortcuts
+              <History size={12} className="text-indigo-500" /> Recent Activity
             </h3>
-            <div className="space-y-4">
-              <ActionBtn onClick={() => onNavigate(View.Sales)} label={t.new_sale} sub="Launch Point of Sale" icon={Plus} color="indigo" />
-              <ActionBtn onClick={() => onNavigate(View.Inventory)} label={t.inventory} sub="Manage Digital Assets" icon={ArrowRight} color="slate" />
+            <div className="space-y-5">
+              {recentSales.map((sale, i) => (
+                <div key={sale.id} className="flex items-center gap-4 animate-in slide-in-from-right-4" style={{ animationDelay: `${i * 100}ms` }}>
+                  <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center shrink-0">
+                    <ShoppingCart size={16} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase truncate">{sale.customer_name || 'Walk-in Sale'}</p>
+                    <p className="text-[9px] text-slate-400 font-bold flex items-center gap-1"><Clock size={8} /> {new Date(sale.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                  <p className="text-[11px] font-black text-slate-900 dark:text-white">{currency}{sale.total_price.toLocaleString()}</p>
+                </div>
+              ))}
+              {recentSales.length === 0 && (
+                <div className="text-center py-6">
+                   <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">No recent transactions</p>
+                </div>
+              )}
+              <button onClick={() => onNavigate(View.Sales)} className="w-full py-4 mt-2 bg-slate-50 dark:bg-slate-800 rounded-2xl text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all">View All Sales</button>
             </div>
           </div>
 
@@ -179,19 +169,14 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
              <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-3">
                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
-                   <p className="text-[10px] font-black text-indigo-100 uppercase tracking-[0.3em]">Subscription Status</p>
+                   <p className="text-[10px] font-black text-indigo-100 uppercase tracking-[0.3em]">Cloud System Online</p>
                 </div>
                 <h4 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter mb-1">
-                  {trialStatus?.daysLeft || 0} Days Remaining
+                  {trialStatus?.daysLeft || 0} Days Left
                 </h4>
-                <p className="text-xs text-indigo-100/60 font-bold uppercase tracking-widest">Free Trial Active</p>
-                
-                {/* Visual Progress Track */}
+                <p className="text-xs text-indigo-100/60 font-bold uppercase tracking-widest">Standard Free Trial</p>
                 <div className="mt-6 h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                   <div 
-                     className="h-full bg-white/30 transition-all duration-1000" 
-                     style={{ width: `${Math.min(100, ((trialStatus?.daysLeft || 0) / 60) * 100)}%` }}
-                   />
+                   <div className="h-full bg-white/30 transition-all duration-1000" style={{ width: `${Math.min(100, ((trialStatus?.daysLeft || 0) / 60) * 100)}%` }} />
                 </div>
              </div>
              <ShieldCheck size={120} className="absolute -bottom-4 -right-4 text-white/5 group-hover:scale-110 transition-transform duration-700" />
@@ -215,21 +200,6 @@ const StatsCard = ({ title, value, symbol, icon: Icon, color, isAlert }: any) =>
       </h4>
     </div>
   </div>
-);
-
-const ActionBtn = ({ label, sub, icon: Icon, onClick, color }: any) => (
-  <button 
-    onClick={onClick} 
-    className={`w-full p-5 ${color === 'indigo' ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'bg-slate-50 dark:bg-slate-800'} rounded-2xl md:rounded-[1.8rem] flex items-center justify-between group transition-all duration-300 text-left active:scale-[0.98] border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 shadow-sm`}
-  >
-    <div className="min-w-0">
-      <p className={`text-[12px] font-black uppercase tracking-tight truncate ${color === 'indigo' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'}`}>{label}</p>
-      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{sub}</p>
-    </div>
-    <div className="w-10 h-10 bg-white dark:bg-slate-700 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-indigo-600 group-hover:rotate-12 transition-all duration-500 shadow-sm shrink-0 ml-4">
-      <Icon size={16} />
-    </div>
-  </button>
 );
 
 export default Dashboard;
