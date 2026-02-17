@@ -18,7 +18,6 @@ import {
   ExternalLink,
   Wifi,
   Cloud,
-  // Added missing AlertTriangle icon import
   AlertTriangle
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
@@ -47,14 +46,12 @@ const LaunchCenter: React.FC<LaunchCenterProps> = ({ state, onUpdateSettings }) 
     setIsTesting(true);
     setTestResult(null);
     try {
-      // Create a new GoogleGenAI instance right before making an API call
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: "Respond with: 'SYSTEM_ONLINE'",
       });
       
-      // Correct extraction of text output from GenerateContentResponse
       if (response.text?.includes('SYSTEM_ONLINE')) {
         setTestResult({
           status: 'success',
@@ -73,6 +70,13 @@ const LaunchCenter: React.FC<LaunchCenterProps> = ({ state, onUpdateSettings }) 
     }
   };
 
+  const netlifyCmd = `npm install -g netlify-cli
+netlify login
+netlify init
+# Build & Deploy to Production
+npm run build
+netlify deploy --prod --dir=dist`;
+
   const firebaseCmd = `npm install -g firebase-tools
 firebase login
 firebase init
@@ -80,8 +84,10 @@ firebase init
 npm run build
 firebase deploy`;
 
-  const vercelEnv = `VITE_PAYSTACK_PUBLIC_KEY=pk_live_...
-VITE_GEMINI_API_KEY=...`;
+  const envVariables = `VITE_PAYSTACK_PUBLIC_KEY=pk_live_...
+VITE_GEMINI_API_KEY=...
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...`;
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700 pb-20 max-w-6xl mx-auto">
@@ -156,49 +162,58 @@ VITE_GEMINI_API_KEY=...`;
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-amber-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/30">
-                  <Cloud size={24} />
+                <div className="w-12 h-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30">
+                  <Globe size={24} />
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Google Cloud / Firebase</h2>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Netlify Cloud (Primary)</h2>
               </div>
               
               <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-[2rem] relative group">
                 <div className="flex justify-between items-center mb-4">
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">CLI DEPLOYMENT COMMANDS</p>
-                  <button onClick={() => handleCopy(firebaseCmd, 'firebase')} className="text-indigo-600">
-                    {copyFeedback === 'firebase' ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">NETLIFY CLI WORKFLOW</p>
+                  <button onClick={() => handleCopy(netlifyCmd, 'netlify')} className="text-indigo-600">
+                    {copyFeedback === 'netlify' ? <CheckCircle2 size={16} /> : <Copy size={16} />}
                   </button>
                 </div>
                 <pre className="text-xs font-mono text-slate-600 dark:text-slate-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">
-                  {firebaseCmd}
+                  {netlifyCmd}
                 </pre>
               </div>
 
               <div className="p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-start gap-4">
                 <Info size={20} className="text-indigo-600 shrink-0 mt-1" />
                 <p className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200 leading-relaxed uppercase">
-                  Firebase Hosting is recommended for Google Cloud users. It includes global CDN and automatic SSL for your shop domain.
+                  Netlify is the verified deployment standard for StockBit Pro. It supports our SPA routing doctrine and global CDN requirements.
                 </p>
               </div>
+              
+              <a 
+                href="https://app.netlify.com/start" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"
+              >
+                Go to Netlify App <ExternalLink size={14} />
+              </a>
             </div>
 
             <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl flex items-center justify-center shadow-lg">
-                  <Triangle size={24} className="rotate-180" />
+                  <Server size={24} />
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Vercel / Netlify</h2>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Environment Configuration</h2>
               </div>
               
               <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-[2rem] relative group">
                 <div className="flex justify-between items-center mb-4">
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">ENVIRONMENT VARIABLES</p>
-                  <button onClick={() => handleCopy(vercelEnv, 'vercel')} className="text-indigo-600">
-                    {copyFeedback === 'vercel' ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">REQUIRED SECRET KEYS</p>
+                  <button onClick={() => handleCopy(envVariables, 'env')} className="text-indigo-600">
+                    {copyFeedback === 'env' ? <CheckCircle2 size={16} /> : <Copy size={16} />}
                   </button>
                 </div>
                 <pre className="text-xs font-mono text-slate-600 dark:text-slate-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">
-                  {vercelEnv}
+                  {envVariables}
                 </pre>
               </div>
 
@@ -212,15 +227,10 @@ VITE_GEMINI_API_KEY=...`;
                   <span className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300">Continuous Integration</span>
                 </div>
               </div>
-
-              <a 
-                href="https://vercel.com/new" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[2rem] font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"
-              >
-                Go to Vercel Dashboard <ExternalLink size={14} />
-              </a>
+              
+              <div className="p-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                 <p className="text-[9px] font-black uppercase text-slate-400 text-center leading-relaxed">Ensure you add these in your Netlify Site Settings > Build & Deploy > Environment Variables.</p>
+              </div>
             </div>
           </div>
         </div>

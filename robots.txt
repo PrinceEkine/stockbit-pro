@@ -1,3 +1,4 @@
+
 User-agent: *
 Allow: /
 Allow: /#about
@@ -8,4 +9,4 @@ Disallow: /inventory
 Disallow: /sales
 Disallow: /settings
 
-Sitemap: https://stockbitpro.vercel.app/sitemap.xml
+Sitemap: https://stockbitpro.netlify.app/sitemap.xml
