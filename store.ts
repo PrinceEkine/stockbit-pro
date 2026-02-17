@@ -99,7 +99,6 @@ export const useStore = () => {
     }
   }, [settings]);
 
-  // Real-time Subscriptions setup
   useEffect(() => {
     if (!currentUser) return;
     const targetUserId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
@@ -169,8 +168,7 @@ export const useStore = () => {
   }, [loadData]);
 
   const login = async (email: string, pass: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    return { data, error };
+    return await supabase.auth.signInWithPassword({ email, password: pass });
   };
 
   const register = async ({ email, password, name, companyName, inviteId }: any) => {
@@ -188,7 +186,7 @@ export const useStore = () => {
       email,
       name,
       company_name: companyName,
-      role: inviteId ? 'staff' : 'admin',
+      role: inviteId ? 'staff' : 'user',
       parent_id: inviteId || null,
       trial_start_date: new Date().toISOString()
     }]);
@@ -249,7 +247,7 @@ export const useStore = () => {
     }
 
     const totalPrice = items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
-    const totalCost = items.reduce((sum, i) => sum + (i.costPrice * i.quantity), 0);
+    const totalCost = items.reduce((sum, i) => sum + ((i.costPrice || 0) * i.quantity), 0);
     const taxAmount = totalPrice * (settings.taxRate / 100);
 
     const saleRecord = {
@@ -266,23 +264,22 @@ export const useStore = () => {
       date: new Date().toISOString()
     };
 
-    const { data, error: insertError } = await supabase.from('sales').insert([saleRecord]).select().single();
+    // We do not use .select().single() here because it might fail if RLS read permission is not yet active for the user
+    const { error: insertError } = await supabase.from('sales').insert([saleRecord]);
     
     if (insertError) {
-      console.error("Sale Insert Error:", insertError.message);
+      console.error("Sale Insert Error:", insertError.message, insertError.details);
       return false;
     }
 
-    if (data) {
-      for (const item of items) {
-        const p = products.find(prod => prod.id === item.productId);
-        if (p) {
-          await updateProduct(p.id, { quantity: p.quantity - item.quantity });
-        }
+    // Success - Decrease inventory
+    for (const item of items) {
+      const p = products.find(prod => prod.id === item.productId);
+      if (p) {
+        await updateProduct(p.id, { quantity: p.quantity - item.quantity });
       }
-      return true;
     }
-    return false;
+    return true;
   };
 
   const recordReturn = async (data: Omit<ProductReturn, 'id' | 'date' | 'user_id'>) => {

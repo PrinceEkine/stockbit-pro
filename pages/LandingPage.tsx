@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Box, 
@@ -103,13 +104,14 @@ const LandingPage: React.FC<LandingPageProps> = ({
     setIsTyping(true);
 
     try {
-      // Create a new GoogleGenAI instance right before making an API call using process.env.API_KEY
+      // Create a new GoogleGenAI instance using the designated process.env.API_KEY
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        // Upgraded to Gemini 3 Pro for superior reasoning and nuanced business support
+        model: 'gemini-3-pro-preview',
         contents: userMsg,
         config: {
-          systemInstruction: `You are StockBot, the official shop assistant for StockBit Pro. Contact: 07010698264. Response language should match the user's inquiry. Currently in ${language} mode. Always be professional, helpful, and focused on shop management benefits for Nigerian market people.`,
+          systemInstruction: `You are StockBot, the official shop assistant for StockBit Pro. Contact: 07010698264. Response language should match the user's inquiry. Currently in ${language} mode. Always be professional, helpful, and focused on shop management benefits for Nigerian market people. Use Nigerian business context (Naira, local states, marketplace trends) when giving advice.`,
         }
       });
       
@@ -120,7 +122,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
     } catch (error: any) {
       console.error("StockBot Call Failed:", error);
       if (isMounted.current) {
-        // More specific error handling for missing API_KEY in deployment environment
         const errorText = error.message?.includes('API_KEY') 
           ? "Deployment Alert: Chatbot requires the API_KEY to be defined in your Vercel Project Settings. Please add it to restore service." 
           : "Service is temporarily unavailable. Please call our direct helpline 07010698264 for immediate business support.";
