@@ -104,14 +104,24 @@ const LandingPage: React.FC<LandingPageProps> = ({
     setIsTyping(true);
 
     try {
-      // Create a new GoogleGenAI instance using the designated process.env.API_KEY
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
-        // Upgraded to Gemini 3 Pro for superior reasoning and nuanced business support
         model: 'gemini-3-pro-preview',
         contents: userMsg,
         config: {
-          systemInstruction: `You are StockBot, the official shop assistant for StockBit Pro. Contact: 07010698264. Response language should match the user's inquiry. Currently in ${language} mode. Always be professional, helpful, and focused on shop management benefits for Nigerian market people. Use Nigerian business context (Naira, local states, marketplace trends) when giving advice.`,
+          systemInstruction: `You are StockBot, the official industrial-grade retail consultant for StockBit Pro. 
+          Technical Context for you:
+          1. APP REGISTRATION: Users sign up with Name, Business Name, Email, and Password. We do NOT ask for a Phone Number on the signup form. Staff join via an "Invite ID" from their boss.
+          2. CORE TOOLS: 
+             - "Strict Sensor": Advanced mobile barcode scanning.
+             - "Smart Extractor": Gemini-powered metadata capture from product photos.
+             - "Multi-Channel Bridge": Syncing inventory with Jumia Mall and Konga.
+             - "Sustainability Audit": Only on Mega Pro, gives Eco-scores to inventory.
+          3. BUSINESS MODEL: 60-day free trial. Plans: Beta (₦5k), Mega (₦8k), Mega Pro (₦13k). Payments via Paystack.
+          4. MARKET: Nigerian retailers (Lagos, Abuja, PH, etc.). Currency is Naira (₦).
+          5. CONTACT SUPPORT: 07010698264 for calls, 07072127949 for WhatsApp.
+          
+          Always be professional, concise, and accurate to these specific app features. Do not hallucinate non-existent features or requirements. Currently responding in ${language} mode.`,
         }
       });
       
@@ -122,9 +132,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
     } catch (error: any) {
       console.error("StockBot Call Failed:", error);
       if (isMounted.current) {
-        const errorText = error.message?.includes('API_KEY') 
-          ? "Deployment Alert: Chatbot requires the API_KEY to be defined in your Vercel Project Settings. Please add it to restore service." 
-          : "Service is temporarily unavailable. Please call our direct helpline 07010698264 for immediate business support.";
+        const errorText = "Service is temporarily unavailable. Please call our direct helpline 07010698264 for immediate business support.";
         setChatMessages(prev => [...prev, { role: 'bot', text: errorText }]);
       }
     } finally {
@@ -153,7 +161,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
-            {/* Language Switcher */}
             <div className="relative" ref={langRef}>
               <button 
                 onClick={() => setIsLangOpen(!isLangOpen)}
@@ -289,7 +296,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 loading="eager"
               />
               <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/20 to-transparent"></div>
-              {/* Overlay Badge */}
               <div className="absolute bottom-10 left-10 p-6 bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-2xl animate-bounce-slow">
                  <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white">
@@ -388,7 +394,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3s]"
               />
               <div className="absolute inset-0 bg-indigo-900/20"></div>
-              {/* Floating UI Element */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] bg-white p-8 rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.15)] space-y-6">
                  <div className="flex items-center justify-between">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Inventory Status</span>
