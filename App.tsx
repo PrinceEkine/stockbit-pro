@@ -62,8 +62,13 @@ const App: React.FC = () => {
   const [pendingEmail, setPendingEmail] = useState('');
   const [isStaffSignup, setIsStaffSignup] = useState(false);
   
-  // PWA & Install state
-  const [isAppInstalled, setIsAppInstalled] = useState(false);
+  // PWA & Install state - Check if standalone OR if we previously marked it as installed
+  const [isAppInstalled, setIsAppInstalled] = useState(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                        (window.navigator as any).standalone === true;
+    const wasMarkedInstalled = localStorage.getItem('stockbit_pwa_installed') === 'true';
+    return isStandalone || wasMarkedInstalled;
+  });
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   const store = useStore();
@@ -74,23 +79,36 @@ const App: React.FC = () => {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                           (window.navigator as any).standalone === true ||
                           document.referrer.includes('android-app://');
-      setIsAppInstalled(isStandalone);
+      
+      if (isStandalone) {
+        setIsAppInstalled(true);
+        localStorage.setItem('stockbit_pwa_installed', 'true');
+      }
     };
     
     checkInstallStatus();
 
     const matcher = window.matchMedia('(display-mode: standalone)');
-    const onChange = (e: MediaQueryListEvent) => setIsAppInstalled(e.matches);
+    const onChange = (e: MediaQueryListEvent) => {
+      if (e.matches) {
+        setIsAppInstalled(true);
+        localStorage.setItem('stockbit_pwa_installed', 'true');
+      }
+    };
     matcher.addEventListener('change', onChange);
 
     window.addEventListener('appinstalled', () => {
       setIsAppInstalled(true);
+      localStorage.setItem('stockbit_pwa_installed', 'true');
       setDeferredPrompt(null);
     });
     
     const handler = (e: any) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      // Only set prompt if we haven't already detected an install
+      if (!isAppInstalled) {
+        setDeferredPrompt(e);
+      }
     };
     window.addEventListener('beforeinstallprompt', handler);
     
@@ -98,7 +116,7 @@ const App: React.FC = () => {
       matcher.removeEventListener('change', onChange);
       window.removeEventListener('beforeinstallprompt', handler);
     };
-  }, []);
+  }, [isAppInstalled]);
 
   const isInfoView = useMemo(() => {
     const list = [
@@ -122,6 +140,7 @@ const App: React.FC = () => {
     if (outcome === 'accepted') {
       setDeferredPrompt(null);
       setIsAppInstalled(true);
+      localStorage.setItem('stockbit_pwa_installed', 'true');
     }
   };
 
