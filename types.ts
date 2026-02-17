@@ -85,7 +85,8 @@ export interface Sale {
   customer_name?: string; // Matches DB
   location: string;
   payment_method: PaymentMethod; // Matches DB
-  status: 'completed' | 'pending';
+  is_checked: boolean;
+  is_archived: boolean;
 }
 
 export interface ProductReturn {

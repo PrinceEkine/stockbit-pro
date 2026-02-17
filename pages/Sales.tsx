@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   ShoppingCart, Search, Plus, Minus, X, Scan, User, Edit3, ChevronRight, Loader2, Printer, 
@@ -10,7 +11,7 @@ import ScannerModal from '../components/ScannerModal';
 interface SalesProps {
   sales: Sale[];
   products: Product[];
-  onRecordSale: (items: SaleItem[], customerName?: string, location?: string, paymentMethod?: PaymentMethod, status?: 'completed' | 'pending') => Promise<boolean>;
+  onRecordSale: (items: SaleItem[], customerName?: string, location?: string, paymentMethod?: PaymentMethod) => Promise<boolean>;
   settings: Settings;
   currentUser: UserType | null;
 }
@@ -150,7 +151,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
     }
   };
 
-  const handleCheckout = async (status: 'completed' | 'pending') => {
+  const handleCheckout = async () => {
     if (currentCart.items.length === 0 || isProcessing) return;
     setIsProcessing(true);
     setErrorMsg(null);
@@ -163,7 +164,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
     setLastSaleForPrint(saleCopy);
 
     try {
-      const success = await onRecordSale(currentCart.items, currentCart.customerName, 'UNIFIED TERMINAL', paymentMethod, status);
+      const success = await onRecordSale(currentCart.items, currentCart.customerName, 'UNIFIED TERMINAL', paymentMethod);
       
       if (success) {
         setIsProcessing(false);
@@ -212,7 +213,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
   const tax = subtotal * (settings.taxRate / 100);
   const total = subtotal + tax;
 
-  // PRIORITY: Use the business owner's company name on the receipt
   const displayCompanyName = currentUser?.companyName || settings.companyName || 'StockBit Enterprise';
 
   return (
@@ -234,12 +234,10 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
         </div>
       )}
 
-      {/* REFINED PROFESSIONAL THERMAL RECEIPT TEMPLATE */}
       {lastSaleForPrint && (
         <div className="print-only">
           <div className={`receipt-container ${receiptSize === '58mm' ? 'size-58mm' : ''} text-black bg-white mx-auto font-mono`}>
              <div className="text-center mb-6">
-                {/* PRIMARY BUSINESS NAME - REPLACING GENERIC BRANDING */}
                 <h1 className={`${receiptSize === '58mm' ? 'text-base' : 'text-xl'} font-black uppercase tracking-tight leading-none mb-2`}>
                    {displayCompanyName}
                 </h1>
@@ -573,7 +571,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                         {currentCart.items.map((item, idx) => (
                            <div key={idx} className="bg-slate-50 dark:bg-[#0f172a] p-5 rounded-[2rem] border border-slate-100 dark:border-white/5">
                               <div className="flex justify-between items-start mb-4">
-                                 <p className="text-[11px] font-black uppercase truncate pr-4 text-slate-900 dark:text-white">{item.productName}</p>
+                                 <p className="text-11px] font-black uppercase truncate pr-4 text-slate-900 dark:text-white">{item.productName}</p>
                                  <button onClick={() => {
                                     const updated = [...currentCart.items];
                                     updated.splice(idx, 1);
@@ -641,7 +639,6 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
              <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner"><CreditCard size={32} /></div>
              <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 text-slate-900">CHECKOUT FINALIZATION</h3>
              
-             {/* Receipt Size Toggle */}
              <div className="flex bg-slate-100 p-1 rounded-xl mb-6 max-w-[240px] mx-auto">
                 <button onClick={() => setReceiptSize('80mm')} className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase transition-all flex items-center justify-center gap-2 ${receiptSize === '80mm' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
                   <Monitor size={12}/> 80mm Roll
@@ -672,7 +669,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
              <div className="space-y-4">
                 <button 
                   disabled={isProcessing} 
-                  onClick={() => handleCheckout('completed')} 
+                  onClick={() => handleCheckout()} 
                   className="w-full py-6 bg-[#4f46e5] text-white rounded-[2.5rem] font-black uppercase text-xs flex items-center justify-center gap-4 active:scale-95 shadow-2xl shadow-indigo-600/30 transition-all tracking-[0.2em]"
                 >
                    {isProcessing ? <Loader2 className="animate-spin" /> : <Printer size={22} />}

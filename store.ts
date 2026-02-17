@@ -239,7 +239,7 @@ export const useStore = () => {
     await supabase.from('products').delete().eq('id', id);
   };
 
-  const recordSale = async (items: SaleItem[], customerName?: string, location?: string, paymentMethod: PaymentMethod = 'cash', status: 'completed' | 'pending' = 'completed') => {
+  const recordSale = async (items: SaleItem[], customerName?: string, location?: string, paymentMethod: PaymentMethod = 'cash') => {
     if (!currentUser) return false;
     const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
     
@@ -258,17 +258,22 @@ export const useStore = () => {
       total_price: totalPrice + taxAmount,
       total_cost: totalCost,
       tax_amount: taxAmount,
-      customer_name: customerName,
-      location: location || 'Main',
+      customer_name: customerName || 'Walk-in',
+      location: location || 'Main Terminal',
       payment_method: paymentMethod,
-      status,
+      is_checked: true,
+      is_archived: false,
       date: new Date().toISOString()
     };
 
-    const { data, error } = await supabase.from('sales').insert([saleRecord]).select().single();
+    const { data, error: insertError } = await supabase.from('sales').insert([saleRecord]).select().single();
     
+    if (insertError) {
+      console.error("Sale Insert Error:", insertError.message);
+      return false;
+    }
+
     if (data) {
-      // Optimistic updates are handled by the Realtime useEffect but we decrease stock here
       for (const item of items) {
         const p = products.find(prod => prod.id === item.productId);
         if (p) {
