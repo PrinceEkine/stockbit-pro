@@ -229,7 +229,7 @@ VITE_SUPABASE_ANON_KEY=...`;
               </div>
               
               <div className="p-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                 <p className="text-[9px] font-black uppercase text-slate-400 text-center leading-relaxed">Ensure you add these in your Netlify Site Settings > Build & Deploy > Environment Variables.</p>
+                 <p className="text-[9px] font-black uppercase text-slate-400 text-center leading-relaxed">Ensure you add these in your Netlify Site Settings &gt; Build &amp; Deploy &gt; Environment Variables.</p>
               </div>
             </div>
           </div>
