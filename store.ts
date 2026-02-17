@@ -107,12 +107,18 @@ export const useStore = () => {
     const productChannel = supabase
       .channel('schema-db-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `user_id=eq.${targetUserId}` }, (payload) => {
-        if (payload.eventType === 'INSERT') setProducts(prev => [...prev, payload.new as Product]);
-        if (payload.eventType === 'UPDATE') setProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new as Product : p));
-        if (payload.eventType === 'DELETE') setProducts(prev => prev.filter(p => p.id === payload.old.id));
+        if (payload.eventType === 'INSERT') {
+          setProducts(prev => prev.some(p => p.id === payload.new.id) ? prev : [...prev, payload.new as Product]);
+        }
+        if (payload.eventType === 'UPDATE') {
+          setProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new as Product : p));
+        }
+        if (payload.eventType === 'DELETE') {
+          setProducts(prev => prev.filter(p => p.id === payload.old.id));
+        }
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sales', filter: `user_id=eq.${targetUserId}` }, (payload) => {
-        setSales(prev => [payload.new as Sale, ...prev]);
+        setSales(prev => prev.some(s => s.id === payload.new.id) ? prev : [payload.new as Sale, ...prev]);
       })
       .subscribe();
 
@@ -226,15 +232,24 @@ export const useStore = () => {
     if (!currentUser) return;
     const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
     if (!userId) return;
-    await supabase.from('products').insert([{ ...product, user_id: userId }]);
+    const { data, error } = await supabase.from('products').insert([{ ...product, user_id: userId }]).select().single();
+    if (!error && data) {
+      setProducts(prev => [...prev, data]);
+    }
   };
 
   const updateProduct = async (id: string, updates: Partial<Product>) => {
-    await supabase.from('products').update(updates).eq('id', id);
+    const { data, error } = await supabase.from('products').update(updates).eq('id', id).select().single();
+    if (!error && data) {
+      setProducts(prev => prev.map(p => p.id === id ? data : p));
+    }
   };
 
   const deleteProduct = async (id: string) => {
-    await supabase.from('products').delete().eq('id', id);
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (!error) {
+      setProducts(prev => prev.filter(p => p.id !== id));
+    }
   };
 
   const recordSale = async (items: SaleItem[], customerName?: string, location?: string, paymentMethod: PaymentMethod = 'cash') => {
@@ -264,19 +279,27 @@ export const useStore = () => {
       date: new Date().toISOString()
     };
 
-    // We do not use .select().single() here because it might fail if RLS read permission is not yet active for the user
-    const { error: insertError } = await supabase.from('sales').insert([saleRecord]);
+    const { data: newSale, error: insertError } = await supabase.from('sales').insert([saleRecord]).select().single();
     
     if (insertError) {
       console.error("Sale Insert Error:", insertError.message, insertError.details);
       return false;
     }
 
-    // Success - Decrease inventory
+    // Success - Update local sales state instantly
+    if (newSale) {
+      setSales(prev => [newSale, ...prev]);
+    }
+
+    // Success - Decrease inventory local state and DB
     for (const item of items) {
       const p = products.find(prod => prod.id === item.productId);
       if (p) {
-        await updateProduct(p.id, { quantity: p.quantity - item.quantity });
+        const newQty = p.quantity - item.quantity;
+        // Optimistic UI for products
+        setProducts(prev => prev.map(prod => prod.id === p.id ? { ...prod, quantity: newQty } : prod));
+        // Update DB
+        await supabase.from('products').update({ quantity: newQty }).eq('id', p.id);
       }
     }
     return true;
@@ -286,18 +309,25 @@ export const useStore = () => {
     if (!currentUser) return;
     const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
     if (!userId) return;
-    const { data: ret } = await supabase.from('returns').insert([{ ...data, user_id: userId }]).select().single();
-    if (ret) {
+    const { data: ret, error } = await supabase.from('returns').insert([{ ...data, user_id: userId }]).select().single();
+    if (!error && ret) {
       setReturns(prev => [ret, ...prev]);
       const p = products.find(prod => prod.id === data.product_id);
-      if (p) await updateProduct(p.id, { quantity: p.quantity + data.quantity });
+      if (p) {
+        const newQty = p.quantity + data.quantity;
+        setProducts(prev => prev.map(prod => prod.id === p.id ? { ...prod, quantity: newQty } : prod));
+        await supabase.from('products').update({ quantity: newQty }).eq('id', p.id);
+      }
     }
   };
 
   const reconcileInventory = async (items: StocktakeItem[]) => {
     for (const item of items) {
       if (item.systemQty !== item.physicalQty) {
-        await updateProduct(item.productId, { quantity: item.physicalQty });
+        // Update local state first
+        setProducts(prev => prev.map(p => p.id === item.productId ? { ...p, quantity: item.physicalQty } : p));
+        // Update DB
+        await supabase.from('products').update({ quantity: item.physicalQty }).eq('id', item.productId);
       }
     }
   };
@@ -306,8 +336,10 @@ export const useStore = () => {
     if (!currentUser) return;
     const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
     if (!userId) return;
-    const { data } = await supabase.from('suppliers').insert([{ ...supplier, user_id: userId }]).select().single();
-    if (data) setSuppliers(prev => [...prev, data]);
+    const { data, error } = await supabase.from('suppliers').insert([{ ...supplier, user_id: userId }]).select().single();
+    if (!error && data) {
+      setSuppliers(prev => [...prev, data]);
+    }
   };
 
   const addStaffMember = async (staffData: any) => {
@@ -317,8 +349,10 @@ export const useStore = () => {
   };
 
   const removeStaffMember = async (id: string) => {
-    await supabase.from('profiles').delete().eq('id', id);
-    setUsers(prev => prev.filter(u => u.id !== id));
+    const { error } = await supabase.from('profiles').delete().eq('id', id);
+    if (!error) {
+      setUsers(prev => prev.filter(u => u.id !== id));
+    }
   };
 
   const activateSubscription = async (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => {
