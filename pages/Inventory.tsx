@@ -288,6 +288,9 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
           <button onClick={() => { setScannerMode('id'); setIsScannerOpen(true); }} className="px-5 py-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest shadow-sm transition-all active:scale-95">
             <Scan size={18} /> <span className="hidden sm:inline">Strict Sensor</span>
           </button>
+          <button onClick={() => { setScannerMode('details'); setIsScannerOpen(true); }} className="px-5 py-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest shadow-sm transition-all active:scale-95">
+            <Sparkles size={18} /> <span className="hidden sm:inline">Scan to Add</span>
+          </button>
           <button onClick={handlePrintLedger} className="hidden sm:flex px-5 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl items-center justify-center gap-3 font-black text-[9px] uppercase tracking-widest shadow-sm active:scale-95 transition-all">
             <FileText size={16} /> Print List
           </button>

@@ -46,7 +46,9 @@ const LaunchCenter: React.FC<LaunchCenterProps> = ({ state, onUpdateSettings }) 
     setIsTesting(true);
     setTestResult(null);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+      if (!apiKey) throw new Error("API key not found. Please check your environment variables.");
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: "Respond with: 'SYSTEM_ONLINE'",

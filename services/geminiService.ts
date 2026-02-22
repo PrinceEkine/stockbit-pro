@@ -8,7 +8,9 @@ const cleanBase64 = (base64: string) => {
 
 export const identifyProductFromImage = async (base64Image: string): Promise<string | null> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+    if (!apiKey) throw new Error("Gemini API key not found in environment.");
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: {
@@ -37,9 +39,11 @@ export const identifyProductFromImage = async (base64Image: string): Promise<str
 
 export const extractProductDetailsFromImage = async (base64Image: string) => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+    if (!apiKey) throw new Error("Gemini API key not found in environment.");
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3-flash-preview',
       contents: {
         parts: [
           {
@@ -49,7 +53,7 @@ export const extractProductDetailsFromImage = async (base64Image: string) => {
             },
           },
           {
-            text: `Extract inventory metadata. VALID CATEGORIES: ${DEFAULT_CATEGORIES.join(', ')}.`,
+            text: `Extract inventory metadata from this product image. VALID CATEGORIES: ${DEFAULT_CATEGORIES.join(', ')}. Return name, sku, price, and category.`,
           },
         ],
       },
@@ -63,6 +67,7 @@ export const extractProductDetailsFromImage = async (base64Image: string) => {
             batchNumber: { type: Type.STRING },
             expiryDate: { type: Type.STRING },
             price: { type: Type.NUMBER },
+            cost_price: { type: Type.NUMBER },
             category: { type: Type.STRING }
           },
           required: ["name", "sku"]
@@ -97,9 +102,11 @@ export const getInventoryInsights = async (products: Product[], sales: Sale[]): 
   }));
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+    if (!apiKey) throw new Error("Gemini API key not found in environment.");
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3-flash-preview',
       contents: `
       SHOP INVENTORY: ${JSON.stringify(inventoryState)}
       HISTORICAL SALES (Last 50): ${JSON.stringify(itemSalesHistory)}

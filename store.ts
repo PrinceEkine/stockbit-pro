@@ -55,6 +55,7 @@ export const useStore = () => {
     taxRate: 7.5,
     language: 'en',
     isDynamicPricingActive: false,
+    paystackPublicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
     marketplaces: { jumia: false, konga: false, whatsapp: false }
   });
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +88,14 @@ export const useStore = () => {
       if (suppRes.data) setSuppliers(suppRes.data);
       if (retRes.data) setReturns(retRes.data);
       if (noteRes.data) setNotifications(noteRes.data);
-      if (settingsRes.data) setSettings(settingsRes.data.config || settings);
+      if (settingsRes.data) {
+        const dbConfig = settingsRes.data.config || {};
+        setSettings({
+          ...settings,
+          ...dbConfig,
+          paystackPublicKey: dbConfig.paystackPublicKey || process.env.VITE_PAYSTACK_PUBLIC_KEY || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''
+        });
+      }
       if (profilesRes.data) setUsers(profilesRes.data.map(mapProfile));
       
     } catch (err) {
