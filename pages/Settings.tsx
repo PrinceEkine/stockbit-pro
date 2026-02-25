@@ -80,8 +80,10 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
   };
 
   const handlePaystackActivation = (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => {
-    if (!settings.paystackPublicKey) {
-      alert("CRITICAL: Payment gateway not configured by system administrator.");
+    const publicKey = settings.paystackPublicKey || process.env.VITE_PAYSTACK_PUBLIC_KEY;
+    
+    if (!publicKey) {
+      alert("CRITICAL: Payment gateway not configured by system administrator. Please ensure VITE_PAYSTACK_PUBLIC_KEY is set in Netlify.");
       return;
     }
 
@@ -94,7 +96,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
     const amount = cycle === 'monthly' ? prices[plan].monthly : prices[plan].annual;
 
     const handler = (window as any).PaystackPop.setup({
-      key: settings.paystackPublicKey,
+      key: publicKey,
       email: currentUser?.email || 'billing@stockbit.pro',
       amount: amount * 100, 
       currency: "NGN",

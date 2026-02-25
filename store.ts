@@ -55,7 +55,7 @@ export const useStore = () => {
     taxRate: 7.5,
     language: 'en',
     isDynamicPricingActive: false,
-    paystackPublicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
+    paystackPublicKey: process.env.VITE_PAYSTACK_PUBLIC_KEY || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
     marketplaces: { jumia: false, konga: false, whatsapp: false }
   });
   const [error, setError] = useState<string | null>(null);
@@ -141,13 +141,28 @@ export const useStore = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.warn("Session retrieval error:", error.message);
+        if (error.message.includes('Refresh Token Not Found') || error.message.includes('invalid_grant')) {
+          supabase.auth.signOut();
+        }
+        setLoading(false);
+        setInitialLoadComplete(true);
+        return;
+      }
+
       if (session?.user) {
-        supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => {
+        supabase.from('profiles').select('*').eq('id', session.user.id).single().then(async ({ data, error: profileError }) => {
           if (data) {
             const user = mapProfile(data);
             setCurrentUser(user);
             loadData(user.id, user.role === 'staff', user.parentId);
+          } else if (profileError && profileError.code === 'PGRST116') {
+            // Profile missing - ONLY create if we have a valid session and it's not a signup-pending state
+            // We'll let onAuthStateChange handle the creation after verification
+            setLoading(false);
+            setInitialLoadComplete(true);
           } else {
             setLoading(false);
             setInitialLoadComplete(true);
@@ -157,10 +172,55 @@ export const useStore = () => {
         setLoading(false);
         setInitialLoadComplete(true);
       }
+    }).catch(() => {
+      setLoading(false);
+      setInitialLoadComplete(true);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+        setProducts([]);
+        setSales([]);
+        setSuppliers([]);
+        setInitialLoadComplete(true);
+        return;
+      }
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        supabase.from('profiles').select('*').eq('id', session.user.id).single().then(async ({ data, error: profileError }) => {
+          if (data) {
+            const user = mapProfile(data);
+            setCurrentUser(user);
+            loadData(user.id, user.role === 'staff', user.parentId);
+          } else if (profileError && profileError.code === 'PGRST116') {
+             // Profile missing - create it from metadata
+             const metadata = session.user.user_metadata;
+             const newProfile = {
+               id: session.user.id,
+               email: session.user.email,
+               name: metadata.full_name || '',
+               company_name: metadata.company_name || '',
+               role: metadata.role || 'user',
+               parent_id: metadata.parent_id || null,
+               trial_start_date: new Date().toISOString()
+             };
+             
+             const { data: createdProfile, error: createError } = await supabase
+               .from('profiles')
+               .insert([newProfile])
+               .select()
+               .single();
+             
+             if (!createError && createdProfile) {
+               const user = mapProfile(createdProfile);
+               setCurrentUser(user);
+               loadData(user.id, user.role === 'staff', user.parentId);
+             }
+          }
+        });
+      } else if (session?.user) {
+        // Handle other events where session exists but not necessarily a new sign in
         supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => {
           if (data) {
             const user = mapProfile(data);
@@ -189,24 +249,22 @@ export const useStore = () => {
     const { data, error: authError } = await supabase.auth.signUp({ 
       email, 
       password, 
-      options: { data: { full_name: name } } 
+      options: { 
+        data: { 
+          full_name: name,
+          company_name: companyName,
+          role: inviteId ? 'staff' : 'user',
+          parent_id: inviteId || null
+        } 
+      } 
     });
     
     if (authError) return { error: authError };
-    if (!data.user) return { error: new Error("Registration failed") };
-
-    const { error: profileError } = await supabase.from('profiles').insert([{
-      id: data.user.id,
-      email,
-      name,
-      company_name: companyName,
-      role: inviteId ? 'staff' : 'user',
-      parent_id: inviteId || null,
-      trial_start_date: new Date().toISOString()
-    }]);
-
-    if (profileError) return { error: profileError };
     return { data };
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    return await supabase.auth.updateUser({ password: newPassword });
   };
 
   const logout = async () => {
@@ -376,6 +434,6 @@ export const useStore = () => {
 
   return {
     loading, initialLoadComplete, currentUser, products, sales, returns, suppliers, notifications, users, settings, error, isLoggedIn, isOnline,
-    login, register, resetPassword, logout, updateSettings, addProduct, updateProduct, deleteProduct, recordSale, reconcileInventory, recordReturn, addSupplier, addStaffMember, removeStaffMember, activateSubscription
+    login, register, resetPassword, updatePassword, logout, updateSettings, addProduct, updateProduct, deleteProduct, recordSale, reconcileInventory, recordReturn, addSupplier, addStaffMember, removeStaffMember, activateSubscription
   };
 };

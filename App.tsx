@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { View, User as UserType, SubscriptionPlan, Product, AppLanguage } from './types';
 import { useStore, getTrialStatus } from './store';
+import { supabase } from './supabase';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
@@ -62,6 +63,15 @@ const App: React.FC = () => {
   const [pendingEmail, setPendingEmail] = useState('');
   const [isStaffSignup, setIsStaffSignup] = useState(false);
   
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setAuthStep('update_password');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   // PWA & Install state - Check if standalone OR if we previously marked it as installed
   const [isAppInstalled, setIsAppInstalled] = useState(() => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
@@ -215,6 +225,8 @@ const App: React.FC = () => {
       } else {
         setPendingEmail(email);
         setAuthStep('verify_otp');
+        // Clear any previous errors
+        setAuthError('');
       }
     } catch (err: any) {
       setAuthError("Account creation failed. Please check your details.");
@@ -228,6 +240,28 @@ const App: React.FC = () => {
     setAuthStep('landing');
     store.logout();
   }, [store.logout]);
+
+  const handleUpdatePasswordSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setAuthError('');
+    setIsSubmitting(true);
+    const formData = new FormData(e.currentTarget);
+    const password = formData.get('password') as string;
+
+    try {
+      const { error } = await store.updatePassword(password);
+      if (error) {
+        setAuthError(error.message);
+      } else {
+        setAuthStep('login');
+        alert("Password updated successfully. Please sign in with your new password.");
+      }
+    } catch (err: any) {
+      setAuthError("Failed to update password.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (store.loading) {
     return (
@@ -377,9 +411,9 @@ const App: React.FC = () => {
                     <input name="password" type="password" required className="w-full px-8 py-4 bg-slate-50 dark:bg-slate-800 rounded-[1.5rem] font-bold text-slate-900 dark:text-white border-none outline-none" placeholder="••••••••" />
                   </div>
 
-                  <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-[#4f46e5] text-white font-black uppercase tracking-[0.2em] text-[12px] rounded-[1.5rem] shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-4">
+                  <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-[#4f46e5] text-white font-black uppercase tracking-[0.2em] text-[12px] rounded-[1.5rem] shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed">
                     {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <UserPlus size={20} />}
-                    {isSubmitting ? 'DEPLOYING...' : 'INITIATE PROTOCOL'}
+                    {isSubmitting ? 'PLEASE WAIT...' : 'INITIATE PROTOCOL'}
                   </button>
                   
                   <div className="text-center pt-4">
@@ -412,6 +446,27 @@ const App: React.FC = () => {
                   <div className="text-center">
                     <button type="button" onClick={() => setAuthStep('login')} className="text-[11px] font-black uppercase text-slate-400 hover:text-indigo-600 transition-colors tracking-widest">Back to Sign In</button>
                   </div>
+               </form>
+             )}
+
+             {authStep === 'update_password' && (
+               <form onSubmit={handleUpdatePasswordSubmit} className="space-y-8">
+                 <div className="p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-3xl border border-indigo-100 dark:border-indigo-800">
+                    <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 leading-relaxed uppercase">Create a new secure password for your shop account.</p>
+                 </div>
+                 <div>
+                   <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">NEW PASSWORD</label>
+                   <div className="relative">
+                     <input name="password" type={showPassword ? "text" : "password"} required className="w-full px-8 py-5 bg-slate-50 dark:bg-slate-800 rounded-[1.8rem] font-bold text-slate-900 dark:text-white border-none outline-none focus:ring-4 focus:ring-indigo-600/10 transition-all" placeholder="••••••••" />
+                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400">
+                       {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                     </button>
+                   </div>
+                 </div>
+                 <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-[#4f46e5] text-white font-black uppercase tracking-[0.2em] text-[13px] rounded-[2rem] shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-4">
+                   {isSubmitting ? <Loader2 className="animate-spin" size={22} /> : <KeyRound size={22} />}
+                   {isSubmitting ? 'UPDATING...' : 'UPDATE PASSWORD'}
+                 </button>
                </form>
              )}
 
