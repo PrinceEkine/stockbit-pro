@@ -159,10 +159,33 @@ export const useStore = () => {
             setCurrentUser(user);
             loadData(user.id, user.role === 'staff', user.parentId);
           } else if (profileError && profileError.code === 'PGRST116') {
-            // Profile missing - ONLY create if we have a valid session and it's not a signup-pending state
-            // We'll let onAuthStateChange handle the creation after verification
-            setLoading(false);
-            setInitialLoadComplete(true);
+            // Profile missing - create it from metadata
+            const metadata = session.user.user_metadata;
+            const newProfile = {
+              id: session.user.id,
+              email: session.user.email,
+              name: metadata.full_name || '',
+              company_name: metadata.company_name || '',
+              role: metadata.role || 'user',
+              parent_id: metadata.parent_id || null,
+              trial_start_date: new Date().toISOString()
+            };
+            
+            const { data: createdProfile, error: createError } = await supabase
+              .from('profiles')
+              .insert([newProfile])
+              .select()
+              .single();
+            
+            if (!createError && createdProfile) {
+              const user = mapProfile(createdProfile);
+              setCurrentUser(user);
+              loadData(user.id, user.role === 'staff', user.parentId);
+            } else {
+              console.error("Profile auto-creation failed", createError);
+              setLoading(false);
+              setInitialLoadComplete(true);
+            }
           } else {
             setLoading(false);
             setInitialLoadComplete(true);
@@ -187,7 +210,7 @@ export const useStore = () => {
         return;
       }
 
-      if (event === 'SIGNED_IN' && session?.user) {
+      if (session?.user) {
         supabase.from('profiles').select('*').eq('id', session.user.id).single().then(async ({ data, error: profileError }) => {
           if (data) {
             const user = mapProfile(data);
@@ -217,15 +240,6 @@ export const useStore = () => {
                setCurrentUser(user);
                loadData(user.id, user.role === 'staff', user.parentId);
              }
-          }
-        });
-      } else if (session?.user) {
-        // Handle other events where session exists but not necessarily a new sign in
-        supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => {
-          if (data) {
-            const user = mapProfile(data);
-            setCurrentUser(user);
-            loadData(user.id, user.role === 'staff', user.parentId);
           }
         });
       } else {

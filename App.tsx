@@ -471,15 +471,38 @@ const App: React.FC = () => {
              )}
 
              {authStep === 'verify_otp' && (
-               <div className="text-center space-y-10 py-10">
-                  <div className="w-24 h-24 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                    <MailCheck size={48} />
+               <div className="text-center space-y-12 py-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                   <div className="relative mx-auto w-32 h-32">
+                      <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping duration-[3000ms]" />
+                      <div className="relative w-full h-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-full flex items-center justify-center shadow-inner border-4 border-white dark:border-slate-800">
+                        <MailCheck size={56} className="animate-bounce" />
+                      </div>
+                   </div>
+
                   </div>
-                  <div className="space-y-4">
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Check your inbox</h2>
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mx-auto">We've sent a verification link to <span className="text-indigo-600 font-bold">{pendingEmail}</span>. Please click it to activate your shop terminal.</p>
+                   <div className="space-y-6">
+                    <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight leading-none">Check your inbox</h2>
+                    <div className="space-y-4">
+                       <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mx-auto">
+                         We've sent a secure activation link to:
+                         <br />
+                         <span className="text-indigo-600 dark:text-indigo-400 font-black text-base mt-2 block">{pendingEmail}</span>
+                       </p>
+                       <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/50 rounded-2xl">
+                          <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest leading-normal">
+                            Please click the link in the email to verify your account. If you don't see it, check your spam folder.
+                          </p>
+                       </div>
+                    </div>
                   </div>
-                  <button onClick={() => setAuthStep('login')} className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase text-[12px] tracking-[0.2em] rounded-[1.5rem] shadow-xl active:scale-95 transition-all">Back to Sign In</button>
+                   <div className="pt-6 space-y-4">
+                      <button onClick={() => setAuthStep('login')} className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase text-[12px] tracking-[0.2em] rounded-[1.5rem] shadow-xl active:scale-95 transition-all">
+                        Back to Sign In
+                      </button>
+                      <button onClick={() => setAuthStep('register')} className="text-[10px] font-black uppercase text-slate-400 hover:text-indigo-600 tracking-widest transition-colors">
+                        Entered wrong email? Start over
+                      </button>
+                   </div>
                </div>
              )}
           </div>
