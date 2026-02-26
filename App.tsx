@@ -69,6 +69,20 @@ const App: React.FC = () => {
         setAuthStep('update_password');
       }
     });
+
+    // Handle recovery token in URL on initial mount
+    const hash = window.location.hash;
+    if (hash && (hash.includes('type=recovery') || hash.includes('access_token='))) {
+      // Give Supabase a moment to process the hash
+      setTimeout(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session) {
+            setAuthStep('update_password');
+          }
+        });
+      }, 500);
+    }
+
     return () => subscription.unsubscribe();
   }, []);
 
@@ -479,7 +493,6 @@ const App: React.FC = () => {
                       </div>
                    </div>
 
-                  </div>
                    <div className="space-y-6">
                     <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight leading-none">Check your inbox</h2>
                     <div className="space-y-4">

@@ -61,7 +61,7 @@ export interface Product {
   last_updated: string; // timestamptz
   created_at: string; // timestamptz
   batch_number: string; // text
-  expiry_date: string; // date
+  expiry_date: string | null; // date
   location: string; // text
   sustainability_score: number; // int4
 }

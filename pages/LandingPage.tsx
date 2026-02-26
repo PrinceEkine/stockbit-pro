@@ -82,7 +82,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
     return () => { isMounted.current = false; };
   }, []);
 
-  const scrollToSection = (ref: React.RefObject<HTMLElement>) => {
+  const scrollToSection = (ref: React.RefObject<HTMLElement | null>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 

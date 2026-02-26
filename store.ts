@@ -80,7 +80,7 @@ export const useStore = () => {
         supabase.from('returns').select('*').eq('user_id', targetUserId).order('date', { ascending: false }),
         supabase.from('notifications').select('*').eq('user_id', userId).order('date', { ascending: false }),
         supabase.from('settings').select('*').eq('user_id', targetUserId).single(),
-        supabase.from('profiles').select('*')
+        supabase.from('profiles').select('*').or(`id.eq.${targetUserId},parent_id.eq.${targetUserId}`)
       ]);
 
       if (prodRes.data) setProducts(prodRes.data);
@@ -155,7 +155,16 @@ export const useStore = () => {
       if (session?.user) {
         supabase.from('profiles').select('*').eq('id', session.user.id).single().then(async ({ data, error: profileError }) => {
           if (data) {
-            const user = mapProfile(data);
+            let user = mapProfile(data);
+            
+            // If staff, fetch owner's company name for display
+            if (user.role === 'staff' && user.parentId) {
+              const { data: parentData } = await supabase.from('profiles').select('company_name').eq('id', user.parentId).single();
+              if (parentData) {
+                user.companyName = parentData.company_name;
+              }
+            }
+            
             setCurrentUser(user);
             loadData(user.id, user.role === 'staff', user.parentId);
           } else if (profileError && profileError.code === 'PGRST116') {
@@ -213,7 +222,16 @@ export const useStore = () => {
       if (session?.user) {
         supabase.from('profiles').select('*').eq('id', session.user.id).single().then(async ({ data, error: profileError }) => {
           if (data) {
-            const user = mapProfile(data);
+            let user = mapProfile(data);
+            
+            // If staff, fetch owner's company name for display
+            if (user.role === 'staff' && user.parentId) {
+              const { data: parentData } = await supabase.from('profiles').select('company_name').eq('id', user.parentId).single();
+              if (parentData) {
+                user.companyName = parentData.company_name;
+              }
+            }
+            
             setCurrentUser(user);
             loadData(user.id, user.role === 'staff', user.parentId);
           } else if (profileError && profileError.code === 'PGRST116') {

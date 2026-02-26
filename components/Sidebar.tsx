@@ -49,7 +49,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const isStaff = user?.role === 'staff';
   const t = TRANSLATIONS[settings.language || 'en'];
 
-  const sections = [
+  const sections: { label: string; hidden?: boolean; items: { id: View; icon: any; label: string; hidden?: boolean }[] }[] = [
     {
       label: 'Main Menu',
       items: [
