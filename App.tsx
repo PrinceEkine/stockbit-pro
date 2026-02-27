@@ -249,11 +249,22 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    // Clear hash and local states immediately for responsive UI
+    if (window.location.hash) {
+      window.location.hash = '';
+    }
     setActiveView(View.Landing);
     setAuthStep('landing');
-    store.logout();
+    await store.logout();
   }, [store.logout]);
+
+  useEffect(() => {
+    if (!store.isLoggedIn && activeView !== View.Landing && !isInfoView) {
+      setActiveView(View.Landing);
+      setAuthStep('landing');
+    }
+  }, [store.isLoggedIn, activeView, isInfoView]);
 
   const handleUpdatePasswordSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

@@ -63,6 +63,12 @@ export const useStore = () => {
   const isLoggedIn = !!currentUser;
 
   const loadData = useCallback(async (userId: string, isStaff: boolean, parentId?: string) => {
+    if (!userId) {
+      setLoading(false);
+      setInitialLoadComplete(true);
+      return;
+    }
+
     setLoading(true);
     const targetUserId = isStaff ? parentId : userId;
     
@@ -90,11 +96,11 @@ export const useStore = () => {
       if (noteRes.data) setNotifications(noteRes.data);
       if (settingsRes.data) {
         const dbConfig = settingsRes.data.config || {};
-        setSettings({
-          ...settings,
+        setSettings(prev => ({
+          ...prev,
           ...dbConfig,
           paystackPublicKey: dbConfig.paystackPublicKey || process.env.VITE_PAYSTACK_PUBLIC_KEY || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''
-        });
+        }));
       }
       if (profilesRes.data) setUsers(profilesRes.data.map(mapProfile));
       
@@ -105,7 +111,7 @@ export const useStore = () => {
       setLoading(false);
       setInitialLoadComplete(true);
     }
-  }, [settings]);
+  }, []);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -273,11 +279,11 @@ export const useStore = () => {
     };
   }, [loadData]);
 
-  const login = async (email: string, pass: string) => {
+  const login = useCallback(async (email: string, pass: string) => {
     return await supabase.auth.signInWithPassword({ email, password: pass });
-  };
+  }, []);
 
-  const register = async ({ email, password, name, companyName, inviteId }: any) => {
+  const register = useCallback(async ({ email, password, name, companyName, inviteId }: any) => {
     const { data, error: authError } = await supabase.auth.signUp({ 
       email, 
       password, 
@@ -293,38 +299,51 @@ export const useStore = () => {
     
     if (authError) return { error: authError };
     return { data };
-  };
+  }, []);
 
-  const updatePassword = async (newPassword: string) => {
+  const updatePassword = useCallback(async (newPassword: string) => {
     return await supabase.auth.updateUser({ password: newPassword });
-  };
+  }, []);
 
-  const logout = async () => {
-    await supabase.auth.signOut();
-    setCurrentUser(null);
-    setProducts([]);
-    setSales([]);
-    setSuppliers([]);
-  };
-
-  const resetPassword = async (email: string) => {
-    return await supabase.auth.resetPasswordForEmail(email);
-  };
-
-  const updateSettings = async (updates: Partial<Settings>) => {
-    const newSettings = { ...settings, ...updates };
-    setSettings(newSettings);
-    
-    if (currentUser) {
-      const targetId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
-      if (targetId) {
-        await supabase.from('settings').upsert({ 
-          user_id: targetId, 
-          config: newSettings 
-        });
-      }
+  const logout = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Logout error:", err);
+    } finally {
+      setCurrentUser(null);
+      setProducts([]);
+      setSales([]);
+      setSuppliers([]);
+      setNotifications([]);
+      setUsers([]);
     }
-  };
+  }, []);
+
+  const resetPassword = useCallback(async (email: string) => {
+    return await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/#update_password`
+    });
+  }, []);
+
+  const updateSettings = useCallback(async (updates: Partial<Settings>) => {
+    setSettings(prev => {
+      const newSettings = { ...prev, ...updates };
+      
+      if (currentUser) {
+        const targetId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+        if (targetId) {
+          supabase.from('settings').upsert({ 
+            user_id: targetId, 
+            config: newSettings 
+          }).then(({ error }) => {
+            if (error) console.error("Settings sync error:", error);
+          });
+        }
+      }
+      return newSettings;
+    });
+  }, [currentUser]);
 
   const addProduct = async (product: Omit<Product, 'id' | 'last_updated' | 'created_at' | 'user_id'>) => {
     if (!currentUser) return;
