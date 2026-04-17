@@ -49,22 +49,44 @@
         theme: {
           extend: {
             screens: { 'xs': '400px' },
-            fontFamily: { sans: ['Inter', 'sans-serif'] },
+            fontFamily: { 
+              sans: ['Inter', 'sans-serif'],
+              display: ['Space Grotesk', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            borderRadius: {
+              'xl': '1rem',
+              '2xl': '1.25rem',
+              '3xl': '1.5rem',
+              '4xl': '2rem',
+              '5xl': '2.5rem',
+            },
+            colors: {
+              brand: {
+                primary: '#4f46e5',
+                secondary: '#0ea5e9',
+              }
+            },
             animation: {
               'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'bounce-gentle': 'bounce-gentle 2s infinite',
+              'float': 'float 6s ease-in-out infinite',
             },
             keyframes: {
               'bounce-gentle': {
                 '0%, 100%': { transform: 'translateY(-5%)' },
                 '50%': { transform: 'translateY(0)' },
+              },
+              'float': {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-10px)' },
               }
             }
           },
         },
       }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
           --sat: env(safe-area-inset-top);
@@ -81,6 +103,14 @@
         html.dark body { background-color: #020617; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .glass {
+            @apply backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border border-white/20 dark:border-white/5;
+        }
+        
+        .transition-soft {
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
 
         /* Professional POS Printing Styles */
         @media print {

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { Product, Supplier, Settings, User as UserType } from '../types';
 import { DEFAULT_CATEGORIES as CATEGORIES } from '../constants';
+import { TRANSLATIONS } from '../constants/translations';
 import ScannerModal from '../components/ScannerModal';
 
 // HELPER: Improved Barcode SVG Generator (High Contrast Code 128 Approximation)
@@ -274,80 +275,132 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
         </div>
       )}
 
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 no-print px-4">
-        <div className="min-w-0">
-          <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase leading-tight truncate">Inventory Control</h2>
-          <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[9px] md:text-[10px] mt-1 flex items-center gap-2">
-            <Building2 size={14} className="text-indigo-600 shrink-0" /> Enterprise Asset Repository
-          </p>
+      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-10 no-print px-6 md:px-12">
+        <div className="space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 text-brand-primary rounded-full border border-brand-primary/20">
+             <Layers size={14} className="animate-pulse" />
+             <span className="text-[10px] font-bold uppercase tracking-widest leading-none">Global Asset Command</span>
+          </div>
+          <h2 className="text-4xl md:text-7xl font-display font-bold text-slate-900 dark:text-white tracking-tighter leading-tight">Neural Catalog</h2>
+          <div className="flex items-center gap-6">
+             <div className="flex -space-x-4">
+               {[1,2,3,4].map(i => (
+                 <div key={i} className="w-10 h-10 rounded-2xl border-[3px] border-white dark:border-slate-950 bg-slate-100 dark:bg-slate-800 shadow-xl overflow-hidden group">
+                    <div className="w-full h-full bg-gradient-to-br from-brand-primary/20 to-transparent group-hover:bg-brand-primary/40 transition-colors"></div>
+                 </div>
+               ))}
+             </div>
+             <div className="h-10 w-px bg-slate-200 dark:bg-slate-800"></div>
+             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] leading-none">{filteredProducts.length} Registry Units Indexed</p>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2 sm:gap-3 shrink-0">
-          <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="flex-1 sm:flex-none px-5 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-            <Plus size={18} /> <span className="sm:inline">Add Product</span>
+        <div className="flex flex-wrap items-center gap-4">
+          <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="flex-1 sm:flex-none px-10 py-5 bg-brand-primary text-white rounded-3xl flex items-center justify-center gap-4 font-bold text-[11px] uppercase tracking-[0.2em] shadow-neo-brand active:scale-95 transition-all group overflow-hidden relative">
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+            <Plus size={20} className="relative z-10" /> <span className="relative z-10">Initialize Asset</span>
           </button>
-          <button onClick={() => { setScannerMode('id'); setIsScannerOpen(true); }} className="px-5 py-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest shadow-sm transition-all active:scale-95">
-            <Scan size={18} /> <span className="hidden sm:inline">Strict Sensor</span>
+          <div className="h-14 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
+          <button onClick={() => { setScannerMode('id'); setIsScannerOpen(true); }} className="w-14 h-14 bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-center hover:bg-brand-primary hover:text-white hover:border-brand-primary transition-all active:scale-95 shadow-neo">
+            <Scan size={22} />
           </button>
-          <button onClick={() => { setScannerMode('details'); setIsScannerOpen(true); }} className="px-5 py-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest shadow-sm transition-all active:scale-95">
-            <Sparkles size={18} /> <span className="hidden sm:inline">Scan to Add</span>
-          </button>
-          <button onClick={handlePrintLedger} className="hidden sm:flex px-5 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl items-center justify-center gap-3 font-black text-[9px] uppercase tracking-widest shadow-sm active:scale-95 transition-all">
-            <FileText size={16} /> Print List
+          <button onClick={() => { setScannerMode('details'); setIsScannerOpen(true); }} className="w-14 h-14 bg-emerald-500/10 text-emerald-500 rounded-2xl border border-emerald-500/20 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all active:scale-95 shadow-neo">
+            <Sparkles size={22} />
           </button>
         </div>
       </header>
 
-      {/* SEARCH BAR */}
-      <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-4 no-print shadow-sm mx-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-          <input type="text" placeholder="Filter Assets..." className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-sm font-bold placeholder:text-slate-400 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+      {/* INTELLIGENT SEARCH BUREAU */}
+      <div className="bg-white dark:bg-slate-900 p-8 md:p-12 rounded-[3.5rem] border border-slate-100 dark:border-slate-800 flex flex-col lg:flex-row gap-10 no-print shadow-neo mx-6 md:mx-12 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-2 h-full bg-brand-primary"></div>
+        <div className="relative flex-1 group">
+          <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-primary transition-all duration-300 group-focus-within:scale-110" size={24} />
+          <input 
+            type="text" 
+            placeholder="Search catalog registry..." 
+            className="w-full pl-16 pr-10 py-6 bg-slate-50 dark:bg-slate-800/50 border-none rounded-3xl text-sm font-bold placeholder:text-slate-400 text-slate-900 dark:text-white outline-none focus:ring-4 focus:ring-brand-primary/10 transition-all shadow-inner" 
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)} 
+          />
         </div>
-        {selectedIds.size > 0 && (
-          <button onClick={() => handlePrintLabels()} className="px-5 py-4 bg-indigo-600 text-white rounded-2xl flex items-center justify-center gap-3 font-black text-[9px] uppercase tracking-widest shadow-xl active:scale-95 transition-all animate-in slide-in-from-right-2">
-            <Grid size={16} /> Print {selectedIds.size} Labels (1.5x1")
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-6">
+          <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 px-6 py-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+             <Grid size={16} className="text-slate-400" />
+             <select 
+               value={selectedCategory} 
+               onChange={(e) => setSelectedCategory(e.target.value)}
+               className="bg-transparent border-none p-0 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 outline-none cursor-pointer focus:ring-0"
+             >
+               <option value="All">All Categories</option>
+               {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+             </select>
+          </div>
+          <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 px-6 py-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+             <MapPin size={16} className="text-slate-400" />
+             <select 
+               value={selectedBranch} 
+               onChange={(e) => setSelectedBranch(e.target.value)}
+               className="bg-transparent border-none p-0 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 outline-none cursor-pointer focus:ring-0"
+             >
+               <option value="All">All Locations</option>
+               {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
+             </select>
+          </div>
+          {selectedIds.size > 0 && (
+            <button onClick={() => handlePrintLabels()} className="px-10 py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[1.5rem] flex items-center justify-center gap-4 font-bold text-[10px] uppercase tracking-widest shadow-2xl active:scale-95 transition-all animate-in slide-in-from-right-4 group">
+              <Printer size={18} className="group-hover:animate-bounce" /> {selectedIds.size} Manifest Labels
+            </button>
+          )}
+        </div>
       </div>
 
       {/* MOBILE LIST */}
-      <div className="lg:hidden space-y-5 px-4 pb-24 no-print">
+      <div className="lg:hidden space-y-6 px-6 pb-32 no-print">
         {filteredProducts.map((p) => {
           const isLow = p.quantity <= p.min_threshold;
           const isOut = p.quantity === 0;
           return (
             <div 
               key={p.id} 
-              className={`bg-[#0f172a] p-6 rounded-[2.5rem] border border-white/5 shadow-2xl space-y-6 transition-all relative overflow-hidden active:scale-[0.99] ${highlightedId === p.id ? 'ring-4 ring-indigo-500/20' : ''}`}
+              className={`bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-neo space-y-8 transition-all relative overflow-hidden active:scale-[0.98] ${highlightedId === p.id ? 'ring-4 ring-brand-primary/20' : ''}`}
               onClick={() => toggleSelection(p.id)}
             >
-              <div className="flex justify-between items-start gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="px-2 py-0.5 bg-white/5 text-indigo-400 rounded-md text-[8px] font-black uppercase tracking-widest border border-white/5">
+              {isLow && (
+                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-amber-500"></div>
+              )}
+              {isOut && (
+                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-rose-500"></div>
+              )}
+
+              <div className="flex justify-between items-start">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-[8px] font-black uppercase tracking-widest leading-none border border-slate-200 dark:border-slate-700">
                       {p.category}
                     </span>
-                    <span className={`px-2 py-0.5 bg-white/5 ${getScoreColor(p.sustainability_score || 0)} rounded-md text-[8px] font-black uppercase tracking-widest border border-white/5 flex items-center gap-1`}>
-                      <Leaf size={8}/> {p.sustainability_score || 0}% ECO
+                    <span className={`px-3 py-1 bg-slate-100 dark:bg-slate-800 ${getScoreColor(p.sustainability_score || 0)} rounded-lg text-[8px] font-black uppercase tracking-widest leading-none border border-slate-200 dark:border-slate-700 flex items-center gap-1.5`}>
+                      <Leaf size={10}/> {p.sustainability_score || 0}% ECO
                     </span>
                   </div>
-                  <h4 className="font-black text-white uppercase text-sm leading-tight tracking-tight pr-4">
+                  <h4 className="font-display font-bold text-slate-900 dark:text-white uppercase text-xl leading-tight tracking-tight">
                     {p.name}
                   </h4>
+                  <p className="font-mono text-[9px] text-slate-400 uppercase tracking-widest leading-none">{p.sku}</p>
                 </div>
-                <input type="checkbox" className="rounded-lg border-white/10 bg-white/5 text-indigo-600 focus:ring-indigo-500 w-6 h-6 transition-all" checked={selectedIds.has(p.id)} onChange={(e) => { e.stopPropagation(); toggleSelection(p.id); }} />
+                <div className={`w-8 h-8 rounded-xl border-2 transition-all flex items-center justify-center ${selectedIds.has(p.id) ? 'bg-brand-primary border-brand-primary text-white' : 'border-slate-200 dark:border-slate-800'}`}>
+                   {selectedIds.has(p.id) && <CheckSquare size={16} />}
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-black/20 p-4 rounded-3xl border border-white/5 flex flex-col justify-between h-24">
-                  <p className="text-[7px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Stock Position</p>
-                  <span className={`text-xl font-black tracking-tighter ${isOut ? 'text-rose-500' : isLow ? 'text-amber-500' : 'text-emerald-400'}`}>
-                    {p.quantity} <span className="text-[10px] uppercase ml-1">Units</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 dark:bg-slate-800/40 p-6 rounded-[2rem] border border-slate-100 dark:border-white/5 flex flex-col justify-between h-28">
+                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em]">Inventory Level</p>
+                  <span className={`text-3xl font-display font-bold tracking-tighter ${isOut ? 'text-rose-500' : isLow ? 'text-amber-500' : 'text-emerald-500'}`}>
+                    {p.quantity} <span className="text-[11px] uppercase ml-1 opacity-60">UNITS</span>
                   </span>
                 </div>
-                <div className="bg-black/20 p-4 rounded-3xl border border-white/5 flex flex-col justify-between h-24">
-                  <p className="text-[7px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Asset Value</p>
-                  <span className="text-xl font-black text-white tracking-tighter">
+                <div className="bg-slate-50 dark:bg-slate-800/40 p-6 rounded-[2rem] border border-slate-100 dark:border-white/5 flex flex-col justify-between h-28">
+                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.2em]">Gross Worth</p>
+                  <span className="text-3xl font-display font-bold text-slate-900 dark:text-white tracking-tighter">
                     {settings.currency}{p.price.toLocaleString()}
                   </span>
                 </div>
@@ -357,58 +410,109 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
         })}
       </div>
 
-      {/* DESKTOP TABLE */}
-      <div className="hidden lg:block bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden no-print mx-4 mb-20">
+      {/* DESKTOP TABLE BUREAU */}
+      <div className="hidden lg:block bg-white dark:bg-slate-900 rounded-[4rem] border border-slate-100 dark:border-slate-800 shadow-neo-lg overflow-hidden no-print mx-12 mb-32 relative">
         <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[800px]">
-            <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-slate-500 text-[10px] uppercase font-black tracking-widest">
-              <tr>
-                <th className="pl-10 py-6 w-10">
-                  <input type="checkbox" className="rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500" onChange={(e) => {
-                    if (e.target.checked) setSelectedIds(new Set(filteredProducts.map(p => p.id)));
-                    else setSelectedIds(new Set());
-                  }} checked={selectedIds.size === filteredProducts.length && filteredProducts.length > 0} />
+          <table className="w-full text-left min-w-[1000px] border-collapse">
+            <thead>
+              <tr className="bg-slate-50/50 dark:bg-slate-800/30">
+                <th className="pl-14 py-10 w-24">
+                  <div className="flex items-center">
+                    <input 
+                      type="checkbox" 
+                      className="w-6 h-6 rounded-xl border-slate-200 bg-white text-brand-primary focus:ring-brand-primary/20 cursor-pointer shadow-sm transition-all active:scale-90" 
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedIds(new Set(filteredProducts.map(p => p.id)));
+                        else setSelectedIds(new Set());
+                      }} 
+                      checked={selectedIds.size === filteredProducts.length && filteredProducts.length > 0} 
+                    />
+                  </div>
                 </th>
-                <th className="px-10 py-6">Asset Intelligence</th>
-                <th className="px-10 py-6 text-center">Location</th>
-                <th className="px-10 py-6 text-center">Eco Score</th>
-                <th className="px-10 py-6 text-center">Health</th>
-                <th className="px-10 py-6 text-center">Price</th>
-                <th className="px-10 py-6 text-right">Ops</th>
+                <th className="px-10 py-10 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Asset Identity</th>
+                <th className="px-10 py-10 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 text-center">Protocol Node</th>
+                <th className="px-10 py-10 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 text-center">Climate Score</th>
+                <th className="px-10 py-10 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 text-center">Level Integrity</th>
+                <th className="px-10 py-10 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 text-center">Unit Valuation</th>
+                <th className="pr-14 py-10 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 text-right">Utility</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-              {filteredProducts.map((p) => {
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {filteredProducts.map((p, index) => {
                 const isLow = p.quantity <= p.min_threshold;
                 const isOut = p.quantity === 0;
                 return (
-                  <tr key={p.id} className={`transition-all duration-500 ${highlightedId === p.id ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-4 ring-indigo-500/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
-                    <td className="pl-10 py-6">
-                      <input type="checkbox" className="rounded-md border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 bg-transparent" checked={selectedIds.has(p.id)} onChange={() => toggleSelection(p.id)} />
+                  <tr key={p.id} className={`group transition-all duration-500 animate-in fade-in slide-in-from-bottom-4 ${highlightedId === p.id ? 'bg-brand-primary/5' : 'hover:bg-slate-50/50 dark:hover:bg-slate-801/30'}`} style={{ animationDelay: `${index * 40}ms` }}>
+                    <td className="pl-14 py-10">
+                      <input type="checkbox" className="w-6 h-6 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-brand-primary focus:ring-brand-primary/20 cursor-pointer shadow-sm transition-all active:scale-90" checked={selectedIds.has(p.id)} onChange={() => toggleSelection(p.id)} />
                     </td>
-                    <td className="px-10 py-6">
-                      <div className="min-w-0">
-                        <p className={`font-black uppercase tracking-tight truncate max-w-[200px] transition-colors ${highlightedId === p.id ? 'text-indigo-600' : 'text-slate-900 dark:text-white'}`}>{p.name}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{p.sku}</p>
+                    <td className="px-10 py-10">
+                      <div className="flex items-center gap-6">
+                        <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-3xl flex items-center justify-center text-slate-400 shadow-inner group-hover:bg-brand-primary/10 group-hover:text-brand-primary transition-all duration-500 overflow-hidden relative">
+                           <Package size={28} className="relative z-10 group-hover:scale-110 transition-transform" />
+                           <div className="absolute inset-0 bg-brand-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`text-lg font-display font-bold tracking-tight truncate max-w-[280px] transition-colors ${highlightedId === p.id ? 'text-brand-primary' : 'text-slate-900 dark:text-white group-hover:text-brand-primary underline decoration-transparent group-hover:decoration-brand-primary/30'}`}>{p.name}</p>
+                          <div className="flex items-center gap-3 mt-1.5">
+                             <span className="font-mono text-[10px] text-slate-400 uppercase tracking-widest leading-none bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-100 dark:border-slate-700">{p.sku}</span>
+                             <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest leading-none">{p.category}</span>
+                          </div>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-10 py-6 text-center">
-                      <span className="text-[9px] font-black uppercase tracking-widest px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-full">{p.location}</span>
-                    </td>
-                    <td className="px-10 py-6 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Leaf size={14} className={getScoreColor(p.sustainability_score || 0)} />
-                        <span className={`text-[11px] font-black ${getScoreColor(p.sustainability_score || 0)}`}>{p.sustainability_score || 0}%</span>
+                    <td className="px-10 py-10 text-center">
+                      <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-white/5 transition-all group-hover:border-slate-200">
+                        <MapPin size={12} className="text-brand-primary" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 leading-none">{p.location}</span>
                       </div>
                     </td>
-                    <td className="px-10 py-6 text-center">
-                      <p className={`font-black text-sm ${isOut ? 'text-rose-600' : isLow ? 'text-amber-600' : 'text-slate-900 dark:text-white'}`}>{p.quantity} Units</p>
+                    <td className="px-10 py-10 text-center">
+                      <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-white/5 hover:scale-105 transition-transform">
+                        <div className={`w-2 h-2 rounded-full animate-pulse transition-colors ${getScoreColor(p.sustainability_score || 0).replace('text-', 'bg-')}`}></div>
+                        <span className={`text-[11px] font-display font-bold ${getScoreColor(p.sustainability_score || 0)}`}>{p.sustainability_score || 0}%</span>
+                      </div>
                     </td>
-                    <td className="px-10 py-6 text-center font-black text-indigo-600">{settings.currency}{(p.price || 0).toLocaleString()}</td>
-                    <td className="px-10 py-6 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => handlePrintLabels([p])} className="p-3 text-slate-300 hover:text-indigo-600 transition-colors" title="Print Barcode Label"><QrCode size={18} /></button>
-                        <button onClick={() => onDelete(p.id)} className="p-3 text-slate-300 hover:text-rose-600 transition-colors" title="Delete Product"><Trash2 size={18} /></button>
+                    <td className="px-10 py-10 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="flex items-baseline gap-2">
+                          <span className={`text-4xl font-display font-bold tracking-tighter group-hover:scale-110 transition-transform duration-500 ${isOut ? 'text-rose-500' : isLow ? 'text-amber-500' : 'text-emerald-500'}`}>{p.quantity}</span>
+                          <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 opacity-60">UNITS</span>
+                        </div>
+                        <div className="w-32 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
+                          <div 
+                            className={`h-full transition-all duration-[1.5s] ease-out shadow-[0_0_15px_rgba(0,0,0,0.2)] ${isOut ? 'bg-rose-500' : isLow ? 'bg-amber-500' : 'bg-emerald-500'}`} 
+                            style={{ width: `${Math.min(100, (p.quantity / (p.min_threshold * 4)) * 100)}%` }} 
+                          />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-10 py-10 text-center">
+                      <div className="flex items-baseline justify-center gap-1.5 font-display">
+                         <span className="text-[11px] font-bold text-slate-400 opacity-50">{settings.currency}</span>
+                         <span className="text-3xl font-bold text-slate-900 dark:text-white tracking-tighter group-hover:tracking-normal transition-all duration-500">{p.price.toLocaleString()}</span>
+                      </div>
+                    </td>
+                    <td className="pr-14 py-10 text-right">
+                      <div className="flex items-center justify-end gap-3 translate-x-10 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-500">
+                        <button 
+                          onClick={() => { setFormData({
+                            name: p.name, sku: p.sku, category: p.category, price: p.price.toString(),
+                            cost_price: p.cost_price.toString(), quantity: p.quantity.toString(),
+                            min_threshold: p.min_threshold.toString(), supplier_id: p.supplier_id || '',
+                            batch_number: p.batch_number || '', expiry_date: p.expiry_date || '',
+                            location: p.location, sustainability_score: (p.sustainability_score || 50).toString()
+                          }); setIsModalOpen(true); }} 
+                          className="w-12 h-12 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-400 hover:text-brand-primary hover:border-brand-primary hover:shadow-xl rounded-2xl transition-all hover:scale-110 active:scale-90"
+                        >
+                          <Plus size={20} className="mx-auto" />
+                        </button>
+                        <button 
+                          onClick={() => { if (confirm(TRANSLATIONS[settings.language]?.confirm_delete || 'Are you sure?')) onDelete(p.id); }} 
+                          className="w-12 h-12 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-400 hover:text-rose-500 hover:border-rose-500 hover:shadow-xl rounded-2xl transition-all hover:scale-110 active:scale-90"
+                        >
+                          <Trash2 size={20} className="mx-auto" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -417,72 +521,84 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
             </tbody>
           </table>
         </div>
+        
+        {filteredProducts.length === 0 && (
+           <div className="py-40 flex flex-col items-center justify-center space-y-8 animate-in fade-in duration-1000">
+              <div className="w-32 h-32 bg-slate-50 dark:bg-slate-800/50 rounded-[3rem] flex items-center justify-center text-slate-200 dark:text-slate-700 shadow-inner">
+                 <Package size={64} />
+              </div>
+              <div className="text-center space-y-2">
+                 <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white uppercase tracking-tight">Void Detected</h2>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No registry entries match the current filter</p>
+              </div>
+           </div>
+        )}
       </div>
 
       {/* ADD/EDIT MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl no-print">
-          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] md:rounded-[3.5rem] w-full max-w-4xl p-6 md:p-12 shadow-2xl animate-in zoom-in-95 overflow-y-auto max-h-[95vh] border border-white/5">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-2xl no-print">
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] md:rounded-[4rem] w-full max-w-4xl p-6 md:p-14 shadow-neo-lg animate-in zoom-in-95 overflow-y-auto max-h-[92vh] border border-white/5">
+            <div className="flex items-center justify-between mb-12">
               <div>
-                <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Inventory Provision</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Synchronizing to Database Node</p>
+                <h3 className="text-3xl md:text-4xl font-display font-bold text-slate-900 dark:text-white tracking-tighter">Manifest Entry</h3>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em] mt-1">Operational Node Protocol</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors md:hidden">
+              <button onClick={() => setIsModalOpen(false)} className="w-12 h-12 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 rounded-full flex items-center justify-center transition-all hover:rotate-90">
                 <X size={24} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-10 pb-10">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-2 space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><Tag size={12}/> Product Identity</label>
-                    <input required className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500" placeholder="Product Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+            <form onSubmit={handleSubmit} className="space-y-12">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                <div className="md:col-span-2 space-y-8">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2"><Tag size={12} className="text-brand-primary" /> Product Identity</label>
+                    <input required className="w-full px-8 py-5 bg-slate-50 dark:bg-slate-800 rounded-[1.5rem] border-none font-bold text-lg text-slate-900 dark:text-white focus:ring-4 focus:ring-brand-primary/10 transition-all" placeholder="Enter full asset name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase ml-1">SKU / Barcode</label>
-                      <input required className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500" placeholder="SKU0000" value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Serial / SKU Identifier</label>
+                      <input required className="w-full px-8 py-5 bg-slate-50 dark:bg-slate-800 rounded-[1.5rem] border-none font-mono font-bold text-slate-900 dark:text-white focus:ring-4 focus:ring-brand-primary/10 transition-all uppercase tracking-widest" placeholder="ALFA-001" value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Category</label>
-                      <select className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Classification</label>
+                      <select className="w-full px-8 py-5 bg-slate-50 dark:bg-slate-800 rounded-[1.5rem] border-none font-bold text-slate-600 dark:text-white focus:ring-4 focus:ring-brand-primary/10 transition-all" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
                         {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-6 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest ml-1 flex items-center gap-2"><Layers size={12}/> On-Hand Qty</label>
-                    <input required type="number" className="w-full px-5 py-3 bg-white dark:bg-slate-900 rounded-xl border-none font-black text-xl text-indigo-600 focus:ring-2 focus:ring-indigo-500" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} />
+                <div className="space-y-8 bg-slate-50 dark:bg-slate-800/40 p-8 rounded-[2.5rem] border border-slate-100 dark:border-white/5">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-brand-primary uppercase tracking-[0.2em] ml-1 flex items-center gap-2"><Layers size={14}/> Active Units</label>
+                    <input required type="number" className="w-full px-6 py-4 bg-white dark:bg-slate-900 rounded-[1.2rem] border-none font-display font-bold text-3xl text-brand-primary focus:ring-4 focus:ring-brand-primary/10 shadow-inner" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest ml-1 flex items-center gap-2"><Leaf size={12}/> Sustainability %</label>
-                    <input type="number" min="0" max="100" className="w-full px-5 py-3 bg-white dark:bg-slate-900 rounded-xl border-none font-black text-xl text-emerald-600 focus:ring-2 focus:ring-emerald-500" value={formData.sustainability_score} onChange={e => setFormData({...formData, sustainability_score: e.target.value})} />
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-[0.2em] ml-1 flex items-center gap-2"><Leaf size={14}/> Eco Compliance %</label>
+                    <input type="number" min="0" max="100" className="w-full px-6 py-4 bg-white dark:bg-slate-900 rounded-[1.2rem] border-none font-display font-bold text-3xl text-emerald-600 focus:ring-4 focus:ring-emerald-500/10 shadow-inner" value={formData.sustainability_score} onChange={e => setFormData({...formData, sustainability_score: e.target.value})} />
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Selling Price ({settings.currency})</label>
-                  <input required type="number" step="0.01" className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-slate-100 dark:border-slate-800">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1">Unit Valuation ({settings.currency})</label>
+                  <input required type="number" step="0.01" className="w-full px-8 py-5 bg-slate-50 dark:bg-slate-800 rounded-[1.5rem] border-none font-mono font-bold text-xl text-slate-900 dark:text-white focus:ring-4 focus:ring-brand-primary/10 transition-all" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><MapPin size={12}/> Warehouse Location</label>
-                  <select className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-none font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})}>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2"><MapPin size={12} className="text-brand-primary" /> Logistics Node</label>
+                  <select className="w-full px-8 py-5 bg-slate-50 dark:bg-slate-800 rounded-[1.5rem] border-none font-bold text-slate-600 dark:text-white focus:ring-4 focus:ring-brand-primary/10 transition-all" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})}>
                     {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </div>
               </div>
 
-              <div className="flex flex-col-reverse md:flex-row gap-4 pt-10">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-5 font-black uppercase text-[11px] text-slate-400 hover:text-rose-500 transition-colors">Discard</button>
-                <button type="submit" className="flex-1 py-5 bg-indigo-600 text-white rounded-3xl font-black uppercase text-[11px] shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all">
-                   Save to Ledger
+              <div className="flex flex-col md:flex-row gap-6 pt-10">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-12 py-6 font-bold uppercase text-[10px] text-slate-400 hover:text-rose-500 transition-colors tracking-widest leading-none">Terminate</button>
+                <button type="submit" className="flex-1 py-6 bg-brand-primary text-white rounded-[2rem] font-bold uppercase text-xs tracking-[0.2em] shadow-xl shadow-brand-primary/20 active:scale-95 transition-all">
+                   commit to neural ledger
                 </button>
               </div>
             </form>

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { View, User as UserType, SubscriptionPlan, Product, AppLanguage } from './types';
 import { useStore, getTrialStatus } from './store';
 import { supabase } from './supabase';
@@ -47,7 +48,8 @@ import {
   RotateCcw,
   KeyRound,
   Mail,
-  Activity
+  Activity,
+  CreditCard
 } from 'lucide-react';
 
 type AuthStep = 'landing' | 'login' | 'register' | 'forgot' | 'verify_otp' | 'update_password';
@@ -192,7 +194,32 @@ const App: React.FC = () => {
     }
   }, [store.settings.theme]);
 
-  const trialStatus = useMemo(() => getTrialStatus(store.currentUser), [store.currentUser]);
+  const trialStatus = useMemo(() => {
+    const status = getTrialStatus(store.currentUser);
+    
+    // For staff, we MUST check the owner's status
+    if (store.currentUser?.role === 'staff' && store.currentUser?.parentId) {
+      const owner = store.users.find(u => u.id === store.currentUser?.parentId);
+      if (owner) {
+        return getTrialStatus(owner);
+      } else {
+        // If owner data isn't loaded yet, we assume active until we can verify
+        // to prevent premature blocking during load
+        if (store.loading) return { isSubscribed: false, daysLeft: 1, isExpired: false };
+        return { isSubscribed: false, daysLeft: 0, isExpired: true };
+      }
+    }
+    
+    return status;
+  }, [store.currentUser, store.users, store.loading]);
+
+  const isAccessBlocked = useMemo(() => {
+    if (!store.isLoggedIn) return false;
+    if (activeView === View.Settings) return false;
+    
+    // Hard block if expired
+    return trialStatus.isExpired && !trialStatus.isSubscribed;
+  }, [store.isLoggedIn, trialStatus.isExpired, trialStatus.isSubscribed, activeView]);
 
   const toggleTheme = () => {
     store.updateSettings({ theme: store.settings.theme === 'light' ? 'dark' : 'light' });
@@ -290,14 +317,27 @@ const App: React.FC = () => {
 
   if (store.loading) {
     return (
-      <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center p-6 gap-6 transition-colors">
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 gap-8 relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-600/10 blur-[120px] rounded-full" />
+          <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-emerald-500/5 blur-[80px] rounded-full animate-pulse" />
+        </div>
+        
         <div className="relative">
-          <div className="w-16 h-16 border-4 border-indigo-900/20 border-t-indigo-500 rounded-full animate-spin shadow-2xl"></div>
+          <motion.div 
+            animate={{ rotate: 360 }}
+            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+            className="w-24 h-24 border-2 border-indigo-500/20 border-t-indigo-500 rounded-[2rem] shadow-[0_0_50px_rgba(79,70,229,0.3)]" 
+          />
           <div className="absolute inset-0 flex items-center justify-center">
-            <Box size={24} className="text-indigo-500 animate-pulse" />
+            <Box size={32} className="text-white animate-bounce" />
           </div>
         </div>
-        <p className="text-indigo-500/60 font-black text-[11px] uppercase tracking-[0.2em] animate-pulse">Opening Your Shop...</p>
+        
+        <div className="text-center space-y-3 relative z-10">
+          <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Initializing <span className="text-indigo-500 italic">Terminal</span></h2>
+          <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.4em] animate-pulse">Syncing with neural ledger...</p>
+        </div>
       </div>
     );
   }
@@ -536,6 +576,33 @@ const App: React.FC = () => {
   }
 
   const renderView = () => {
+    if (isAccessBlocked) {
+      const isStaff = store.currentUser?.role === 'staff';
+      return (
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700 bg-white dark:bg-slate-950 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-2xl">
+          <div className="w-24 h-24 bg-rose-50 dark:bg-rose-900/20 text-rose-600 rounded-full flex items-center justify-center shadow-inner">
+            <ShieldAlert size={48} />
+          </div>
+          <div className="space-y-4 max-w-md">
+            <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Trial Protocol Expired</h2>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
+              {isStaff 
+                ? "Your business owner's 60-day free access has concluded. Please contact your administrator to activate a subscription plan to resume operations."
+                : "Your 60-day free access has concluded. To continue managing your shop terminal and inventory, please activate a subscription plan."}
+            </p>
+          </div>
+          {!isStaff && (
+            <button 
+              onClick={() => setActiveView(View.Settings)} 
+              className="px-10 py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-3"
+            >
+              <CreditCard size={18} /> View Subscription Plans
+            </button>
+          )}
+        </div>
+      );
+    }
+
     switch (activeView) {
       case View.Dashboard: return <Dashboard state={store} onNavigate={setActiveView} />;
       case View.Inventory: return <Inventory products={store.products || []} suppliers={store.suppliers || []} onAdd={store.addProduct} onUpdate={store.updateProduct} onDelete={store.deleteProduct} settings={store.settings} currentUser={store.currentUser} />;

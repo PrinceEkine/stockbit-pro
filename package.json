@@ -1,4 +1,3 @@
-
 {
   "name": "stockbit-pro",
   "private": true,
@@ -14,6 +13,7 @@
     "@google/genai": "^1.35.0",
     "@supabase/supabase-js": "^2.90.1",
     "lucide-react": "^0.562.0",
+    "motion": "^12.38.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "recharts": "^3.6.0"

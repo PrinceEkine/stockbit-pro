@@ -3,7 +3,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   ShoppingCart, Search, Plus, Minus, X, Scan, User, Edit3, ChevronRight, Loader2, Printer, 
   Trash2, ReceiptText, Banknote, CreditCard, History, Package, ChevronUp, ChevronDown, ShieldCheck,
-  CheckCircle2, AlertCircle, Monitor
+  CheckCircle2, AlertCircle, Monitor, Tablet, ArrowUpRight
 } from 'lucide-react';
 import { Sale, Product, Settings, SaleItem, User as UserType, PaymentMethod } from '../types';
 import ScannerModal from '../components/ScannerModal';
@@ -216,20 +216,20 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
   const displayCompanyName = currentUser?.companyName || settings.companyName || 'StockBit Enterprise';
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white transition-colors overflow-hidden">
+    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white transition-colors overflow-hidden">
       
       {scanFeedback && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] bg-emerald-600 text-white px-8 py-4 rounded-[2rem] shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-10 duration-300 no-print">
-          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-8 py-5 rounded-[2.5rem] shadow-neo-lg flex items-center gap-6 animate-in slide-in-from-top-10 duration-500 no-print">
+          <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
             <CheckCircle2 size={24} />
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase opacity-80 tracking-widest leading-none mb-1">Product Added</p>
-            <h4 className="text-sm font-black uppercase truncate max-w-[200px]">{scanFeedback.name}</h4>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Stock Synchronized</p>
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[200px] leading-tight">{scanFeedback.name}</h4>
           </div>
-          <div className="ml-4 pl-4 border-l border-white/20">
-            <p className="text-[10px] font-black uppercase opacity-80 tracking-widest leading-none mb-1">Cart Qty</p>
-            <h4 className="text-xl font-black">{scanFeedback.qty}</h4>
+          <div className="ml-4 pl-6 border-l border-slate-100 dark:border-slate-800">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Queue Size</p>
+            <h4 className="text-2xl font-display font-bold text-brand-primary">{scanFeedback.qty}</h4>
           </div>
         </div>
       )}
@@ -238,17 +238,17 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
         <div className="print-only">
           <div className={`receipt-container ${receiptSize === '58mm' ? 'size-58mm' : ''} text-black bg-white mx-auto font-mono`}>
              <div className="text-center mb-6">
-                <h1 className={`${receiptSize === '58mm' ? 'text-base' : 'text-xl'} font-black uppercase tracking-tight leading-none mb-2`}>
+                <h1 className={`${receiptSize === '58mm' ? 'text-base' : 'text-xl'} font-bold uppercase tracking-tight leading-none mb-2`}>
                    {displayCompanyName}
                 </h1>
-                <p className="text-[10px] font-bold uppercase opacity-90 border-t border-b border-black border-dotted py-1 mb-2">Official Sales Receipt</p>
+                <p className="text-[10px] font-bold uppercase opacity-90 border-t border-b border-black border-dotted py-1 mb-2">Operational Manifest Entry</p>
              </div>
              
              <div className="space-y-1 mb-4 text-[10px] uppercase">
-                <div className="flex justify-between"><span>TRANSACTION:</span> <span>{lastSaleForPrint.ref}</span></div>
+                <div className="flex justify-between"><span>LOG REF:</span> <span>{lastSaleForPrint.ref}</span></div>
                 <div className="flex justify-between"><span>TIMESTAMP:</span> <span>{new Date(lastSaleForPrint.date || Date.now()).toLocaleString([], {dateStyle: 'short', timeStyle: 'short'})}</span></div>
-                <div className="flex justify-between"><span>CUSTOMER:</span> <span className="truncate max-w-[120px]">{lastSaleForPrint.customerName || 'WALK-IN CLIENT'}</span></div>
-                <div className="flex justify-between"><span>OPERATOR:</span> <span className="truncate max-w-[120px]">{currentUser?.name || 'ADMIN'}</span></div>
+                <div className="flex justify-between"><span>COUNTERPARTY:</span> <span className="truncate max-w-[120px]">{lastSaleForPrint.customerName || 'GENERAL ADMISSION'}</span></div>
+                <div className="flex justify-between"><span>OPERATOR:</span> <span className="truncate max-w-[120px]">{currentUser?.name || 'ROOT'}</span></div>
              </div>
 
              <div className="w-full border-b-2 border-black mb-3"></div>
@@ -256,11 +256,11 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
              <div className="space-y-3 mb-6">
                 {lastSaleForPrint.items.map((item, i) => (
                   <div key={i} className="text-[10px] uppercase">
-                     <div className="flex justify-between font-black">
+                     <div className="flex justify-between font-bold">
                         <span className="truncate flex-1 pr-4">{item.productName}</span>
                         <span className="shrink-0">{settings.currency}{(item.price * item.quantity).toLocaleString()}</span>
                      </div>
-                     <div className="text-[9px] font-bold opacity-80 mt-0.5">
+                     <div className="text-[9px] font-medium opacity-80 mt-0.5">
                         {item.quantity} QTY x {settings.currency}{item.price.toLocaleString()}
                      </div>
                   </div>
@@ -270,69 +270,78 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
              <div className="w-full border-b border-black border-dashed mb-4"></div>
 
              <div className="space-y-1.5 text-[11px] uppercase">
-                <div className="flex justify-between font-bold"><span>SUBTOTAL</span> <span>{settings.currency}{lastSaleForPrint.items.reduce((a,c)=>a+(c.price*c.quantity),0).toLocaleString()}</span></div>
+                <div className="flex justify-between font-bold"><span>GROSS</span> <span>{settings.currency}{lastSaleForPrint.items.reduce((a,c)=>a+(c.price*c.quantity),0).toLocaleString()}</span></div>
                 <div className="flex justify-between font-bold text-[10px]"><span>VAT ({settings.taxRate}%)</span> <span>{settings.currency}{(lastSaleForPrint.items.reduce((a,c)=>a+(c.price*c.quantity),0) * (settings.taxRate/100)).toLocaleString()}</span></div>
                 
-                <div className={`flex justify-between font-black ${receiptSize === '58mm' ? 'text-lg' : 'text-2xl'} border-t-2 border-black pt-2 mt-2 leading-none`}>
-                  <span>TOTAL</span> 
+                <div className={`flex justify-between font-bold ${receiptSize === '58mm' ? 'text-lg' : 'text-2xl'} border-t-2 border-black pt-2 mt-2 leading-none`}>
+                  <span>SETTLE</span> 
                   <span>{settings.currency}{(lastSaleForPrint.items.reduce((a,c)=>a+(c.price*c.quantity),0) * (1 + settings.taxRate/100)).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-[10px] font-bold mt-1">
-                   <span>PAID VIA:</span>
+                   <span>PROTOCOL:</span>
                    <span>{paymentMethod.toUpperCase()}</span>
                 </div>
              </div>
 
              <div className="text-center mt-10 pb-8 space-y-2">
-                <p className="text-[10px] font-black uppercase tracking-widest">*** THANK YOU FOR YOUR PATRONAGE ***</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest">VALIDATED TRANSACTION COMPLETE</p>
                 <div className="w-full border-b border-black border-dotted my-2"></div>
-                <p className="text-[7px] font-bold opacity-40 uppercase tracking-widest">Digital Ledger ID: {lastSaleForPrint.id}</p>
-                <p className="text-[6px] font-bold opacity-30">Infrastructure by StockBit Pro Solutions</p>
+                <p className="text-[7px] font-bold opacity-40 uppercase tracking-widest">NEURAL ID: {lastSaleForPrint.id}</p>
+                <p className="text-[6px] font-bold opacity-30 tracking-widest uppercase">Infrastructure: STK-BIT CORE UNIT</p>
              </div>
           </div>
         </div>
       )}
 
       {!isTerminalOpen && (
-        <div className="flex-1 p-6 md:p-12 space-y-10 animate-in fade-in duration-500 max-w-7xl mx-auto w-full no-print">
-          <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="flex-1 p-6 md:p-12 space-y-12 animate-in fade-in duration-700 max-w-7xl mx-auto w-full no-print">
+          <header className="flex flex-col md:flex-row items-baseline justify-between gap-8">
             <div>
-              <h1 className="text-4xl font-black tracking-tighter uppercase text-slate-900 dark:text-white">Sales Terminal</h1>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em] mt-1">Unified Point of Sale</p>
+              <h1 className="text-3xl md:text-5xl font-display font-bold tracking-tighter text-slate-900 dark:text-white mb-3">Trade Manifest</h1>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em] font-mono leading-none">Unified Commerce Terminal [0.9.4]</p>
             </div>
             <button 
               onClick={() => setIsTerminalOpen(true)}
-              className="px-10 py-5 bg-[#4f46e5] text-white rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-indigo-600/30 active:scale-95 transition-all flex items-center gap-3"
+              className="group px-10 py-5 bg-brand-primary text-white rounded-2xl font-bold uppercase text-xs tracking-widest shadow-xl shadow-brand-primary/20 active:scale-95 transition-all flex items-center gap-4"
             >
-              <ShoppingCart size={20} /> New Sale
+              <ShoppingCart size={20} className="group-hover:rotate-12 transition-transform" /> 
+              <span>Initiate New Trade</span>
             </button>
           </header>
 
-          <div className="bg-white dark:bg-[#0f172a] rounded-[3rem] border border-slate-200 dark:border-white/5 overflow-hidden shadow-2xl transition-colors">
-            <div className="p-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
-               <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Transaction Registry</h3>
-               <History size={18} className="text-indigo-500" />
+          <div className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-neo overflow-hidden">
+            <div className="p-10 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between">
+               <h3 className="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400">Historical Registry</h3>
+               <History size={18} className="text-brand-primary opacity-40" />
             </div>
             <div className="overflow-x-auto">
                <table className="w-full text-left">
-                  <thead className="bg-slate-50 dark:bg-black/20 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
                      <tr>
-                        <th className="px-8 py-5">REF</th>
-                        <th className="px-8 py-5">Customer</th>
-                        <th className="px-8 py-5 text-right">Ops</th>
+                        <th className="px-10 py-8">Neural Reference</th>
+                        <th className="px-10 py-8">Counterparty</th>
+                        <th className="px-10 py-8">Settlement</th>
+                        <th className="px-10 py-8 text-right">Validation</th>
                      </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                     {(sales || []).slice(0, 10).map((sale) => (
-                        <tr key={sale.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
-                           <td className="px-8 py-5 font-mono text-[11px] text-slate-500">#{sale.id.slice(0,8)}</td>
-                           <td className="px-8 py-5 font-black text-[11px] uppercase text-slate-900 dark:text-white">{sale.customer_name || 'Walk-in'}</td>
-                           <td className="px-8 py-5 font-black text-[11px] text-indigo-600 dark:text-indigo-400">{settings.currency}{sale.total_price.toLocaleString()}</td>
-                           <td className="px-8 py-5 text-right">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                     {(sales || []).slice(0, 10).map((sale, index) => (
+                        <tr key={sale.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all group animate-in slide-in-from-left-4" style={{ animationDelay: `${index * 50}ms` }}>
+                           <td className="px-10 py-8">
+                             <span className="font-mono text-[11px] text-slate-400 opacity-60">#{sale.id.slice(0,12).toUpperCase()}</span>
+                           </td>
+                           <td className="px-10 py-8 font-display font-bold text-sm tracking-tight text-slate-900 dark:text-white">
+                             {sale.customer_name || 'Anonymous Client'}
+                           </td>
+                           <td className="px-10 py-8 font-display font-bold text-sm text-brand-primary">
+                             <span className="text-[10px] font-sans opacity-40 mr-1 uppercase">{settings.currency}</span>
+                             {sale.total_price.toLocaleString()}
+                           </td>
+                           <td className="px-10 py-8 text-right">
                               <button 
                                 onClick={() => handleReprint(sale)}
-                                className="p-2 bg-slate-100 dark:bg-white/5 hover:bg-indigo-600 rounded-lg text-slate-400 hover:text-white transition-all ml-auto block"
-                                title="Reprint Receipt"
+                                className="w-10 h-10 bg-slate-100 dark:bg-slate-800 group-hover:bg-brand-primary rounded-xl text-slate-400 group-hover:text-white transition-all ml-auto flex items-center justify-center shadow-inner"
+                                title="Reprint Protocol"
                               >
                                 <Printer size={16} />
                               </button>
@@ -347,104 +356,108 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
       )}
 
       {isTerminalOpen && (
-        <div className="fixed inset-0 z-[60] bg-white dark:bg-[#020617] flex flex-col animate-in zoom-in-95 duration-300 no-print transition-colors">
+        <div className="fixed inset-0 z-[60] bg-slate-50 dark:bg-slate-950 flex flex-col animate-in slide-in-from-bottom-5 duration-500 no-print transition-colors">
           
-          <div className="h-16 bg-slate-100 dark:bg-[#0a0f1d] flex items-stretch border-b border-slate-200 dark:border-white/5 shrink-0 overflow-hidden">
-             <div className="flex-1 flex items-end px-4 gap-1.5 overflow-x-auto scrollbar-hide">
+          <div className="h-20 bg-white dark:bg-slate-900 flex items-stretch border-b border-slate-100 dark:border-slate-800 shrink-0 overflow-hidden shadow-sm">
+             <div className="flex-1 flex items-end px-6 gap-2 overflow-x-auto scrollbar-hide">
                 {carts.map((cart, idx) => (
                   <button 
                     key={cart.id} 
                     onClick={() => setActiveCartIndex(idx)}
-                    className={`h-11 px-6 rounded-t-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 relative whitespace-nowrap shrink-0 ${
+                    className={`h-14 px-8 rounded-t-2xl text-[10px] font-bold uppercase tracking-[0.15em] transition-all flex items-center gap-3 relative whitespace-nowrap shrink-0 border-t-2 border-x-2 border-transparent ${
                       activeCartIndex === idx 
-                      ? 'bg-white dark:bg-[#4f46e5] text-[#4f46e5] dark:text-white shadow-lg' 
-                      : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 bg-white/50 dark:bg-white/5'
+                      ? 'bg-slate-50 dark:bg-slate-950 text-brand-primary border-slate-100 dark:border-slate-800 shadow-[0_-8px_16px_rgba(0,0,0,0.02)]' 
+                      : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
                     }`}
                   >
-                     <ReceiptText size={14} className={activeCartIndex === idx ? (settings.theme === 'dark' ? 'text-white' : 'text-[#4f46e5]') : 'text-slate-500'} />
-                     {cart.label}
-                     {cart.items.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-1"></span>}
+                     <ReceiptText size={16} className={activeCartIndex === idx ? 'text-brand-primary' : 'text-slate-300'} />
+                     <span className="mb-0.5">{cart.label}</span>
+                     {cart.items.length > 0 && <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/20"></span>}
                      {carts.length > 1 && (
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleCloseCart(idx); }} 
-                          className={`ml-2 hover:bg-black/10 rounded p-0.5 ${activeCartIndex === idx ? (settings.theme === 'dark' ? 'text-white' : 'text-[#4f46e5]') : 'text-slate-500'}`}
+                          className="ml-3 w-5 h-5 bg-white dark:bg-slate-800 text-slate-300 hover:text-rose-500 rounded-full flex items-center justify-center transition-all hover:rotate-90"
                         >
                            <X size={10} />
                         </button>
                      )}
                   </button>
                 ))}
-                <button onClick={handleAddNewCart} className="h-11 px-4 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-all shrink-0"><Plus size={18}/></button>
+                <button onClick={handleAddNewCart} className="h-14 px-5 text-slate-300 hover:text-brand-primary transition-all shrink-0 hover:scale-110"><Plus size={20}/></button>
              </div>
 
-             <div className="flex items-center gap-4 px-4 bg-slate-100 dark:bg-[#0a0f1d] border-l border-slate-200 dark:border-white/5">
+             <div className="flex items-center gap-6 px-8 border-l border-slate-100 dark:border-slate-800">
                 <div className="hidden md:block text-right">
-                   <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest">OPERATOR</p>
-                   <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[100px]">{currentUser?.name || 'ADMIN'}</p>
+                   <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest font-mono">NODE OPERATOR</p>
+                   <p className="text-[11px] font-bold text-slate-900 dark:text-white uppercase truncate max-w-[120px]">{currentUser?.name || 'ADMIN'}</p>
                 </div>
                 <button 
                   onClick={() => setIsTerminalOpen(false)} 
-                  className="w-11 h-11 bg-rose-600/10 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center shadow-sm active:scale-95"
+                  className="w-12 h-12 bg-rose-500 shadow-lg shadow-rose-500/20 text-white rounded-2xl hover:bg-rose-600 transition-all flex items-center justify-center active:scale-95"
                 >
                    <X size={24} />
                 </button>
              </div>
           </div>
 
-          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-slate-50 dark:bg-[#0a0f1d] m-2 md:m-4 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-2xl relative transition-colors">
+          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-slate-50 dark:bg-slate-950 m-2 md:m-4 rounded-[2rem] md:rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-neo-lg relative transition-colors">
              
-             <div className="flex-1 flex flex-col min-w-0 border-r border-slate-200 dark:border-white/5">
-                <div className="p-4 md:p-10 pb-4 md:pb-6 flex flex-col md:flex-row gap-4 shrink-0">
+             <div className="flex-1 flex flex-col min-w-0 border-r border-slate-100 dark:border-slate-800">
+                <div className="p-4 md:p-12 pb-4 md:pb-8 flex flex-col lg:flex-row gap-6 shrink-0">
                    <div className="relative flex-1 group">
-                      <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400" size={18} />
+                      <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-primary transition-colors" size={20} />
                       <input 
                         type="text" 
-                        placeholder="SEARCH SKU OR PRODUCT NAME..." 
-                        className="w-full pl-14 pr-6 py-4 md:py-5 bg-white dark:bg-[#0f172a] border-none rounded-2xl text-[10px] md:text-[11px] font-black uppercase outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white shadow-sm"
+                        placeholder="Search assets by SKU or name..." 
+                        className="w-full pl-16 pr-8 py-5 md:py-6 bg-white dark:bg-slate-900 border-none rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider outline-none focus:ring-4 focus:ring-brand-primary/10 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700 text-slate-900 dark:text-white"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                       />
                    </div>
                    <button 
                      onClick={() => setIsScannerOpen(true)}
-                     className="px-8 py-4 md:py-5 bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white border border-slate-100 dark:border-white/5 rounded-2xl flex items-center justify-center gap-3 font-black text-[9px] md:text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all hover:bg-slate-100 dark:hover:bg-[#1e293b]"
+                     className="px-10 py-5 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-100 dark:border-slate-800 rounded-[1.5rem] flex items-center justify-center gap-4 font-bold text-xs uppercase tracking-widest active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm"
                    >
-                      <Scan size={18}/> SENSOR SCAN
+                      <Scan size={20} className="text-brand-primary" /> Visual Scan
                    </button>
                 </div>
 
-                <div className="px-4 md:px-10 py-2 md:py-4 flex gap-2 overflow-x-auto scrollbar-hide shrink-0 border-b border-slate-200 dark:border-white/5">
+                <div className="px-6 md:px-12 py-3 flex gap-3 overflow-x-auto scrollbar-hide shrink-0 border-b border-slate-50 dark:border-slate-800">
                    {['ALL', ...settings.categories.slice(0, 12)].map(cat => (
                      <button 
                        key={cat} 
                        onClick={() => setSelectedCategory(cat.toUpperCase())}
-                       className={`px-5 md:px-6 py-2 md:py-2.5 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedCategory === cat.toUpperCase() ? 'bg-[#4f46e5] text-white shadow-lg' : 'bg-white dark:bg-[#0f172a] text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 shadow-sm'}`}
+                       className={`px-6 py-3 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all whitespace-nowrap border ${selectedCategory === cat.toUpperCase() ? 'bg-brand-primary border-brand-primary text-white shadow-lg shadow-brand-primary/20 scale-105' : 'bg-white dark:bg-slate-900 text-slate-400 border-slate-100 dark:border-slate-800 hover:text-slate-900 dark:hover:text-slate-200 shadow-sm'}`}
                      >
                        {cat}
                      </button>
                    ))}
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 md:p-10 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 scrollbar-hide pb-32">
-                   {filteredProducts.map(p => (
+                <div className="flex-1 overflow-y-auto p-6 md:p-12 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8 scrollbar-hide pb-32">
+                   {filteredProducts.map((p, pIdx) => (
                      <button 
                        key={p.id} 
                        onClick={() => handleProductSelection(p.id)}
-                       className="group bg-white dark:bg-[#0f172a] rounded-2xl md:rounded-[2rem] p-5 md:p-8 border border-slate-100 dark:border-white/5 hover:border-[#4f46e5] transition-all flex flex-col text-left aspect-[4/5] relative overflow-hidden active:scale-95 shadow-sm hover:shadow-xl"
+                       className="group bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 md:p-10 border border-slate-100 dark:border-slate-800 hover:border-brand-primary/50 transition-all flex flex-col text-left aspect-[4/5] relative overflow-hidden active:scale-95 shadow-sm hover:shadow-neo animate-in fade-in zoom-in-95"
+                       style={{ animationDelay: `${pIdx * 30}ms` }}
                      >
-                        <div className="absolute top-4 right-4 px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded-md border border-slate-200 dark:border-white/10">
-                           <span className="text-[7px] font-black uppercase text-emerald-600 dark:text-emerald-400">{p.quantity} IN STOCK</span>
+                        <div className="absolute top-6 right-6 px-3 py-1 bg-slate-50 dark:bg-slate-800 rounded-full border border-slate-100 dark:border-white/5">
+                           <span className={`text-[8px] font-bold uppercase tracking-widest ${p.quantity === 0 ? 'text-rose-500' : p.quantity < 10 ? 'text-amber-500' : 'text-emerald-500'}`}>{p.quantity} Units</span>
                         </div>
-                        <div className="flex-1 space-y-3 md:space-y-4">
-                           <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 dark:bg-white/5 rounded-xl md:rounded-2xl flex items-center justify-center text-slate-400 dark:text-slate-600 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
-                              <Package size={20} />
+                        <div className="flex-1 space-y-4">
+                           <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-300 group-hover:scale-110 group-hover:bg-brand-primary group-hover:text-white transition-all duration-500 shadow-inner">
+                              <Package size={24} />
                            </div>
-                           <h4 className="text-[10px] md:text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight line-clamp-3">{p.name}</h4>
+                           <h4 className="text-[11px] font-bold text-slate-900 dark:text-white uppercase leading-tight line-clamp-3 tracking-tight">{p.name}</h4>
                         </div>
-                        <div className="mt-4 md:mt-6 flex items-center justify-between">
-                           <span className="text-[10px] md:text-xs font-black text-[#4f46e5]">{settings.currency}{p.price.toLocaleString()}</span>
-                           <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center group-hover:bg-[#4f46e5] group-hover:text-white transition-all">
-                              <Plus size={16} />
+                        <div className="mt-8 flex items-center justify-between">
+                           <div className="flex flex-col">
+                              <p className="text-[8px] text-slate-300 font-bold uppercase tracking-widest mb-0.5">Valuation</p>
+                              <span className="text-base font-display font-bold text-brand-primary"><span className="text-[10px] opacity-40 mr-0.5 uppercase">{settings.currency}</span>{p.price.toLocaleString()}</span>
+                           </div>
+                           <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-brand-primary group-hover:text-white transition-all shadow-inner group-hover:rotate-12">
+                              <Plus size={20} />
                            </div>
                         </div>
                      </button>
@@ -452,52 +465,59 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                 </div>
              </div>
 
-             <div className="hidden lg:flex w-[460px] flex-col bg-white dark:bg-[#0a0f1d] overflow-hidden border-l border-slate-200 dark:border-white/5 shadow-[-10px_0_30px_rgba(0,0,0,0.02)] transition-colors">
-                <div className="p-8 space-y-4 bg-slate-50/50 dark:bg-[#0a0f1d] border-b border-slate-200 dark:border-white/5">
-                   <div className="flex items-center gap-4">
-                      <User size={18} className="text-slate-400 dark:text-slate-600" />
+             <div className="hidden lg:flex w-[480px] flex-col bg-white dark:bg-slate-900 overflow-hidden border-l border-slate-100 dark:border-slate-800 transition-colors">
+                <div className="p-10 space-y-6 bg-slate-50/30 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
+                   <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 shadow-sm border border-slate-100 dark:border-slate-800">
+                         <User size={20} />
+                      </div>
                       <input 
-                        placeholder="CLIENT PROFILE NAME..." 
-                        className="flex-1 bg-white dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-xl px-5 py-3 text-[10px] font-black uppercase outline-none shadow-inner text-slate-900 dark:text-white transition-all" 
+                        placeholder="IDENTIFY COUNTERPARTY..." 
+                        className="flex-1 bg-white dark:bg-slate-800 border-none focus:ring-4 focus:ring-brand-primary/10 rounded-2xl px-6 py-4 text-[11px] font-bold uppercase tracking-widest outline-none shadow-sm text-slate-900 dark:text-white transition-all placeholder:text-slate-300" 
                         value={currentCart.customerName} 
                         onChange={e => updateActiveCart({ customerName: e.target.value })} 
                       />
                    </div>
-                   <div className="flex items-center gap-4">
-                      <Edit3 size={18} className="text-slate-400 dark:text-slate-600" />
+                   <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 shadow-sm border border-slate-100 dark:border-slate-800">
+                         <Edit3 size={20} />
+                      </div>
                       <input 
-                        placeholder="ORDER LABEL..." 
-                        className="flex-1 bg-white dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-xl px-5 py-3 text-[10px] font-black uppercase outline-none shadow-inner text-slate-900 dark:text-white transition-all" 
+                        placeholder="ORDER IDENTIFIER..." 
+                        className="flex-1 bg-white dark:bg-slate-800 border-none focus:ring-4 focus:ring-brand-primary/10 rounded-2xl px-6 py-4 text-[11px] font-bold uppercase tracking-widest outline-none shadow-sm text-slate-900 dark:text-white transition-all placeholder:text-slate-300" 
                         value={currentCart.label} 
                         onChange={e => updateActiveCart({ label: e.target.value })} 
                       />
                    </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide bg-white dark:bg-transparent">
+                <div className="flex-1 overflow-y-auto p-8 space-y-4 scrollbar-hide bg-white dark:bg-slate-900">
                    {currentCart.items.map((item, idx) => (
-                     <div key={idx} className="bg-slate-50 dark:bg-[#0f172a] rounded-2xl p-5 border border-slate-100 dark:border-white/5 group animate-in slide-in-from-right-4">
-                        <div className="flex justify-between items-start mb-3">
-                           <p className="text-[10px] font-black uppercase truncate pr-4 text-slate-900 dark:text-white">{item.productName}</p>
+                     <div key={idx} className="bg-slate-50 dark:bg-slate-800/40 rounded-[2rem] p-6 border border-slate-100 dark:border-white/5 group animate-in slide-in-from-right-8" style={{ animationDelay: `${idx * 50}ms` }}>
+                        <div className="flex justify-between items-start mb-4">
+                           <p className="text-[11px] font-bold uppercase tracking-tight truncate pr-6 text-slate-900 dark:text-white">{item.productName}</p>
                            <button onClick={() => {
                              const updated = [...currentCart.items];
                              updated.splice(idx, 1);
                              updateActiveCart({ items: updated });
-                           }} className="text-slate-400 hover:text-rose-500 transition-colors"><Trash2 size={16}/></button>
+                           }} className="text-slate-300 hover:text-rose-500 transition-all hover:scale-110 active:scale-90"><Trash2 size={18}/></button>
                         </div>
                         <div className="flex items-center justify-between">
-                           <p className="text-[11px] font-black text-[#4f46e5] dark:text-indigo-400">{settings.currency}{(item.price * item.quantity).toLocaleString()}</p>
-                           <div className="flex items-center gap-1 bg-white dark:bg-black/20 rounded-xl p-1 border border-slate-200 dark:border-white/5 shadow-sm">
+                           <div className="flex flex-col">
+                              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Asset Settle</p>
+                              <p className="text-base font-display font-bold text-brand-primary tracking-tight">{settings.currency}{(item.price * item.quantity).toLocaleString()}</p>
+                           </div>
+                           <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-2xl p-1.5 border border-slate-100 dark:border-slate-800 shadow-sm">
                               <button onClick={() => {
                                 const updated = [...currentCart.items];
                                 if (updated[idx].quantity > 1) updated[idx].quantity -= 1;
                                 else updated.splice(idx, 1);
                                 updateActiveCart({ items: updated });
-                              }} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-slate-400"><Minus size={14}/></button>
+                              }} className="w-10 h-10 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-400 transition-all active:scale-90"><Minus size={16}/></button>
                               
                               <input 
                                 type="number"
-                                className="w-12 h-8 bg-transparent border-none text-center text-[11px] font-black p-0 focus:ring-0 text-slate-900 dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                className="w-14 h-10 bg-transparent border-none text-center text-xs font-bold p-0 focus:ring-0 text-slate-900 dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 value={item.quantity}
                                 onChange={(e) => handleQuantityChange(idx, e.target.value)}
                               />
@@ -509,28 +529,34 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
                                   updated[idx].quantity += 1;
                                   updateActiveCart({ items: updated });
                                 }
-                              }} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-slate-400"><Plus size={14}/></button>
+                              }} className="w-10 h-10 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-400 transition-all active:scale-90"><Plus size={16}/></button>
                            </div>
                         </div>
                      </div>
                    ))}
+                   {currentCart.items.length === 0 && (
+                     <div className="flex flex-col items-center justify-center h-full opacity-20 py-20">
+                        <ShoppingCart size={64} strokeWidth={1} />
+                        <p className="text-[10px] font-bold uppercase tracking-[0.3em] mt-6">Awaiting Manifest</p>
+                     </div>
+                   )}
                 </div>
 
-                <div className="p-10 bg-slate-50 dark:bg-[#020617] space-y-6 transition-colors border-t border-slate-200 dark:border-none">
-                   <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-                      <span>GROSS VAL</span>
+                <div className="p-10 bg-slate-50 dark:bg-slate-950 space-y-8 transition-colors border-t border-slate-100 dark:border-slate-800">
+                   <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400">
+                      <span>GROSS SETTLE</span>
                       <span>{settings.currency}{subtotal.toLocaleString()}</span>
                    </div>
-                   <div className="flex justify-between items-end border-t border-slate-200 dark:border-white/5 pt-4">
-                      <p className="text-[10px] font-black uppercase text-[#4f46e5] dark:text-indigo-50 tracking-[0.3em]">NET SETTLE</p>
-                      <h4 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white">{settings.currency}{total.toLocaleString()}</h4>
+                   <div className="flex justify-between items-end border-t border-slate-200/50 dark:border-slate-800 pt-6">
+                      <p className="text-[11px] font-bold uppercase text-brand-primary tracking-[0.3em] mb-1.5">NET TOTAL</p>
+                      <h4 className="text-5xl font-display font-bold tracking-tighter text-slate-900 dark:text-white">{settings.currency}{total.toLocaleString()}</h4>
                    </div>
                    <button 
                      disabled={currentCart.items.length === 0 || isProcessing}
                      onClick={() => { setErrorMsg(null); setShowConfirmDialog(true); }}
-                     className="w-full py-6 bg-[#4f46e5] text-white rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-20"
+                     className="w-full py-6 bg-brand-primary text-white rounded-[2rem] font-bold uppercase text-xs tracking-[0.2em] shadow-xl shadow-brand-primary/20 active:scale-95 transition-all flex items-center justify-center gap-4 disabled:opacity-20 disabled:grayscale"
                    >
-                      FINALIZE TICKET <ChevronRight size={18} />
+                      FINALIZE MANIFEST <ChevronRight size={20} />
                    </button>
                 </div>
              </div>
@@ -634,48 +660,84 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
       )}
 
       {showConfirmDialog && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-[#020617]/98 backdrop-blur-3xl no-print">
-          <div className="bg-white rounded-[4rem] w-full max-w-lg p-10 md:p-16 shadow-2xl text-center animate-in zoom-in-95 duration-500">
-             <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner"><CreditCard size={32} /></div>
-             <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 text-slate-900">CHECKOUT FINALIZATION</h3>
-             
-             <div className="flex bg-slate-100 p-1 rounded-xl mb-6 max-w-[240px] mx-auto">
-                <button onClick={() => setReceiptSize('80mm')} className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase transition-all flex items-center justify-center gap-2 ${receiptSize === '80mm' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
-                  <Monitor size={12}/> 80mm Roll
-                </button>
-                <button onClick={() => setReceiptSize('58mm')} className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase transition-all flex items-center justify-center gap-2 ${receiptSize === '58mm' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
-                  <CreditCard size={12}/> 58mm Roll
-                </button>
-             </div>
-
-             <p className="text-5xl font-black text-[#4f46e5] mb-8 tracking-tighter leading-none">{settings.currency}{total.toLocaleString()}</p>
-             
-             {errorMsg && (
-                <div className="mb-6 p-4 bg-rose-50 text-rose-600 border border-rose-100 rounded-2xl flex items-center justify-center gap-3 text-[11px] font-black uppercase tracking-widest animate-in slide-in-from-top-2">
-                   <AlertCircle size={20} /> {errorMsg}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-3xl no-print animate-in fade-in duration-500">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[4rem] border border-slate-100 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-700 delay-100 flex flex-col md:flex-row transition-colors">
+             <div className="flex-1 p-10 md:p-14 space-y-10 border-r border-slate-100 dark:border-slate-800 flex flex-col justify-center text-center md:text-left transition-colors">
+                <div className="w-20 h-20 bg-brand-primary/10 text-brand-primary rounded-[2rem] flex items-center justify-center mx-auto md:mx-0 mb-8 border border-brand-primary/20 shadow-sm animate-bounce-gentle">
+                   <CreditCard size={36} />
                 </div>
-             )}
-
-             <div className="grid grid-cols-2 gap-4 mb-10">
-                <button onClick={() => setPaymentMethod('cash')} className={`py-6 rounded-[2.5rem] border-4 transition-all ${paymentMethod === 'cash' ? 'border-[#4f46e5] bg-indigo-50 text-[#4f46e5] shadow-xl' : 'border-slate-50 text-slate-400 opacity-60'}`}>
-                   <Banknote size={32} className="mx-auto mb-2" />
-                   <span className="text-[11px] font-black uppercase tracking-widest">LIQUID CASH</span>
-                </button>
-                <button onClick={() => setPaymentMethod('paystack')} className={`py-6 rounded-[2.5rem] border-4 transition-all ${paymentMethod === 'paystack' ? 'border-[#4f46e5] bg-indigo-50 text-[#4f46e5] shadow-xl' : 'border-slate-50 text-slate-400 opacity-60'}`}>
-                   <CreditCard size={32} className="mx-auto mb-2" />
-                   <span className="text-[11px] font-black uppercase tracking-widest">DIGITAL CARD</span>
-                </button>
+                <div>
+                   <h3 className="text-3xl md:text-4xl font-display font-bold text-slate-900 dark:text-white leading-tight tracking-tighter">Trade Finalization</h3>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-3">Identity Validation Protocol 0.9.1</p>
+                </div>
+                
+                <div className="flex flex-col gap-1.5 p-6 bg-slate-50/50 dark:bg-slate-950/50 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-inner">
+                   <div className="flex bg-white dark:bg-slate-900 p-1.5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+                      <button onClick={() => setReceiptSize('80mm')} className={`flex-1 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${receiptSize === '80mm' ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
+                        <Monitor size={14}/> 80MM STD
+                      </button>
+                      <button onClick={() => setReceiptSize('58mm')} className={`flex-1 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${receiptSize === '58mm' ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
+                        <Tablet size={14}/> 58MM COMPACT
+                      </button>
+                   </div>
+                   <p className="text-[8px] text-center font-bold text-slate-300 uppercase tracking-widest mt-2 px-6">Select preferred output protocol for physical manifest</p>
+                </div>
              </div>
-             <div className="space-y-4">
-                <button 
-                  disabled={isProcessing} 
-                  onClick={() => handleCheckout()} 
-                  className="w-full py-6 bg-[#4f46e5] text-white rounded-[2.5rem] font-black uppercase text-xs flex items-center justify-center gap-4 active:scale-95 shadow-2xl shadow-indigo-600/30 transition-all tracking-[0.2em]"
-                >
-                   {isProcessing ? <Loader2 className="animate-spin" /> : <Printer size={22} />}
-                   {isProcessing ? 'SYNCHRONIZING...' : 'COMMIT & PRINT'}
-                </button>
-                <button onClick={() => setShowConfirmDialog(false)} className="w-full py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-rose-600 transition-colors">ABORT & RETURN</button>
+
+             <div className="flex-1 p-10 md:p-14 space-y-10 bg-slate-50/30 dark:bg-slate-950/30 flex flex-col justify-between transition-colors">
+                <div className="space-y-6">
+                   <div className="flex flex-col gap-4">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Settlement Protocol</p>
+                      <div className="grid grid-cols-1 gap-3">
+                         {(['cash', 'pos', 'transfer'] as const).map(method => (
+                           <button 
+                             key={method}
+                             onClick={() => setPaymentMethod(method)}
+                             className={`group relative py-6 rounded-[2rem] border-2 transition-all flex items-center px-10 gap-6 ${paymentMethod === method ? 'bg-brand-primary border-brand-primary text-white shadow-xl shadow-brand-primary/20 scale-105' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 hover:border-brand-primary/40 shadow-sm'}`}
+                           >
+                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${paymentMethod === method ? 'bg-white/20 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 group-hover:bg-brand-primary/10 group-hover:text-brand-primary shadow-inner'}`}>
+                                 {method === 'cash' && <Banknote size={24} />}
+                                 {method === 'pos' && <CreditCard size={24} />}
+                                 {method === 'transfer' && <ArrowUpRight size={24} />}
+                              </div>
+                              <span className="text-[11px] font-bold uppercase tracking-[0.2em]">{method}</span>
+                              {paymentMethod === method && <div className="ml-auto w-3 h-3 bg-white rounded-full shadow-lg animate-pulse"></div>}
+                           </button>
+                         ))}
+                      </div>
+                   </div>
+
+                   <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-neo">
+                      <div className="flex justify-between items-center text-[10px] font-bold text-brand-primary uppercase tracking-[0.3em] mb-3">
+                         <span>Net Total Settle</span>
+                         <span className="bg-brand-primary/10 px-3 py-1 rounded-full text-[8px] tracking-tight">VALIDATED</span>
+                      </div>
+                      <div className="text-4xl md:text-5xl font-display font-bold text-slate-900 dark:text-white tracking-tighter tabular-nums">{settings.currency}{total.toLocaleString()}</div>
+                   </div>
+
+                   {errorMsg && (
+                      <div className="p-5 bg-rose-50 dark:bg-rose-500/10 text-rose-500 border border-rose-100 dark:border-rose-500/20 rounded-2xl flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest animate-shake">
+                         <AlertCircle size={20} className="shrink-0" /> <span className="flex-1">{errorMsg}</span>
+                      </div>
+                   )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4">
+                   <button 
+                     onClick={() => setShowConfirmDialog(false)}
+                     className="flex-1 py-5 px-8 text-slate-400 hover:text-rose-500 font-bold uppercase text-[10px] tracking-widest transition-all"
+                   >
+                      Abort Manifest
+                   </button>
+                   <button 
+                     disabled={isProcessing}
+                     onClick={handleCheckout}
+                     className="flex-[1.5] py-5 px-10 bg-slate-900 dark:bg-brand-primary text-white rounded-[1.5rem] font-bold uppercase text-xs tracking-widest shadow-xl shadow-brand-primary/20 active:scale-95 transition-all flex items-center justify-center gap-4 disabled:opacity-50 disabled:grayscale group"
+                   >
+                      {isProcessing ? 'SYNCHRONIZING...' : 'VALIDATE TRADE'} 
+                      {!isProcessing && <ChevronRight size={22} className="group-hover:translate-x-1 transition-transform" />}
+                   </button>
+                </div>
              </div>
           </div>
         </div>

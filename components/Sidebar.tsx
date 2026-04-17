@@ -171,20 +171,25 @@ const Sidebar: React.FC<SidebarProps> = ({
             </button>
           )}
           
-          <div className="flex items-center gap-3 p-4 bg-slate-800/40 rounded-2xl border border-slate-700/30">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black text-sm uppercase">
-              {user?.name?.charAt(0)}
+          <div className="flex flex-col gap-4 p-4 bg-slate-800/40 rounded-2xl border border-slate-700/30">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black text-sm uppercase">
+                {user?.name?.charAt(0)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-white truncate uppercase tracking-tighter">
+                  {user?.name}
+                </p>
+                <p className="text-[8px] text-slate-500 truncate uppercase font-bold tracking-[0.2em]">
+                  {user?.role === 'admin' ? 'Shop Admin' : user?.role === 'staff' ? 'Shop Staff' : 'Shop Owner'}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-white truncate uppercase tracking-tighter">
-                {user?.name}
-              </p>
-              <p className="text-[8px] text-slate-500 truncate uppercase font-bold tracking-[0.2em]">
-                {user?.role === 'admin' ? 'Shop Admin' : user?.role === 'staff' ? 'Shop Staff' : 'Shop Owner'}
-              </p>
-            </div>
-            <button onClick={onLogout} className="p-2 text-slate-500 hover:text-rose-500 transition-colors" title="Log Out">
-              <LogOut size={16} />
+            <button 
+              onClick={onLogout} 
+              className="w-full py-4 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all duration-300 text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 mt-2"
+            >
+              <LogOut size={16} /> Sign Out Terminal
             </button>
           </div>
         </div>

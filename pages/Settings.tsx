@@ -25,8 +25,12 @@ import {
   ChevronRight,
   Loader2,
   Key,
-  Languages
+  Languages,
+  ArrowUpRight,
+  ShieldAlert,
+  Fingerprint
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Settings as SettingsType, User, SubscriptionPlan, AppLanguage } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
 
@@ -80,10 +84,10 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
   };
 
   const handlePaystackActivation = (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => {
-    const publicKey = settings.paystackPublicKey || process.env.VITE_PAYSTACK_PUBLIC_KEY;
+    const publicKey = settings.paystackPublicKey || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
     
     if (!publicKey) {
-      alert("CRITICAL: Payment gateway not configured by system administrator. Please ensure VITE_PAYSTACK_PUBLIC_KEY is set in Netlify.");
+      alert("CRITICAL: Payment gateway not configured. Please contact support.");
       return;
     }
 
@@ -106,18 +110,11 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
     handler.openIframe();
   };
 
-  const handleAddStaff = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-    try {
-      await onAddStaff(staffFormData);
-      setStaffFormData({ name: '', email: '', password: '' });
-      setIsAddingStaff(false);
-    } catch (error: any) {
-      alert(error.message || "Failed to add staff.");
-    } finally {
-      setIsSaving(false);
-    }
+  const handleAddStaff = () => {
+    // We remove the manual addition as it triggers logout. 
+    // Instead, we show instructions.
+    copyInviteId();
+    alert("Protocol Initiated: Share your Link ID with team members. They should use 'Join with Link' during registration to connect to your terminal network.");
   };
 
   const copyInviteId = () => {
@@ -129,311 +126,663 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
   };
 
   const tabs = [
-    { id: 'profile', label: 'Org', icon: Building },
-    { id: 'market', label: 'Sales', icon: ShoppingBag },
-    { id: 'staff', label: 'Staff', icon: Users },
-    { id: 'billing', label: 'Plan', icon: CreditCard }
-  ];
+    { id: 'profile', label: 'Organization', icon: Building },
+    { id: 'market', label: 'Marketplaces', icon: ShoppingBag },
+    { id: 'staff', label: 'Workforce', icon: Users },
+    { id: 'billing', label: 'Subscription', icon: CreditCard }
+  ] as const;
 
   return (
-    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700 max-w-5xl no-print mx-auto px-2 md:px-4">
-      <header>
-        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase flex items-center gap-3">
-          {t.settings} <SettingsIcon className="text-indigo-600" size={24} />
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[9px] md:text-[10px] mt-1">Operational Protocol Management</p>
+    <div className="space-y-10 animate-in fade-in duration-1000 max-w-6xl no-print mx-auto px-4">
+      {/* Header Section */}
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-600/30">
+              <SettingsIcon className="text-white" size={24} />
+            </div>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase">
+              Control <span className="text-indigo-600 italic">Center</span>
+            </h1>
+          </div>
+          <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px]">
+            Master Configuration & Operational Protocols
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <div className="px-5 py-2.5 bg-white dark:bg-slate-900/50 backdrop-blur-xl border border-slate-100 dark:border-slate-800 rounded-2xl flex items-center gap-3 shadow-sm">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">System Online</span>
+          </div>
+          {saveSuccess && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="px-5 py-2.5 bg-emerald-500 text-white rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+            >
+              <CheckCircle2 size={16} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Saved</span>
+            </motion.div>
+          )}
+        </div>
       </header>
 
-      <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-hide shadow-sm sticky top-20 z-20 backdrop-blur-md">
+      {/* Navigation Tabs */}
+      <div className="flex bg-white/50 dark:bg-slate-950/50 backdrop-blur-2xl p-2 rounded-[2.5rem] border border-slate-200/50 dark:border-slate-800/50 overflow-x-auto scrollbar-hide shadow-2xl sticky top-24 z-20">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`flex-1 flex items-center justify-center gap-2 px-3 md:px-8 py-3 rounded-xl md:rounded-[1.5rem] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`relative flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-[1.8rem] text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap group ${
+              activeTab === tab.id 
+                ? 'text-indigo-600 dark:text-white' 
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'
+            }`}
           >
-            <tab.icon size={14} className="md:w-4 md:h-4" /> <span>{tab.label}</span>
+            {activeTab === tab.id && (
+              <motion.div 
+                layoutId="activeTab"
+                className="absolute inset-0 bg-white dark:bg-indigo-600 shadow-xl dark:shadow-indigo-600/20 rounded-[1.8rem]"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+            <tab.icon size={16} className={`relative z-10 transition-colors ${activeTab === tab.id ? 'text-indigo-600 dark:text-white' : 'group-hover:text-indigo-500'}`} />
+            <span className="relative z-10">{tab.label}</span>
           </button>
         ))}
       </div>
 
-      <div className="pb-10">
-        {activeTab === 'profile' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="lg:col-span-7 space-y-6 md:space-y-8">
-              <div className="bg-white dark:bg-slate-900 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
-                <section className="space-y-6">
-                  <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block border-b border-slate-50 dark:border-slate-800 pb-4 flex items-center gap-2">General Configuration</h3>
-                  
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block tracking-widest">Business Name</label>
-                      <input className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl font-bold text-sm dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all" value={companyName} onChange={e => setCompanyName(e.target.value)} />
+      {/* Main Content Area */}
+      <main className="min-h-[600px] mb-20">
+        <AnimatePresence mode="wait">
+          {activeTab === 'profile' && (
+            <motion.div 
+              key="profile"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="grid grid-cols-1 lg:grid-cols-12 gap-8"
+            >
+              <div className="lg:col-span-8 space-y-8">
+                {/* General Settings Bento Card */}
+                <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-slate-200/50 dark:border-slate-800 p-8 md:p-12 rounded-[3.5rem] shadow-2xl space-y-12 text-slate-900 dark:text-white">
+                  <header className="flex justify-between items-start">
+                    <div>
+                      <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-3">
+                        General Identity <Building size={20} className="text-indigo-500" />
+                      </h2>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Foundational business credentials</p>
+                    </div>
+                  </header>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-2 tracking-widest block">Legal Business Name</label>
+                      <input 
+                        className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-950 border-2 border-transparent focus:border-indigo-600/50 dark:focus:border-indigo-500 rounded-[2rem] font-bold text-sm dark:text-white outline-none transition-all shadow-inner" 
+                        value={companyName} 
+                        onChange={e => setCompanyName(e.target.value)} 
+                        placeholder="e.g. Acme Corporation"
+                      />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block tracking-widest flex items-center gap-2">
-                        <Languages size={12} className="text-indigo-500" /> {t.language_protocol}
-                      </label>
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-2 tracking-widest block">Operational Language</label>
+                      <div className="relative">
+                        <Languages size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none" />
+                        <select 
+                          className="w-full pl-16 pr-8 py-5 bg-slate-100 dark:bg-slate-950 border-2 border-transparent focus:border-indigo-600/50 dark:focus:border-indigo-500 rounded-[2rem] font-bold text-sm dark:text-white outline-none transition-all appearance-none cursor-pointer shadow-inner" 
+                          value={settings.language} 
+                          onChange={e => onUpdate({ language: e.target.value as AppLanguage })}
+                        >
+                          <option value="en">Global (English)</option>
+                          <option value="yo">Yorùbá</option>
+                          <option value="ha">Hausa</option>
+                          <option value="ig">Igbo</option>
+                        </select>
+                        <ChevronRight size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-2 tracking-widest block">Transaction Currency</label>
                       <select 
-                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl font-bold text-sm dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all cursor-pointer" 
-                        value={settings.language} 
-                        onChange={e => onUpdate({ language: e.target.value as AppLanguage })}
+                        className="w-full px-8 py-5 bg-slate-100 dark:bg-slate-950 border-2 border-transparent focus:border-indigo-600/50 dark:focus:border-indigo-500 rounded-[2rem] font-bold text-sm dark:text-white outline-none transition-all cursor-pointer shadow-inner" 
+                        value={settings.currency} 
+                        onChange={e => onUpdate({ currency: e.target.value })}
                       >
-                        <option value="en">{t.lang_en}</option>
-                        <option value="yo">{t.lang_yo}</option>
-                        <option value="ha">{t.lang_ha}</option>
-                        <option value="ig">{t.lang_ig}</option>
+                        <option value="₦">Nigerian Naira (₦)</option>
+                        <option value="$">US Dollar ($)</option>
+                        <option value="£">British Pound (£)</option>
+                        <option value="€">Euro (€)</option>
                       </select>
                     </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block tracking-widest">Currency Symbol</label>
-                        <select className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl font-bold text-sm dark:text-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all cursor-pointer" value={settings.currency} onChange={e => onUpdate({ currency: e.target.value })}>
-                          <option value="₦">Naira (₦)</option>
-                          <option value="$">US Dollar ($)</option>
-                          <option value="£">Pounds (£)</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block tracking-widest">UI Mode</label>
-                        <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl h-[52px]">
-                          <button onClick={() => onUpdate({ theme: 'light' })} className={`flex-1 rounded-xl flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest transition-all ${settings.theme === 'light' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}><Sun size={14}/> Light</button>
-                          <button onClick={() => onUpdate({ theme: 'dark' })} className={`flex-1 rounded-xl flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest transition-all ${settings.theme === 'dark' ? 'bg-slate-700 shadow-sm text-indigo-400' : 'text-slate-400'}`}><Moon size={14}/> Dark</button>
-                        </div>
+
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase ml-2 tracking-widest block">Visual Theme Mode</label>
+                      <div className="flex bg-slate-100 dark:bg-slate-950 p-1.5 rounded-[2rem] h-[64px] shadow-inner">
+                        <button 
+                          onClick={() => onUpdate({ theme: 'light' })} 
+                          className={`flex-1 rounded-[1.5rem] flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all ${
+                            settings.theme === 'light' 
+                              ? 'bg-white shadow-xl text-indigo-600' 
+                              : 'text-slate-400 hover:text-slate-600'
+                          }`}
+                        >
+                          <Sun size={16}/> Light
+                        </button>
+                        <button 
+                          onClick={() => onUpdate({ theme: 'dark' })} 
+                          className={`flex-1 rounded-[1.5rem] flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all ${
+                            settings.theme === 'dark' 
+                              ? 'bg-slate-800 shadow-xl text-indigo-400' 
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          <Moon size={16}/> Dark
+                        </button>
                       </div>
                     </div>
                   </div>
-                </section>
 
-                <section className="space-y-6 pt-6 md:pt-8 border-t border-slate-50 dark:border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Risk Alerts</h3>
-                      <p className="text-[8px] text-slate-400 font-bold uppercase mt-0.5">Automated low stock emails</p>
+                  <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-8">
+                      <div>
+                        <h3 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                          Smart Stock Alerts <BellRing size={16} className="text-amber-500" />
+                        </h3>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Real-time inventory risk notifications</p>
+                      </div>
+                      <button 
+                        onClick={() => setLowStockAlerts(!lowStockAlerts)} 
+                        className={`w-16 h-8 rounded-full transition-all duration-500 relative ${
+                          lowStockAlerts ? 'bg-indigo-600 shadow-lg shadow-indigo-600/30' : 'bg-slate-200 dark:bg-slate-800'
+                        }`}
+                      >
+                        <motion.div 
+                          animate={{ x: lowStockAlerts ? 34 : 4 }}
+                          className="absolute top-1 w-6 h-6 bg-white rounded-full shadow-md"
+                          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        />
+                      </button>
                     </div>
-                    <button onClick={() => setLowStockAlerts(!lowStockAlerts)} className={`w-12 h-6 md:w-14 md:h-7 rounded-full transition-all duration-300 relative shadow-inner ${lowStockAlerts ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                      <div className={`absolute top-1 w-4 h-4 md:w-5 md:h-5 bg-white rounded-full transition-all duration-300 shadow-md ${lowStockAlerts ? 'left-7 md:left-8' : 'left-1'}`} />
-                    </button>
+                    
+                    {lowStockAlerts && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="space-y-4 pt-2 overflow-hidden"
+                      >
+                        <label className="text-[10px] font-black text-slate-400 uppercase ml-2 block tracking-widest">Notification Recipient</label>
+                        <div className="relative group">
+                          <Mail size={20} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                          <input 
+                            type="email" 
+                            placeholder="stock-team@business.com" 
+                            className="w-full pl-16 pr-8 py-5 bg-slate-100/50 dark:bg-slate-950/50 border-2 border-transparent focus:border-indigo-600/50 rounded-[2rem] font-bold text-sm dark:text-white outline-none transition-all shadow-inner" 
+                            value={notificationEmail} 
+                            onChange={e => setNotificationEmail(e.target.value)} 
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  <button 
+                    onClick={handleApplyChanges} 
+                    disabled={isSaving} 
+                    className={`w-full py-6 rounded-[2.5rem] font-black uppercase text-xs tracking-[0.3em] transition-all transform flex items-center justify-center gap-4 shadow-2xl active:scale-95 disabled:opacity-50 ${
+                      saveSuccess ? 'bg-emerald-600 text-white shadow-emerald-600/20' : 'bg-indigo-600 text-white shadow-indigo-600/30 hover:bg-indigo-700'
+                    }`}
+                  >
+                    {isSaving ? (
+                      <><Loader2 size={20} className="animate-spin"/> Syncing...</>
+                    ) : saveSuccess ? (
+                      <><CheckCircle2 size={20} /> Success</>
+                    ) : (
+                      <><Save size={20} /> Deploy Changes</>
+                    )}
+                  </button>
+                </div>
+              </div>
+              
+              <div className="lg:col-span-4 space-y-8">
+                {/* Security Card */}
+                <div className="bg-slate-900 rounded-[3.5rem] p-10 text-white relative overflow-hidden shadow-2xl min-h-[400px] flex flex-col justify-between group">
+                  <div className="relative z-10 space-y-8">
+                    <div className="w-16 h-16 bg-white/10 rounded-3xl flex items-center justify-center backdrop-blur-xl border border-white/20 group-hover:scale-110 transition-transform duration-500">
+                      <ShieldCheck size={32} className="text-indigo-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 leading-tight">Data Integrity <br/>Protocol</h3>
+                      <p className="text-slate-400 text-xs font-medium leading-relaxed uppercase tracking-wider">
+                        All configuration changes are logged and synchronized across your global terminal network with military-grade encryption.
+                      </p>
+                    </div>
                   </div>
                   
-                  {lowStockAlerts && (
-                    <div className="mt-4 animate-in slide-in-from-top-4 duration-500 ease-out space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block tracking-widest">Destination Email</label>
-                      <div className="relative group">
-                        <div className="absolute left-6 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
-                           <Mail size={18} />
+                  <div className="relative z-10 pt-10 border-t border-slate-800 space-y-4">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      <span>Cloud Node</span>
+                      <span className="text-emerald-400 flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/> Verified
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      <span>Sync Latency</span>
+                      <span className="text-indigo-400 tracking-tighter">0.02ms</span>
+                    </div>
+                  </div>
+
+                  <div className="absolute -bottom-20 -right-20 opacity-[0.03] group-hover:scale-125 transition-transform duration-[2000ms]">
+                    <ShieldCheck size={400} />
+                  </div>
+                </div>
+
+                {/* Info Bento Card */}
+                <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl border border-slate-100 dark:border-slate-800 p-8 rounded-[3rem] shadow-lg space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-xl flex items-center justify-center">
+                      <Zap size={20} />
+                    </div>
+                    <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white">Quick Tip</h4>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+                    Set up low-stock alerts to receive automated procurement lists directly in your inbox before you run out.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'market' && (
+            <motion.div 
+              key="market"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="max-w-4xl mx-auto space-y-8"
+            >
+               <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-slate-200/50 dark:border-slate-800 p-8 md:p-16 rounded-[4rem] shadow-3xl text-slate-900 dark:text-white">
+                  <div className="max-w-xl mb-12">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Globe size={32} className="text-indigo-600" />
+                      <h2 className="text-3xl font-black uppercase tracking-tighter">Global <span className="text-indigo-600">Expansion</span></h2>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium leading-relaxed uppercase tracking-wider">
+                      Connect your warehouse to Nigeria's largest e-commerce networks. Orders will automatically synchronize and deduct from your primary inventory pool.
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-8">
+                    <ChannelToggle 
+                      label="Jumia Seller Portal" 
+                      desc="Direct vendor portal synchronization" 
+                      icon={<Globe size={22} />} 
+                      active={settings.marketplaces.jumia} 
+                      onChange={() => onUpdate({ marketplaces: { ...settings.marketplaces, jumia: !settings.marketplaces.jumia }})} 
+                    />
+                    <ChannelToggle 
+                      label="Konga Online" 
+                      desc="Automated logistics ledger linkage" 
+                      icon={<ShoppingBag size={22} />} 
+                      active={settings.marketplaces.konga} 
+                      onChange={() => onUpdate({ marketplaces: { ...settings.marketplaces, konga: !settings.marketplaces.konga }})} 
+                    />
+                    <ChannelToggle 
+                      label="WhatsApp Store" 
+                      desc="Intelligent catalog broadcasting" 
+                      icon={<MessageCircle size={22} />} 
+                      active={settings.marketplaces.whatsapp} 
+                      onChange={() => onUpdate({ marketplaces: { ...settings.marketplaces, whatsapp: !settings.marketplaces.whatsapp }})} 
+                    />
+                  </div>
+                  
+                  <div className="mt-12 p-10 bg-indigo-50 dark:bg-indigo-900/20 rounded-[3rem] border border-indigo-100 dark:border-indigo-800 flex items-start gap-6 shadow-sm">
+                    <div className="p-4 bg-white dark:bg-indigo-600 rounded-3xl shadow-xl shrink-0">
+                      <Rocket size={24} className="text-indigo-600 dark:text-white" />
+                    </div>
+                    <div>
+                      <h4 className="text-[11px] font-black uppercase tracking-widest text-indigo-900 dark:text-indigo-100 mb-2">Automated Fulfilment Control</h4>
+                      <p className="text-[11px] text-indigo-600/70 dark:text-indigo-300 font-bold uppercase tracking-widest leading-relaxed">
+                        Marketplace orders trigger immediate notification and reserve stock quantities automatically across all active channels.
+                      </p>
+                    </div>
+                  </div>
+               </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'staff' && (
+            <motion.div 
+              key="staff"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-12"
+            >
+                  <div className="bg-gradient-to-br from-indigo-600 to-indigo-900 p-10 md:p-16 rounded-[4.5rem] text-white shadow-[0_50px_100px_-20px_rgba(79,70,229,0.3)] relative overflow-hidden group border border-white/10">
+                  <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                    <div>
+                       <div className="flex items-center gap-4 mb-8">
+                          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20">
+                            <Share2 size={32} className="text-white" />
+                          </div>
+                          <h3 className="text-3xl font-black uppercase tracking-tighter leading-tight">Terminal <br/><span className="text-indigo-300 italic">Provisioning</span></h3>
+                       </div>
+                       <p className="text-indigo-100 text-[11px] font-medium leading-relaxed mb-12 max-w-sm uppercase tracking-widest">
+                          Distributed workforce protocol. To link a new team member, ask them to select 'Join a Business' during sign-up and enter this identifier.
+                       </p>
+                       
+                       <div className="flex flex-col sm:flex-row items-center gap-4">
+                          <div className="flex-1 w-full flex items-center gap-5 bg-black/20 backdrop-blur-md rounded-[2.5rem] px-10 py-6 font-mono text-sm font-bold border border-white/10 group-hover:border-white/30 transition-all shadow-inner">
+                             <Fingerprint size={20} className="text-indigo-300" />
+                             <span className="truncate tracking-tighter">{currentUser?.id || 'PROVISIONING...'}</span>
+                          </div>
+                          <button 
+                            onClick={copyInviteId} 
+                            className={`w-full sm:w-auto py-6 px-10 rounded-[2.5rem] transition-all flex items-center justify-center gap-3 font-black uppercase text-[11px] tracking-widest h-[70px] ${
+                              copyFeedback 
+                                ? 'bg-emerald-400 text-white shadow-emerald-400/40' 
+                                : 'bg-white text-indigo-900 shadow-2xl active:scale-95 hover:bg-slate-50'
+                            }`}
+                          >
+                             {copyFeedback ? <CheckCircle2 size={24} /> : <Copy size={24} />}
+                             {copyFeedback ? 'LINK READY' : 'COPY PROTOCOL'}
+                          </button>
+                       </div>
+                    </div>
+                    
+                    <div className="hidden lg:grid grid-cols-2 gap-6">
+                      <div className="space-y-6">
+                        <div className="bg-white/10 backdrop-blur-md rounded-[2.5rem] p-10 border border-white/5 shadow-xl">
+                          <h5 className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50 mb-3">Active Squad</h5>
+                          <p className="text-5xl font-black tracking-tighter">{staff.filter(u => u.role === 'staff' && u.parentId === currentUser?.id).length}</p>
                         </div>
-                        <input 
-                          type="email" 
-                          placeholder="alerts@business.com" 
-                          className="w-full pl-20 pr-5 py-5 bg-slate-50 dark:bg-slate-900/50 border-2 border-transparent dark:border-slate-800 rounded-3xl font-bold text-sm dark:text-white focus:ring-4 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none transition-all" 
-                          value={notificationEmail} 
-                          onChange={e => setNotificationEmail(e.target.value)} 
-                        />
+                        <div className="bg-white/10 backdrop-blur-md rounded-[2.5rem] p-10 border border-white/5 shadow-xl">
+                          <h5 className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50 mb-3">Sync Node</h5>
+                          <p className="text-[11px] font-black uppercase tracking-[0.3em] text-emerald-400 flex items-center gap-2">
+                             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Operational
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pt-12">
+                        <div className="bg-white/10 backdrop-blur-md rounded-[2.5rem] p-10 border border-white/5 h-full flex flex-col justify-between shadow-xl">
+                          <div className="w-14 h-14 bg-indigo-500 rounded-2xl flex items-center justify-center shadow-lg">
+                            <ShieldCheck size={28} />
+                          </div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] leading-relaxed text-indigo-100">Encrypted Personnel Channels Active</p>
+                        </div>
                       </div>
                     </div>
-                  )}
-                </section>
+                  </div>
+                  <Users className="absolute -bottom-20 -right-20 text-white/5 w-[500px] h-[500px] group-hover:scale-110 transition-transform duration-[4000ms]" />
+               </div>
 
-                <button onClick={handleApplyChanges} disabled={isSaving} className={`w-full py-5 rounded-3xl font-black uppercase text-[10px] md:text-[11px] tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-50 ${saveSuccess ? 'bg-emerald-600 text-white' : 'bg-indigo-600 text-white shadow-indigo-600/20'}`}>
-                  {saveSuccess ? <><CheckCircle2 size={18} /> Protocol Updated</> : <>{isSaving ? <Loader2 size={18} className="animate-spin"/> : <Save size={18} />} {isSaving ? t.syncing : t.save}</>}
-                </button>
-              </div>
-            </div>
-            
-            <div className="lg:col-span-5 bg-slate-900 rounded-[2rem] md:rounded-[3rem] p-8 md:p-12 text-white flex flex-col justify-between relative overflow-hidden shadow-2xl min-h-[300px]">
-              <div className="relative z-10">
-                <ShieldCheck size={40} className="text-indigo-400 mb-8" />
-                <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter mb-4 leading-tight">Sync Integrity</h3>
-                <p className="text-slate-400 text-xs md:text-sm font-medium leading-relaxed">Your operational data is encrypted end-to-end. Settings changes here propagate instantly to all staff terminals globally.</p>
-              </div>
-              <div className="mt-8 pt-8 border-t border-slate-800 relative z-10 flex justify-between items-center text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                  <span>Cloud Replication</span>
-                  <span className="text-emerald-400 flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/> Active</span>
-              </div>
-              <div className="absolute -bottom-10 -right-10 opacity-5">
-                <ShieldCheck size={240} />
-              </div>
-            </div>
-          </div>
-        )}
+               {/* Staff List Section */}
+               <div className="space-y-10">
+                  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-6">
+                     <div>
+                        <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">Terminal <span className="text-indigo-600">Squad</span></h2>
+                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.3em] mt-4">Authorized personnel with system permissions</p>
+                     </div>
+                     <button 
+                       onClick={() => setIsAddingStaff(true)} 
+                       className="group px-10 py-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[2.5rem] flex items-center justify-center gap-4 font-black text-[12px] uppercase tracking-[0.3em] shadow-2xl active:scale-95 transition-all"
+                     >
+                       <Plus size={22} className="group-hover:rotate-90 transition-transform" /> Add Crew Member
+                     </button>
+                  </div>
 
-        {activeTab === 'market' && (
-          <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-             <div className="bg-white dark:bg-slate-900 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm">
-                <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-4">Multi-Channel Bridge</h2>
-                <p className="text-[11px] md:text-xs text-slate-500 font-medium mb-10 leading-relaxed">Connect to Nigeria's largest e-commerce platforms. Orders on these platforms will automatically deduct from your main warehouse inventory.</p>
-                
-                <div className="space-y-4">
-                  <ChannelToggle label="Jumia Mall" desc="Real-time seller portal sync" icon={<Globe size={18} />} active={settings.marketplaces.jumia} onChange={() => onUpdate({ marketplaces: { ...settings.marketplaces, jumia: !settings.marketplaces.jumia }})} />
-                  <ChannelToggle label="Konga Bridge" desc="Daily logistics ledger export" icon={<ShoppingBag size={18} />} active={settings.marketplaces.konga} onChange={() => onUpdate({ marketplaces: { ...settings.marketplaces, konga: !settings.marketplaces.konga }})} />
-                  <ChannelToggle label="WhatsApp" desc="Direct catalog broadcast" icon={<MessageCircle size={18} />} active={settings.marketplaces.whatsapp} onChange={() => onUpdate({ marketplaces: { ...settings.marketplaces, whatsapp: !settings.marketplaces.whatsapp }})} />
-                </div>
-             </div>
-          </div>
-        )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                     {staff.filter(u => u.role === 'staff' && u.parentId === currentUser?.id).map(member => (
+                        <motion.div 
+                         initial={{ opacity: 0, scale: 0.95 }}
+                         animate={{ opacity: 1, scale: 1 }}
+                         key={member.id} 
+                         className="bg-white/70 dark:bg-slate-900/40 backdrop-blur-2xl p-8 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-2xl flex items-center justify-between group hover:border-indigo-500/30 transition-all hover:translate-y-[-8px]"
+                        >
+                           <div className="flex items-center gap-6 min-w-0">
+                              <div className="relative">
+                                <div className="w-16 h-16 rounded-[1.5rem] bg-indigo-600 text-white flex items-center justify-center font-black text-xl shadow-xl">
+                                 {member.name.charAt(0)}
+                                </div>
+                                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-4 border-white dark:border-slate-950 rounded-full" />
+                              </div>
+                              <div className="min-w-0">
+                                 <p className="text-base font-black text-slate-900 dark:text-white uppercase truncate tracking-tight">{member.name}</p>
+                                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase truncate tracking-widest mt-1">Terminal Active</p>
+                              </div>
+                           </div>
+                           <button 
+                             onClick={() => onRemoveStaff(member.id)} 
+                             className="p-4 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950 rounded-2xl transition-all"
+                           >
+                             <Trash2 size={20} />
+                           </button>
+                        </motion.div>
+                     ))}
+                     
+                     {staff.filter(u => u.role === 'staff' && u.parentId === currentUser?.id).length === 0 && (
+                        <div className="col-span-full py-24 bg-slate-50/50 dark:bg-slate-900/20 rounded-[4rem] border-2 border-dashed border-slate-200 dark:border-slate-800 text-center flex flex-col items-center">
+                           <div className="w-24 h-24 bg-white dark:bg-slate-800 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-xl">
+                             <Users size={48} className="text-slate-200 dark:text-slate-600" />
+                           </div>
+                           <h4 className="text-[13px] font-black uppercase text-slate-400 tracking-[0.4em]">Grid Empty</h4>
+                           <p className="text-[10px] text-slate-300 font-bold uppercase mt-3 tracking-widest">Awaiting personnel deployment invitations</p>
+                        </div>
+                     )}
+                  </div>
+               </div>
 
-        {activeTab === 'staff' && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-             <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
-                <div className="relative z-10">
-                   <div className="flex items-center gap-3 mb-4">
-                      <Share2 size={24} className="text-indigo-200" />
-                      <h3 className="text-lg md:text-xl font-black uppercase tracking-tighter">Business Invite ID</h3>
-                   </div>
-                   <p className="text-indigo-100 text-[10px] md:text-[11px] font-medium leading-relaxed mb-8 max-w-sm">Use this ID to link employees. When registering, they should enter this code to join your business terminal.</p>
-                   
-                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                      <div className="flex-1 bg-white/10 backdrop-blur-md rounded-2xl px-5 py-4 font-mono text-sm font-bold border border-white/20 truncate">
-                         {currentUser?.id || 'PROVISIONING...'}
-                      </div>
-                      <button onClick={copyInviteId} className={`py-4 px-6 rounded-2xl transition-all flex items-center justify-center gap-2 ${copyFeedback ? 'bg-emerald-50 text-emerald-600' : 'bg-white text-indigo-600 shadow-lg active:scale-95'}`}>
-                         {copyFeedback ? <CheckCircle2 size={18} /> : <Copy size={18} />}
-                         <span className="text-[10px] font-black uppercase tracking-widest">{copyFeedback ? 'Copied' : 'Copy ID'}</span>
-                      </button>
-                   </div>
-                </div>
-                <Users className="absolute -bottom-10 -right-10 text-white/5 w-64 h-64" />
-             </div>
-
-             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4">
-                <div>
-                   <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Staff Directory</h2>
-                   <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Active personnel terminals</p>
-                </div>
-                <button onClick={() => setIsAddingStaff(true)} className="w-full sm:w-auto px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all"><Plus size={18} /> Add Member</button>
-             </div>
-
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-                {staff.filter(u => u.role === 'staff' && u.parentId === currentUser?.id).map(member => (
-                   <div key={member.id} className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-indigo-100 dark:hover:border-indigo-900 transition-all">
-                      <div className="flex items-center gap-4 min-w-0">
-                         <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xs shrink-0">{member.name.charAt(0)}</div>
-                         <div className="min-w-0">
-                            <p className="text-sm font-black text-slate-900 dark:text-white uppercase truncate">{member.name}</p>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase truncate">{member.email}</p>
-                         </div>
-                      </div>
-                      <button onClick={() => onRemoveStaff(member.id)} className="p-2.5 text-slate-300 hover:text-rose-500 sm:opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16} /></button>
-                   </div>
-                ))}
-                {staff.filter(u => u.role === 'staff' && u.parentId === currentUser?.id).length === 0 && (
-                   <div className="col-span-full py-16 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 text-center">
-                      <Users size={40} className="mx-auto text-slate-200 mb-4" />
-                      <p className="text-slate-400 font-black uppercase text-[9px] tracking-widest">No active staff linked</p>
-                   </div>
+               {/* Add Staff Info Modal */}
+               <AnimatePresence>
+                {isAddingStaff && (
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setIsAddingStaff(false)}
+                      className="absolute inset-0 bg-slate-950/90 backdrop-blur-3xl" 
+                    />
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9, y: 40 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: 40 }}
+                      className="bg-white dark:bg-slate-900 rounded-[4.5rem] w-full max-w-2xl p-12 md:p-16 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] relative z-10 border border-white/5"
+                    >
+                        <header className="mb-12">
+                          <h3 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-6 leading-none">Adding <span className="text-indigo-600">Personnel</span></h3>
+                          <div className="p-10 bg-indigo-50 dark:bg-indigo-950/30 rounded-[3rem] border border-indigo-100 dark:border-indigo-900 focus-within:border-indigo-500 transition-all text-center">
+                            <div className="w-20 h-20 bg-indigo-600 text-white rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-2xl">
+                              <Plus size={40} />
+                            </div>
+                            <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-4 uppercase">Invitation Recommended</h4>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest leading-relaxed mb-10">
+                              For data security, team members should create their own accounts. Share your <span className="text-indigo-600 font-black">Link ID</span> with them. They must select <span className="text-indigo-600 font-black">'Join a Business'</span> during registration.
+                            </p>
+                            
+                            <div className="bg-slate-100 dark:bg-slate-800 p-6 rounded-2xl font-mono text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-8 border border-indigo-500/20">
+                              {currentUser?.id}
+                            </div>
+                            
+                            <button 
+                              onClick={handleAddStaff}
+                              className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black uppercase text-xs tracking-widest active:scale-95 transition-all shadow-xl"
+                            >
+                              Copy ID & Close
+                            </button>
+                          </div>
+                        </header>
+                    </motion.div>
+                  </div>
                 )}
-             </div>
+               </AnimatePresence>
+            </motion.div>
+          )}
 
-             {isAddingStaff && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl">
-                   <div className="bg-white dark:bg-slate-900 rounded-t-[2.5rem] sm:rounded-[3rem] w-full max-md:p-8 p-10 shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95">
-                      <h3 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-8">Deploy Account</h3>
-                      <form onSubmit={handleAddStaff} className="space-y-4">
-                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-                            <input required className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white" value={staffFormData.name} onChange={e => setStaffFormData({...staffFormData, name: e.target.value})} />
-                         </div>
-                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Work Email</label>
-                            <input type="email" required className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white" value={staffFormData.email} onChange={e => setStaffFormData({...staffFormData, email: e.target.value})} />
-                         </div>
-                         <div className="space-y-2">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Temporary Password</label>
-                            <input type="password" required className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl font-bold dark:text-white" value={staffFormData.password} onChange={e => setStaffFormData({...staffFormData, password: e.target.value})} />
-                         </div>
-                         <div className="pt-6 flex flex-col sm:flex-row gap-3">
-                            <button type="button" onClick={() => setIsAddingStaff(false)} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px]">Discard</button>
-                            <button type="submit" disabled={isSaving} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl shadow-indigo-600/20">{isSaving ? 'Processing...' : 'Link Account'}</button>
-                         </div>
-                      </form>
-                   </div>
-                </div>
-             )}
-          </div>
-        )}
+          {activeTab === 'billing' && (
+            <motion.div 
+              key="billing"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -40 }}
+              className="space-y-20"
+            >
+               <div className="flex flex-col items-center justify-center text-center space-y-10">
+                  <div className="space-y-4">
+                    <h2 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">Tier <span className="text-indigo-600">Protocols</span></h2>
+                    <p className="text-[11px] md:text-lg text-slate-500 font-medium uppercase tracking-[0.3em] max-w-2xl">Elevate your operational capacity with industry-leading retail technology.</p>
+                  </div>
 
-        {activeTab === 'billing' && (
-          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
-             <div className="flex justify-center mb-6 md:mb-10">
-                <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl flex w-full max-w-[320px]">
-                  <button onClick={() => setBillingCycle('monthly')} className={`flex-1 px-4 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${billingCycle === 'monthly' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Monthly</button>
-                  <button onClick={() => setBillingCycle('annual')} className={`flex-1 px-4 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${billingCycle === 'annual' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Annual (-15%)</button>
-                </div>
-             </div>
+                  <div className="bg-white/50 dark:bg-slate-950/50 backdrop-blur-3xl p-2 rounded-[3rem] flex w-full max-w-[450px] border border-slate-200/50 dark:border-white/5 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)]">
+                    <button 
+                      onClick={() => setBillingCycle('monthly')} 
+                      className={`flex-1 px-10 py-5 rounded-[2.5rem] text-[12px] font-black uppercase tracking-widest transition-all ${
+                        billingCycle === 'monthly' 
+                          ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-2xl' 
+                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                      }`}
+                    >
+                      Monthly
+                    </button>
+                    <button 
+                      onClick={() => setBillingCycle('annual')} 
+                      className={`flex-1 px-10 py-5 rounded-[2.5rem] text-[12px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 ${
+                        billingCycle === 'annual' 
+                          ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-2xl' 
+                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                      }`}
+                    >
+                      Annual <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 text-[9px] rounded-full">-15%</span>
+                    </button>
+                  </div>
+               </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                <PlanCard 
-                   title="StockBit Beta" 
-                   price={billingCycle === 'monthly' ? "₦5,000/mo" : "₦50,000/yr"}
-                   desc="Entry-level protocol for small kiosks."
-                   active={currentUser?.plan === 'beta'}
-                   features={['3 Staff Terminals', 'Cloud Inventory', 'Sales History', 'Barcode Support']}
-                   onSelect={() => handlePaystackActivation('beta', billingCycle)}
-                   icon={<Layout size={20} />}
-                />
-                <PlanCard 
-                   title="StockBit Mega" 
-                   price={billingCycle === 'monthly' ? "₦7,999/mo" : "₦80,000/yr"}
-                   desc="The professional standard for growing retail."
-                   active={currentUser?.plan === 'mega'}
-                   features={['8 Staff Terminals', 'Advanced Reports', 'Marketplace Sync', 'AI Insights']}
-                   onSelect={() => handlePaystackActivation('mega', billingCycle)}
-                   icon={<Rocket size={20} />}
-                />
-                <PlanCard 
-                   title="Mega Pro" 
-                   price={billingCycle === 'monthly' ? "₦12,999/mo" : "₦128,000/yr"}
-                   desc="Enterprise industrial solution for logistics."
-                   active={currentUser?.plan === 'mega_pro'}
-                   features={['Unlimited Terminals', 'Gemini Pro Audit', 'Sustainability Hub', 'Dedicated Support']}
-                   onSelect={() => handlePaystackActivation('mega_pro', billingCycle)}
-                   icon={<Star size={20} />}
-                />
-             </div>
-          </div>
-        )}
-      </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 pb-32">
+                  <PlanCard 
+                     title="STOCKBIT BETA" 
+                     price={billingCycle === 'monthly' ? "₦5,000" : "₦50,000"}
+                     cycle={billingCycle === 'monthly' ? "/MONTH" : "/YEAR"}
+                     desc="Essential entry protocol for small retail kiosks and starting vendors."
+                     active={currentUser?.plan === 'beta'}
+                     features={['3 Team Terminals', 'Cloud-Sync Inventory', 'Complete Sales Log', 'Basic Intelligence']}
+                     onSelect={() => handlePaystackActivation('beta', billingCycle)}
+                     icon={<Layout size={26} />}
+                     tier="standard"
+                  />
+                  <PlanCard 
+                     title="STOCKBIT MEGA" 
+                     price={billingCycle === 'monthly' ? "₦7,999" : "₦80,000"}
+                     cycle={billingCycle === 'monthly' ? "/MONTH" : "/YEAR"}
+                     desc="The industry standard for professional growing retail businesses."
+                     active={currentUser?.plan === 'mega'}
+                     features={['8 Team Terminals', 'Advanced Analytics Hub', 'Full Marketplace E-Sync', 'Predictive Insights']}
+                     onSelect={() => handlePaystackActivation('mega', billingCycle)}
+                     icon={<Rocket size={26} />}
+                     tier="pro"
+                     popular
+                  />
+                  <PlanCard 
+                     title="MEGA PRO" 
+                     price={billingCycle === 'monthly' ? "₦12,999" : "₦128,000"}
+                     cycle={billingCycle === 'monthly' ? "/MONTH" : "/YEAR"}
+                     desc="High-performance industrial solution for logistics and multi-terminal chains."
+                     active={currentUser?.plan === 'mega_pro'}
+                     features={['Unlimited Terminals', 'Gemini Pro Audit Node', 'Sustainability Impact', 'Priority Operations']}
+                     onSelect={() => handlePaystackActivation('mega_pro', billingCycle)}
+                     icon={<Star size={26} />}
+                     tier="enterprise"
+                  />
+               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
     </div>
   );
 };
 
 const ChannelToggle = ({ label, desc, icon, active, onChange }: any) => (
-  <div className="flex items-center justify-between p-4 md:p-5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl md:rounded-3xl border border-slate-100 dark:border-slate-800">
-    <div className="flex items-center gap-4 min-w-0">
-      <div className="w-10 h-10 bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center shadow-sm shrink-0">{icon}</div>
+  <div className={`flex items-center justify-between p-8 md:p-10 bg-white/50 dark:bg-slate-900/40 backdrop-blur-2xl rounded-[3.5rem] border-2 transition-all group ${
+    active ? 'border-indigo-600/30 bg-white dark:bg-slate-800/60 shadow-2xl' : 'border-slate-50 dark:border-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700'
+  }`}>
+    <div className="flex items-center gap-8 min-w-0">
+      <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center shadow-xl transition-all group-hover:scale-110 ${
+        active ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400'
+      }`}>{icon}</div>
       <div className="min-w-0">
-        <p className="text-[10px] md:text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-widest truncate">{label}</p>
-        <p className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase truncate">{desc}</p>
+        <p className="text-sm md:text-base font-black text-slate-900 dark:text-white uppercase tracking-tighter truncate">{label}</p>
+        <p className="text-[10px] md:text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.3em] truncate mt-2">{desc}</p>
       </div>
     </div>
-    <button onClick={onChange} className={`w-10 h-5 md:w-12 md:h-6 rounded-full transition-all relative shrink-0 ${active ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'}`}>
-       <div className={`absolute top-0.5 md:top-1 w-4 h-4 bg-white rounded-full transition-all ${active ? 'left-5.5 md:left-7' : 'left-0.5 md:left-1'}`} />
+    <button 
+      onClick={onChange} 
+      className={`w-18 h-10 rounded-full transition-all duration-500 relative shadow-inner shrink-0 ${
+        active ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
+      }`}
+    >
+       <motion.div 
+        animate={{ x: active ? 40 : 4 }}
+        className="absolute top-1 w-8 h-8 bg-white rounded-full shadow-2xl"
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+       />
     </button>
   </div>
 );
 
-const PlanCard = ({ title, price, desc, active, features, onSelect, icon }: any) => (
-  <div className={`p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] flex flex-col justify-between border-2 transition-all ${active ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xl scale-105' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-indigo-50 dark:hover:border-indigo-900 shadow-sm'}`}>
+const PlanCard = ({ title, price, cycle, desc, active, features, onSelect, icon, popular }: any) => (
+  <div className={`relative p-10 md:p-16 rounded-[5rem] flex flex-col justify-between border-2 transition-all duration-700 h-full ${
+    active 
+      ? 'bg-indigo-600 text-white border-indigo-600 shadow-[0_60px_100px_-20px_rgba(79,70,229,0.5)] scale-105 z-10' 
+      : 'bg-white/80 dark:bg-slate-950/80 backdrop-blur-3xl border-slate-100 dark:border-slate-800/50 hover:border-indigo-500/30 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] hover:translate-y-[-16px]'
+  }`}>
+    {popular && !active && (
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-10 py-3 bg-indigo-600 text-white text-[11px] font-black uppercase tracking-[0.4em] rounded-full shadow-2xl">
+        Elite Selection
+      </div>
+    )}
+    
     <div>
-      <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center mb-6 shadow-sm shrink-0 ${active ? 'bg-white/10 text-white' : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600'}`}>
+      <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center mb-12 shadow-2xl ${
+        active ? 'bg-white/20 text-white' : 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400'
+      }`}>
          {icon}
       </div>
-      <h3 className="text-lg md:text-xl font-black uppercase tracking-tighter mb-2">{title}</h3>
-      <p className={`text-sm md:text-base font-black mb-6 ${active ? 'text-indigo-100' : 'text-indigo-600'}`}>{price}</p>
-      <p className={`text-[11px] md:text-xs font-medium leading-relaxed mb-8 ${active ? 'text-indigo-100/70' : 'text-slate-400'}`}>{desc}</p>
-      <ul className="space-y-4">
+      <h3 className="text-3xl font-black uppercase tracking-tighter mb-6">{title}</h3>
+      <div className="flex items-end gap-3 mb-10">
+        <span className="text-5xl font-black tracking-tighter">{price}</span>
+        <span className={`text-[12px] font-black uppercase tracking-[0.2em] mb-3 ${active ? 'text-indigo-200' : 'text-slate-400'}`}>{cycle}</span>
+      </div>
+      <p className={`text-base font-medium leading-relaxed mb-16 uppercase tracking-[0.05em] h-[80px] ${active ? 'text-indigo-100/70' : 'text-slate-500'}`}>
+        {desc}
+      </p>
+      <ul className="space-y-8">
         {features.map((f: string, i: number) => (
-           <li key={i} className="flex items-center gap-3 text-[9px] md:text-[10px] font-black uppercase tracking-widest">
-              <CheckCircle2 size={14} className={`shrink-0 ${active ? 'text-indigo-200' : 'text-emerald-500'}`} /> {f}
+           <li key={i} className="flex items-start gap-5 text-[11px] font-black uppercase tracking-[0.2em] leading-relaxed">
+              <CheckCircle2 size={22} className={`shrink-0 mt-0.5 ${active ? 'text-indigo-200' : 'text-emerald-500'}`} /> {f}
            </li>
         ))}
       </ul>
     </div>
-    <button onClick={onSelect} disabled={active} className={`w-full py-4 mt-8 md:mt-10 rounded-2xl font-black uppercase text-[9px] md:text-[10px] tracking-widest transition-all ${active ? 'bg-white/20 text-white cursor-default' : 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 active:scale-95'}`}>
-       {active ? 'Current Protocol' : 'Deploy Plan'}
-    </button>
+    
+    <div className="mt-16">
+      <button 
+        onClick={onSelect} 
+        disabled={active} 
+        className={`w-full py-8 rounded-[3rem] font-black uppercase text-[12px] tracking-[0.4em] transition-all transform flex items-center justify-center gap-4 ${
+          active ? 'bg-white/20 text-white cursor-default border border-white/30' : 'bg-slate-950 dark:bg-white text-white dark:text-slate-900 shadow-2xl active:scale-95 group'
+        }`}
+      >
+         {active ? (
+           <><ShieldCheck size={24} /> Authenticated</>
+         ) : (
+           <>Deploy Protocol <ArrowUpRight size={22} className="group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform" /></>
+         )}
+      </button>
+    </div>
   </div>
 );
 

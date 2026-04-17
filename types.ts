@@ -1,6 +1,6 @@
 
 export type SubscriptionPlan = 'beta' | 'mega' | 'mega_pro';
-export type PaymentMethod = 'cash' | 'opay' | 'paga' | 'flutterwave' | 'bank_transfer' | 'paystack';
+export type PaymentMethod = 'cash' | 'pos' | 'transfer' | 'opay' | 'paga' | 'flutterwave' | 'bank_transfer' | 'paystack';
 export type AppLanguage = 'en' | 'yo' | 'ha' | 'ig';
 
 export interface User {

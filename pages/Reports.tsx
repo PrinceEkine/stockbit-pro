@@ -6,7 +6,14 @@ import {
   Download,
   FileSpreadsheet,
   Calendar,
-  ChevronDown
+  ChevronDown,
+  ArrowUpRight,
+  TrendingUp,
+  Target,
+  Users,
+  Briefcase,
+  PieChart as PieIcon,
+  Zap
 } from 'lucide-react';
 import { 
   XAxis, 
@@ -18,7 +25,9 @@ import {
   Cell, 
   Pie,
   AreaChart,
-  Area
+  Area,
+  BarChart,
+  Bar
 } from 'recharts';
 import { AppState } from '../types';
 
@@ -26,7 +35,7 @@ interface ReportsProps {
   state: AppState;
 }
 
-const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
 
 const Reports: React.FC<ReportsProps> = ({ state }) => {
   const sales = state?.sales || [];
@@ -37,19 +46,19 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
 
   const revenueTrendData = useMemo(() => {
     const now = new Date();
-    const data: { name: string, revenue: number }[] = [];
+    const data: { name: string, revenue: number, salesCount: number }[] = [];
 
     if (revenuePeriod === 'day') {
       for (let i = 14; i >= 0; i--) {
         const date = new Date(now);
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
-        const dayTotal = (sales || [])
-          .filter(s => s.date.startsWith(dateStr))
-          .reduce((sum, s) => sum + (s.total_price || 0), 0);
+        const daySales = (sales || []).filter(s => s.date.startsWith(dateStr));
+        const dayTotal = daySales.reduce((sum, s) => sum + (s.total_price || 0), 0);
         data.push({ 
           name: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), 
-          revenue: dayTotal 
+          revenue: dayTotal,
+          salesCount: daySales.length
         });
       }
     } else if (revenuePeriod === 'week') {
@@ -58,20 +67,22 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
         start.setDate(start.getDate() - (i * 7 + 6));
         const end = new Date(now);
         end.setDate(end.getDate() - (i * 7));
-        const weekTotal = (sales || []).filter(s => {
+        const weekSales = (sales || []).filter(s => {
           const sDate = new Date(s.date);
           return sDate >= start && sDate <= end;
-        }).reduce((sum, s) => sum + (s.total_price || 0), 0);
-        data.push({ name: `Week ${8 - i}`, revenue: weekTotal });
+        });
+        const weekTotal = weekSales.reduce((sum, s) => sum + (s.total_price || 0), 0);
+        data.push({ name: `Week ${8 - i}`, revenue: weekTotal, salesCount: weekSales.length });
       }
     } else {
       for (let i = 11; i >= 0; i--) {
         const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthTotal = (sales || []).filter(s => {
+        const monthSales = (sales || []).filter(s => {
           const sDate = new Date(s.date);
           return sDate.getMonth() === date.getMonth() && sDate.getFullYear() === date.getFullYear();
-        }).reduce((sum, s) => sum + (s.total_price || 0), 0);
-        data.push({ name: date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), revenue: monthTotal });
+        });
+        const monthTotal = monthSales.reduce((sum, s) => sum + (s.total_price || 0), 0);
+        data.push({ name: date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), revenue: monthTotal, salesCount: monthSales.length });
       }
     }
     return data;
@@ -91,6 +102,19 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
       .map(([id, data]) => ({ id, ...data, revenuePercent: totalRevenue > 0 ? (data.revenue / totalRevenue) * 100 : 0 }))
       .sort((a, b) => b.revenue - a.revenue);
   }, [sales, users]);
+
+  const stats = useMemo(() => {
+    const totalRevenue = sales.reduce((acc, s) => acc + (s.total_price || 0), 0);
+    const avgTicket = sales.length > 0 ? totalRevenue / sales.length : 0;
+    const itemsSold = sales.reduce((acc, s) => acc + s.items.reduce((sum, i) => sum + i.quantity, 0), 0);
+    
+    return [
+      { label: 'Total Revenue', value: totalRevenue, icon: Zap, color: 'emerald' },
+      { label: 'Total Volume', value: sales.length, icon: TrendingUp, color: 'indigo' },
+      { label: 'Average Ticket', value: avgTicket, icon: Target, color: 'amber' },
+      { label: 'Assets Traded', value: itemsSold, icon: Briefcase, color: 'rose' },
+    ];
+  }, [sales]);
 
   const exportSalesCSV = () => {
     const headers = ['Date', 'Sale ID', 'Customer', 'Items', 'Total Price', 'Payment Method'];
@@ -117,155 +141,239 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
   const formatCurrency = (val: number) => `${settings?.currency || '₦'}${(val || 0).toLocaleString()}`;
 
   return (
-    <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500 pb-20 no-print px-2 md:px-0">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3 uppercase tracking-tighter">
-            Operational Intelligence <BarChart3 className="text-indigo-600" size={28} />
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[9px] md:text-[10px] mt-1">Unified Shop Performance Data</p>
+    <div className="space-y-10 animate-in fade-in duration-700 pb-32 no-print">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+        <div className="space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 text-brand-primary rounded-full border border-brand-primary/20">
+            <Zap size={14} className="animate-pulse" />
+            <span className="text-[10px] font-bold uppercase tracking-widest leading-none">Intelligence Bureau</span>
+          </div>
+          <h1 className="text-4xl md:text-6xl font-display font-bold tracking-tighter text-slate-900 dark:text-white leading-tight">Operational Insights</h1>
+          <div className="flex items-center gap-4 text-slate-400">
+             <Calendar size={16} />
+             <p className="text-[10px] font-bold uppercase tracking-[0.2em] leading-none">Last Synced: {new Date().toLocaleTimeString()}</p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={exportSalesCSV}
-            className="flex-1 md:flex-none px-6 py-3 bg-indigo-600 text-white rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all"
-          >
-            <Download size={16} /> Download Ledger (.csv)
-          </button>
-        </div>
+        <button 
+          onClick={exportSalesCSV}
+          className="flex items-center justify-center gap-4 px-8 py-5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-neo font-bold text-[11px] uppercase tracking-widest active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 group"
+        >
+          <div className="w-8 h-8 bg-brand-primary/10 text-brand-primary rounded-xl flex items-center justify-center group-hover:bg-brand-primary group-hover:text-white transition-all">
+            <Download size={18} />
+          </div>
+          Export Central Ledger
+        </button>
       </header>
 
-      <div className="bg-white dark:bg-slate-900 p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-10 gap-6">
-          <div className="space-y-1">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-tighter">
-              <LineIcon size={20} className="text-indigo-600" /> Revenue Stream
-            </h2>
-            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Aggregate profit visualization</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, i) => (
+          <div key={i} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-neo group animate-in slide-in-from-bottom-5" style={{ animationDelay: `${i * 100}ms` }}>
+            <div className="flex items-center justify-between mb-8">
+               <div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-${stat.color}-500/10 text-${stat.color}-500 shadow-inner group-hover:scale-110 group-hover:rotate-12 transition-all duration-500`}>
+                  <stat.icon size={28} />
+               </div>
+               <ArrowUpRight size={18} className="text-slate-300" />
+            </div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 leading-none">{stat.label}</p>
+            <h3 className="text-3xl font-display font-bold tracking-tighter text-slate-900 dark:text-white">
+               {stat.label.includes('Revenue') || stat.label.includes('Average') ? formatCurrency(stat.value) : stat.value.toLocaleString()}
+            </h3>
           </div>
-          <div className="flex bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-[1.2rem] w-full sm:w-auto overflow-x-auto border border-slate-100 dark:border-slate-800">
-            {(['day', 'week', 'month'] as const).map((period) => (
-              <button
-                key={period}
-                onClick={() => setRevenuePeriod(period)}
-                className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${revenuePeriod === period ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                {period}
-              </button>
-            ))}
-          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="xl:col-span-2 bg-white dark:bg-slate-900 p-10 md:p-14 rounded-[3.5rem] border border-slate-100 dark:border-slate-800 shadow-neo transition-all overflow-hidden relative">
+           <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/5 blur-[100px] rounded-full -mr-32 -mt-32"></div>
+           <div className="flex flex-col md:flex-row items-baseline justify-between gap-8 relative z-10 mb-14">
+              <div className="space-y-1">
+                 <h2 className="text-2xl font-display font-bold tracking-tight text-slate-900 dark:text-white uppercase">Revenue Stream</h2>
+                 <p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.3em]">Value generation timeline</p>
+              </div>
+              <div className="flex bg-slate-50 dark:bg-slate-800 p-1.5 rounded-[1.5rem] border border-slate-100 dark:border-slate-800">
+                {(['day', 'week', 'month'] as const).map((period) => (
+                  <button
+                    key={period}
+                    onClick={() => setRevenuePeriod(period)}
+                    className={`px-8 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${revenuePeriod === period ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    {period}
+                  </button>
+                ))}
+              </div>
+           </div>
+
+           <div className="h-[450px] w-full relative z-10">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueTrendData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="6 6" vertical={false} stroke={state.settings.theme === 'dark' ? '#1e293b' : '#f1f5f9'} />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 700}} 
+                    dy={15} 
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 700}}
+                    tickFormatter={(val) => settings.currency + (val >= 1000 ? (val/1000).toFixed(0)+'K' : val)}
+                  />
+                  <Tooltip 
+                    cursor={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: '6 6' }}
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-slate-900 dark:bg-black p-6 rounded-[2rem] shadow-2xl border border-white/10 backdrop-blur-3xl animate-in zoom-in-95">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-3">{label}</p>
+                            <div className="space-y-1">
+                               <p className="text-2xl font-display font-bold text-white">{formatCurrency(payload[0].value as number)}</p>
+                               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{payload[0].payload.salesCount} Manifests</p>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="#6366f1" 
+                    strokeWidth={4} 
+                    fillOpacity={1} 
+                    fill="url(#revenueGradient)" 
+                    activeDot={{ r: 8, strokeWidth: 4, stroke: state.settings.theme === 'dark' ? '#0f172a' : '#ffffff', fill: '#6366f1' }} 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+           </div>
         </div>
-        
-        <div className="w-full min-h-[400px] overflow-hidden min-w-0">
-          <ResponsiveContainer width="100%" height={400}>
-            <AreaChart data={revenueTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="reportsSales" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/>
-                  <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={state.settings.theme === 'dark' ? '#1e293b' : '#f1f5f9'} />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 900}} dy={15} />
-              <YAxis hide />
-              <Tooltip 
-                cursor={{ stroke: '#4f46e5', strokeWidth: 2, strokeDasharray: '4 4' }}
-                content={({ active, payload, label }) => {
-                  if (active && payload && payload.length) {
-                    return (
-                      <div className="bg-slate-900 dark:bg-black p-5 rounded-[1.5rem] shadow-2xl border border-white/10 backdrop-blur-md">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400 mb-1">{label}</p>
-                        <p className="text-lg font-black text-white">{formatCurrency(payload[0].value as number)}</p>
+
+        <div className="bg-white dark:bg-slate-900 p-10 md:p-14 rounded-[3.5rem] border border-slate-100 dark:border-slate-800 shadow-neo flex flex-col relative overflow-hidden">
+           <div className="space-y-1 mb-14">
+              <h2 className="text-2xl font-display font-bold tracking-tight text-slate-900 dark:text-white uppercase">Personnel Yield</h2>
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.3em]">Value contribution by operator</p>
+           </div>
+           
+           <div className="flex-1 w-full min-h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={staffPerformance.filter(s => s.revenue > 0)}
+                    innerRadius="65%"
+                    outerRadius="90%"
+                    paddingAngle={10}
+                    dataKey="revenue"
+                    stroke="none"
+                    animationBegin={0}
+                    animationDuration={1500}
+                    cornerRadius={12}
+                  >
+                    {staffPerformance.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="outline-none" />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                     content={({ active, payload }) => {
+                       if (active && payload && payload.length) {
+                         const data = payload[0].payload;
+                         return (
+                           <div className="bg-slate-900 p-5 rounded-[2rem] shadow-2xl border border-white/10 backdrop-blur-xl">
+                             <p className="text-[10px] font-bold uppercase text-indigo-400 mb-2">{data.name}</p>
+                             <p className="text-xl font-display font-bold text-white">{formatCurrency(data.revenue)}</p>
+                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{data.revenuePercent.toFixed(1)}% Yield Share</p>
+                           </div>
+                         );
+                       }
+                       return null;
+                     }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+           </div>
+           
+           <div className="mt-14 space-y-6">
+              {staffPerformance.filter(s => s.revenue > 0).slice(0, 4).map((staff, i) => (
+                <div key={i} className="flex items-center justify-between p-5 bg-slate-50/50 dark:bg-slate-800/40 rounded-3xl border border-slate-100 dark:border-white/5 group hover:bg-white dark:hover:bg-slate-800 transition-all shadow-sm">
+                   <div className="flex items-center gap-5">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs text-white shadow-lg shadow-inner" style={{ backgroundColor: COLORS[i % COLORS.length] }}>
+                         {staff.name.charAt(0)}
                       </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <Area type="monotone" dataKey="revenue" stroke="#4f46e5" fillOpacity={1} fill="url(#reportsSales)" strokeWidth={5} activeDot={{ r: 8, strokeWidth: 4, stroke: state.settings.theme === 'dark' ? '#0f172a' : '#ffffff', fill: '#4f46e5' }} />
-            </AreaChart>
-          </ResponsiveContainer>
+                      <div>
+                         <p className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">{staff.name}</p>
+                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{staff.total} Manifests</p>
+                      </div>
+                   </div>
+                   <div className="text-right">
+                      <p className="text-[13px] font-display font-bold text-brand-primary">{formatCurrency(staff.revenue)}</p>
+                      <div className="flex items-center gap-1 justify-end text-emerald-500">
+                         <TrendingUp size={10} />
+                         <span className="text-[8px] font-bold uppercase">{staff.revenuePercent.toFixed(0)}%</span>
+                      </div>
+                   </div>
+                </div>
+              ))}
+           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center justify-between mb-10">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
-              Performance by Personnel
-            </h2>
-            <FileSpreadsheet size={20} className="text-slate-300" />
-          </div>
-          <div className="space-y-8">
-            {staffPerformance.slice(0, 8).map((staff) => (
-              <div key={staff.id} className="group">
-                <div className="flex justify-between items-end mb-3">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center font-black text-xs group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
-                      {staff.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">{staff.name}</p>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{staff.total} Transactions Completed</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-black text-indigo-600 dark:text-indigo-400">{staff.revenuePercent.toFixed(1)}%</p>
-                  </div>
-                </div>
-                <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-indigo-600 rounded-full transition-all duration-1000" style={{ width: `${staff.revenuePercent}%` }}></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="bg-white dark:bg-slate-900 p-10 md:p-14 rounded-[3.5rem] border border-slate-100 dark:border-slate-800 shadow-neo">
+         <div className="flex flex-col md:flex-row items-baseline justify-between mb-14 gap-6">
+            <div className="space-y-1">
+               <h2 className="text-2xl font-display font-bold tracking-tight text-slate-900 dark:text-white uppercase">Personnel Efficiency Bureau</h2>
+               <p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.3em]">Comparative metrics analysis</p>
+            </div>
+            <div className="flex items-center gap-3 bg-brand-primary/10 text-brand-primary px-5 py-2 rounded-full border border-brand-primary/20">
+               <Users size={16} />
+               <span className="text-[10px] font-bold uppercase tracking-widest">{users.length} Active Nodes</span>
+            </div>
+         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center min-h-[400px]">
-          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-8">Revenue Distribution Model</h3>
-          <div className="w-full h-[300px]">
+         <div className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={staffPerformance.filter(s => s.revenue > 0)}
-                  innerRadius={70}
-                  outerRadius={100}
-                  paddingAngle={8}
-                  dataKey="revenue"
-                  stroke="none"
-                  animationBegin={200}
-                  animationDuration={1500}
-                >
-                  {staffPerformance.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="outline-none" />
-                  ))}
-                </Pie>
-                <Tooltip 
-                   content={({ active, payload }) => {
-                     if (active && payload && payload.length) {
-                       const data = payload[0].payload;
-                       return (
-                         <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border border-white/10">
-                           <p className="text-[10px] font-black uppercase text-indigo-400 mb-1">{data.name}</p>
-                           <p className="text-sm font-black">{formatCurrency(data.revenue)}</p>
-                         </div>
-                       );
-                     }
-                     return null;
-                   }}
-                />
-              </PieChart>
+               <BarChart data={staffPerformance} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="6 6" vertical={false} stroke={state.settings.theme === 'dark' ? '#1e293b' : '#f1f5f9'} />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 700}} 
+                    dy={15} 
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 700}}
+                    tickFormatter={(val) => settings.currency + (val >= 1000 ? (val/1000).toFixed(0)+'K' : val)}
+                  />
+                  <Tooltip 
+                    cursor={{fill: 'rgba(99, 102, 241, 0.05)'}}
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-slate-900 dark:bg-black p-5 rounded-[2rem] shadow-2xl border border-white/10 backdrop-blur-3xl">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-2">{label}</p>
+                            <p className="text-xl font-display font-bold text-white">{formatCurrency(payload[0].value as number)}</p>
+                            <div className="h-0.5 bg-white/20 my-3 rounded-full"></div>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Aggregate Manifest Settlement</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar dataKey="revenue" fill="#6366f1" radius={[12, 12, 0, 0]} barSize={40} />
+               </BarChart>
             </ResponsiveContainer>
-          </div>
-          <div className="flex flex-wrap justify-center gap-4 mt-8">
-             {staffPerformance.filter(s => s.revenue > 0).map((s, i) => (
-               <div key={i} className="flex items-center gap-2">
-                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                 <span className="text-[9px] font-black uppercase text-slate-500">{s.name}</span>
-               </div>
-             ))}
-          </div>
-        </div>
+         </div>
       </div>
     </div>
   );

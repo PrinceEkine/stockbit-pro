@@ -16,7 +16,13 @@ import {
   XCircle,
   Zap,
   Star,
-  Link as LinkIcon
+  Link as LinkIcon,
+  ShieldAlert,
+  Fingerprint,
+  Lock,
+  X,
+  History,
+  Activity
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -52,122 +58,199 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdatePlan, on
   };
 
   const getStatusBadge = (user: User) => {
-    if (user.role === 'admin') return <span className="bg-slate-900 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">System Root</span>;
-    if (user.isSubscribed) return <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase flex items-center gap-1"><CheckCircle2 size={10} /> Professional</span>;
+    if (user.role === 'admin') return (
+      <div className="flex items-center gap-2 text-[10px] font-black text-brand-primary uppercase tracking-widest bg-brand-primary/10 px-3 py-1.5 rounded-lg border border-brand-primary/20">
+         <Fingerprint size={12} className="animate-pulse" /> Root Entity
+      </div>
+    );
+    if (user.isSubscribed) return (
+      <div className="flex items-center gap-2 text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+         <ShieldCheck size={12} /> Pro-Node
+      </div>
+    );
     
     const start = new Date(user.trialStartDate);
     const now = new Date();
     const expiry = new Date(start);
     expiry.setDate(expiry.getDate() + 60);
     
-    if (now > expiry) return <span className="bg-rose-100 text-rose-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase flex items-center gap-1"><XCircle size={10} /> Expired</span>;
-    return <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase flex items-center gap-1"><Clock size={10} /> Trial Mode</span>;
+    if (now > expiry) return (
+      <div className="flex items-center gap-2 text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20">
+         <XCircle size={12} /> Expired Link
+      </div>
+    );
+    return (
+      <div className="flex items-center gap-2 text-[10px] font-black text-amber-500 uppercase tracking-widest bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20">
+         <Clock size={12} /> Trial Matrix
+      </div>
+    );
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            Admin Panel <ShieldCheck className="text-indigo-600" />
-          </h1>
-          <p className="text-slate-500">Manage business accounts and repair orphan user links.</p>
+    <div className="space-y-10 animate-in fade-in duration-700 pb-32">
+       <header className="flex flex-col md:flex-row md:items-end justify-between gap-10 no-print px-4 md:px-0">
+        <div className="space-y-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 text-brand-primary rounded-full border border-brand-primary/20">
+             <Lock size={14} className="animate-pulse" />
+             <span className="text-[10px] font-bold uppercase tracking-widest leading-none">Access Control Bureau</span>
+          </div>
+          <h1 className="text-4xl md:text-7xl font-display font-bold text-slate-900 dark:text-white tracking-tighter leading-tight">Entity Ops</h1>
+          <div className="flex items-center gap-4 text-slate-400">
+             <Users size={16} />
+             <p className="text-[10px] font-bold uppercase tracking-[0.2em] leading-none">{users.length} Managed Identifiers</p>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-[2rem] shadow-neo border border-slate-100 dark:border-slate-800 flex items-center gap-6">
+           <div className="px-6 space-y-1 border-r border-slate-100 dark:border-slate-800">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Global Status</p>
+              <p className="text-xs font-bold text-slate-900 dark:text-white uppercase flex items-center gap-2">
+                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Operational
+              </p>
+           </div>
+           <div className="px-6 space-y-1">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Active Links</p>
+              <p className="text-xs font-bold text-slate-900 dark:text-white uppercase">Sync 100%</p>
+           </div>
         </div>
       </header>
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="p-8 border-b border-slate-50">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search by company or email..." 
-              className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+      <div className="bg-white dark:bg-slate-900 p-8 md:p-12 rounded-[3.5rem] border border-slate-100 dark:border-slate-800 shadow-neo mx-4 md:mx-0 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 blur-3xl rounded-full -mr-16 -mt-16"></div>
+        <div className="relative group">
+          <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-primary transition-all duration-300" size={24} />
+          <input 
+            type="text" 
+            placeholder="Trace business nodes by company, email, or identifier..." 
+            className="w-full pl-16 pr-10 py-6 bg-slate-50 dark:bg-slate-800/50 border-none rounded-3xl text-sm font-bold placeholder:text-slate-400 text-slate-900 dark:text-white outline-none focus:ring-4 focus:ring-brand-primary/10 shadow-inner"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
+      </div>
 
+      <div className="bg-white dark:bg-slate-900 rounded-[4rem] border border-slate-100 dark:border-slate-800 shadow-neo mx-4 md:mx-0 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50/50 text-slate-500 text-[10px] uppercase font-black tracking-widest">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest">
               <tr>
-                <th className="px-8 py-4">Business & Account</th>
-                <th className="px-8 py-4">Status</th>
-                <th className="px-8 py-4">Parent ID</th>
-                <th className="px-8 py-4 text-right">Protocol</th>
+                <th className="px-10 py-8">Business Node & Auth</th>
+                <th className="px-10 py-8">Security Level</th>
+                <th className="px-10 py-8">Parent Matrix</th>
+                <th className="px-10 py-8 text-right">System Control</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-8 py-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-lg shadow-inner">
+                <tr key={user.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-300">
+                  <td className="px-10 py-8">
+                    <div className="flex items-center gap-6">
+                      <div className="w-16 h-16 rounded-[1.5rem] bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white flex items-center justify-center font-display font-bold text-xl shadow-neo group-hover:bg-brand-primary group-hover:text-white transition-all duration-500">
                         {user.companyName.charAt(0)}
                       </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-slate-900 truncate">{user.companyName}</p>
-                        <span className="text-xs text-slate-400 flex items-center gap-1"><Mail size={10} /> {user.email}</span>
+                      <div className="min-w-0 space-y-1">
+                        <p className="text-base font-bold text-slate-900 dark:text-white uppercase tracking-tight leading-none group-hover:text-brand-primary transition-colors">{user.companyName}</p>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-2"><Mail size={12} className="text-slate-200 dark:text-slate-700" /> {user.email}</span>
                       </div>
                     </div>
                   </td>
-                  <td className="px-8 py-6">
+                  <td className="px-10 py-8">
                     {getStatusBadge(user)}
                   </td>
-                  <td className="px-8 py-6">
-                    <span className="text-[10px] font-mono text-slate-400">
-                      {user.parentId || <span className="text-rose-400">ORPHAN</span>}
-                    </span>
+                  <td className="px-10 py-8">
+                    <div className="flex items-center gap-3">
+                       <LinkIcon size={14} className={user.parentId ? 'text-brand-primary' : 'text-slate-200 dark:text-slate-800'} />
+                       <span className={`text-[10px] font-mono font-bold tracking-widest ${user.parentId ? 'text-slate-900 dark:text-white' : 'text-rose-400 italic font-black'}`}>
+                        {user.parentId || 'ORPHAN_NODE'}
+                       </span>
+                    </div>
                   </td>
-                  <td className="px-8 py-6 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                  <td className="px-10 py-8 text-right">
+                    <div className="flex items-center justify-end gap-3">
                       <button 
                         onClick={() => setLinkingId(user.id)}
-                        className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 flex items-center gap-1"
+                        className="p-4 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-brand-primary rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:scale-110 active:scale-95 group/btn"
+                        data-tooltip="Reprogram Parent Matrix"
                       >
-                        <LinkIcon size={14} /> Link Parent
+                        <LinkIcon size={18} className="group-hover/btn:rotate-12 transition-transform" />
                       </button>
                       <button 
                         disabled={updatingId === user.id}
                         onClick={() => onUpdatePlan(user.id, user.isSubscribed ? 'revoke' : 'monthly')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${user.isSubscribed ? 'bg-rose-50 text-rose-600' : 'bg-emerald-600 text-white'}`}
+                        className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center gap-3 ${user.isSubscribed ? 'bg-rose-500 text-white shadow-rose-500/20' : 'bg-emerald-500 text-white shadow-emerald-500/20'}`}
                       >
-                        {user.isSubscribed ? <XCircle size={14} /> : <Zap size={14} />}
-                        {user.isSubscribed ? 'Revoke' : 'Approve'}
+                        {user.isSubscribed ? <ShieldAlert size={16} /> : <Zap size={16} />}
+                        {user.isSubscribed ? 'Revoke Protocol' : 'Approve Node'}
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
+              {filteredUsers.length === 0 && (
+                 <tr>
+                    <td colSpan={4} className="py-24 text-center">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No matching entities found in current spectrum</p>
+                    </td>
+                 </tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
       {linkingId && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl">
-          <div className="bg-white dark:bg-slate-900 rounded-[3rem] w-full max-w-lg p-12 shadow-2xl border border-white/5 animate-in zoom-in-95">
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-4">Link to Parent Business</h3>
-            <p className="text-xs text-slate-400 mb-8 font-bold uppercase tracking-widest leading-relaxed">Assigning a Parent ID will convert this user into a Staff member and grant them access to the Parent's Inventory.</p>
-            <div className="space-y-6">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-2xl animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-[3.5rem] md:rounded-[4.5rem] w-full max-w-2xl relative shadow-neo-lg border border-white/5 animate-in zoom-in-95 duration-500 overflow-hidden">
+            <div className="p-10 md:p-14 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase mb-2 block">Target Business Owner</label>
+                <h3 className="text-3xl md:text-4xl font-display font-bold text-slate-900 dark:text-white tracking-tighter uppercase">Parent Sync</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1">Operational Linking Protocol</p>
+              </div>
+              <button 
+                onClick={() => setLinkingId(null)} 
+                className="w-14 h-14 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 rounded-full flex items-center justify-center transition-all hover:rotate-90"
+              >
+                <X size={28} />
+              </button>
+            </div>
+
+            <div className="p-10 md:p-14 space-y-10">
+              <div className="p-8 bg-brand-primary/5 rounded-[2.5rem] border border-brand-primary/10 flex gap-6">
+                 <div className="w-12 h-12 bg-brand-primary text-white rounded-2xl flex items-center justify-center shrink-0">
+                    <ShieldCheck size={24} />
+                 </div>
+                 <div className="space-y-1">
+                    <p className="text-[10px] font-black text-brand-primary uppercase tracking-widest">Security Advisory</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight opacity-80">Linking a node to a parent matrix converts the entity into a subspace staff member. This action grants shared resource access.</p>
+                 </div>
+              </div>
+
+              <div className="space-y-4">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-3 ml-2">Target Host Node (Parent)</label>
                 <select 
-                  className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 dark:text-white rounded-2xl border-none outline-none font-bold text-sm"
+                  className="w-full px-8 py-6 bg-slate-50 dark:bg-slate-800 dark:text-white rounded-[2rem] border-none outline-none font-bold text-sm focus:ring-4 focus:ring-brand-primary/10 transition-all appearance-none"
                   value={targetParentId}
                   onChange={e => setTargetParentId(e.target.value)}
                 >
-                  <option value="">Select Business...</option>
+                  <option value="">SCANNING ACTIVE HOSTS...</option>
                   {admins.filter(a => a.id !== linkingId).map(a => (
-                    <option key={a.id} value={a.id}>{a.companyName} ({a.name})</option>
+                    <option key={a.id} value={a.id}>{a.companyName} (Auth: {a.name})</option>
                   ))}
                 </select>
               </div>
-              <div className="flex gap-4">
-                <button onClick={() => setLinkingId(null)} className="flex-1 py-4 text-slate-400 font-black uppercase text-[10px]">Abort</button>
-                <button onClick={() => handleLink(linkingId)} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-xl shadow-indigo-600/20">Finalize Link</button>
+
+              <div className="flex flex-col md:flex-row gap-6">
+                <button 
+                   onClick={() => setLinkingId(null)} 
+                   className="px-10 py-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest hover:text-rose-500 transition-colors leading-none"
+                >
+                   Abort Sync
+                </button>
+                <button 
+                   onClick={() => handleLink(linkingId)} 
+                   className="flex-1 py-6 bg-brand-primary text-white font-bold rounded-[2.5rem] shadow-neo-brand transition-all active:scale-95 uppercase text-[11px] tracking-widest translate-y-0 hover:-translate-y-1 shadow-xl shadow-brand-primary/20"
+                >
+                   Finalize Neural Link
+                </button>
               </div>
             </div>
           </div>

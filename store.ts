@@ -4,32 +4,51 @@ import { supabase } from './supabase';
 import { Product, Sale, Supplier, AppState, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod } from './types';
 import { DEFAULT_CATEGORIES } from './constants';
 
-const mapProfile = (dbProfile: any): User => ({
-  id: dbProfile.id,
-  email: dbProfile.email,
-  name: dbProfile.name || '',
-  companyName: dbProfile.company_name || '',
-  role: dbProfile.role || 'user',
-  trialStartDate: dbProfile.trial_start_date || new Date().toISOString(),
-  subscriptionExpiry: dbProfile.subscription_expiry,
-  isSubscribed: dbProfile.is_subscribed || false,
-  isVerified: dbProfile.is_verified || false,
-  parentId: dbProfile.parent_id,
-  plan: dbProfile.plan
-});
+const mapProfile = (dbProfile: any): User => {
+  // For old users without a trial_start_date, we use created_at.
+  // If created_at is also missing, we use a very old date to ensure expiration 
+  // rather than a fresh trial, as per user request for "old users".
+  const fallbackDate = "2023-01-01T00:00:00Z";
+  
+  return {
+    id: dbProfile.id,
+    email: dbProfile.email,
+    name: dbProfile.name || '',
+    companyName: dbProfile.company_name || '',
+    role: dbProfile.role || 'user',
+    trialStartDate: dbProfile.trial_start_date || dbProfile.created_at || fallbackDate,
+    subscriptionExpiry: dbProfile.subscription_expiry,
+    isSubscribed: dbProfile.is_subscribed || false,
+    isVerified: dbProfile.is_verified || false,
+    parentId: dbProfile.parent_id,
+    plan: dbProfile.plan
+  };
+};
 
 export const getTrialStatus = (user: User | null) => {
-  if (!user) return { isSubscribed: false, daysLeft: 0 };
-  if (user.isSubscribed) return { isSubscribed: true, daysLeft: 0 };
+  const expiredResult = { isSubscribed: false, daysLeft: 0, isExpired: true };
+  
+  if (!user) return { isSubscribed: false, daysLeft: 0, isExpired: false };
+  if (user.isSubscribed) return { isSubscribed: true, daysLeft: 0, isExpired: false };
   
   const start = new Date(user.trialStartDate);
   const now = new Date();
-  const trialDays = 60; 
+  
+  if (isNaN(start.getTime())) return expiredResult;
+
+  const trialDays = 30; // Updated to 30 days for stricter trial enforcement
   const diff = now.getTime() - start.getTime();
   const daysUsed = Math.floor(diff / (1000 * 60 * 60 * 24));
+  
+  // CRITICAL: If daysUsed is 60 or more, it's expired.
+  if (daysUsed >= trialDays) return expiredResult;
+
   const daysLeft = Math.max(0, trialDays - daysUsed);
   
-  return { isSubscribed: false, daysLeft };
+  // If daysLeft is 0, it's also expired.
+  if (daysLeft <= 0) return expiredResult;
+  
+  return { isSubscribed: false, daysLeft, isExpired: false };
 };
 
 export const useStore = () => {
@@ -59,22 +78,25 @@ export const useStore = () => {
     marketplaces: { jumia: false, konga: false, whatsapp: false }
   });
   const [error, setError] = useState<string | null>(null);
+  const lastLoadedUser = useRef<string | null>(null);
+  const isDataLoading = useRef(false);
 
   const isLoggedIn = !!currentUser;
 
   const loadData = useCallback(async (userId: string, isStaff: boolean, parentId?: string) => {
-    if (!userId) {
-      setLoading(false);
-      setInitialLoadComplete(true);
-      return;
-    }
+    if (!userId || isDataLoading.current) return;
+    
+    // Prevent redundant loads for the same user
+    if (lastLoadedUser.current === userId) return;
 
+    isDataLoading.current = true;
     setLoading(true);
     const targetUserId = isStaff ? parentId : userId;
     
     if (!targetUserId) {
       setLoading(false);
       setInitialLoadComplete(true);
+      isDataLoading.current = false;
       return;
     }
 
@@ -99,19 +121,21 @@ export const useStore = () => {
         setSettings(prev => ({
           ...prev,
           ...dbConfig,
-          paystackPublicKey: dbConfig.paystackPublicKey || process.env.VITE_PAYSTACK_PUBLIC_KEY || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''
+          paystackPublicKey: dbConfig.paystackPublicKey || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''
         }));
       }
       if (profilesRes.data) setUsers(profilesRes.data.map(mapProfile));
       
+      lastLoadedUser.current = userId;
     } catch (err) {
       console.error("Data load failed", err);
       setError("Failed to load shop data. Please check your connection.");
     } finally {
       setLoading(false);
       setInitialLoadComplete(true);
+      isDataLoading.current = false;
     }
-  }, []);
+  }, []); // Removed initialLoadComplete dependency to avoid loops
 
   useEffect(() => {
     if (!currentUser) return;
@@ -461,6 +485,8 @@ export const useStore = () => {
 
   const addStaffMember = async (staffData: any) => {
     if (!currentUser) return;
+    // Note: In client-side Supabase, signUp logs out the current user.
+    // We recommend using the Invite ID flow instead.
     const { error } = await register({ ...staffData, inviteId: currentUser.id });
     if (error) throw error;
   };
@@ -474,13 +500,24 @@ export const useStore = () => {
 
   const activateSubscription = async (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => {
     if (!currentUser) return;
+    const targetUserId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+    if (!targetUserId) return;
+
     const expiry = new Date();
     if (cycle === 'monthly') expiry.setMonth(expiry.getMonth() + 1);
     else expiry.setFullYear(expiry.getFullYear() + 1);
 
     const updates = { is_subscribed: true, plan, subscription_expiry: expiry.toISOString() };
-    const { error } = await supabase.from('profiles').update(updates).eq('id', currentUser.id);
-    if (!error) setCurrentUser({ ...currentUser, isSubscribed: true, plan, subscriptionExpiry: expiry.toISOString() });
+    const { error } = await supabase.from('profiles').update(updates).eq('id', targetUserId);
+    if (!error) {
+      // If the current user updated their own subscription, reflect it immediately
+      if (currentUser.id === targetUserId) {
+        setCurrentUser({ ...currentUser, isSubscribed: true, plan, subscriptionExpiry: expiry.toISOString() });
+      }
+      // Reload users to update owner status in the users array
+      const { data: updatedProfiles } = await supabase.from('profiles').select('*').or(`id.eq.${targetUserId},parent_id.eq.${targetUserId}`);
+      if (updatedProfiles) setUsers(updatedProfiles.map(mapProfile));
+    }
   };
 
   return {
