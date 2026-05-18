@@ -138,15 +138,15 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-600/30">
+            <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
               <SettingsIcon className="text-white" size={24} />
             </div>
-            <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase">
-              Control <span className="text-indigo-600 italic">Center</span>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+              Settings
             </h1>
           </div>
-          <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px]">
-            Master Configuration & Operational Protocols
+          <p className="text-slate-500 dark:text-slate-400 text-sm font-normal">
+            Manage your business profile, staff, and account preferences.
           </p>
         </div>
         
@@ -629,72 +629,69 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -40 }}
-              className="space-y-20"
+              className="space-y-16"
             >
-               <div className="flex flex-col items-center justify-center text-center space-y-10">
+               <div className="flex flex-col items-center justify-center text-center space-y-8">
                   <div className="space-y-4">
-                    <h2 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">Tier <span className="text-indigo-600">Protocols</span></h2>
-                    <p className="text-[11px] md:text-lg text-slate-500 font-medium uppercase tracking-[0.3em] max-w-2xl">Elevate your operational capacity with industry-leading retail technology.</p>
+                    <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white tracking-tight">Choose Your <span className="text-indigo-600">Plan</span></h2>
+                    <p className="text-base text-slate-500 dark:text-slate-400 font-normal max-w-2xl px-4">Elevate your business with professional inventory management and real-time insights.</p>
                   </div>
 
-                  <div className="bg-white/50 dark:bg-slate-950/50 backdrop-blur-3xl p-2 rounded-[3rem] flex w-full max-w-[450px] border border-slate-200/50 dark:border-white/5 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)]">
+                  <div className="bg-white dark:bg-slate-900 p-1.5 rounded-2xl flex w-full max-w-[340px] border border-slate-200 dark:border-slate-800 shadow-sm mx-auto">
                     <button 
                       onClick={() => setBillingCycle('monthly')} 
-                      className={`flex-1 px-10 py-5 rounded-[2.5rem] text-[12px] font-black uppercase tracking-widest transition-all ${
+                      className={`flex-1 px-6 py-3 rounded-xl text-xs font-bold transition-all ${
                         billingCycle === 'monthly' 
-                          ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-2xl' 
-                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                          ? 'bg-indigo-600 text-white shadow-md' 
+                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                       }`}
                     >
                       Monthly
                     </button>
                     <button 
                       onClick={() => setBillingCycle('annual')} 
-                      className={`flex-1 px-10 py-5 rounded-[2.5rem] text-[12px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 ${
+                      className={`flex-1 px-6 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                         billingCycle === 'annual' 
-                          ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-2xl' 
-                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                          ? 'bg-indigo-600 text-white shadow-md' 
+                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                       }`}
                     >
-                      Annual <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 text-[9px] rounded-full">-15%</span>
+                      Annual <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] rounded-md">-15%</span>
                     </button>
                   </div>
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 pb-32">
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 pb-32">
                   <PlanCard 
-                     title="STOCKBIT BETA" 
+                     title="StockBit Entry" 
                      price={billingCycle === 'monthly' ? "₦5,000" : "₦50,000"}
-                     cycle={billingCycle === 'monthly' ? "/MONTH" : "/YEAR"}
-                     desc="Essential entry protocol for small retail kiosks and starting vendors."
+                     cycle={billingCycle === 'monthly' ? "/mo" : "/yr"}
+                     desc="Perfect for starting vendors and small retail kiosks."
                      active={currentUser?.plan === 'beta'}
-                     features={['3 Team Terminals', 'Cloud-Sync Inventory', 'Complete Sales Log', 'Basic Intelligence']}
+                     features={['3 Team Members', 'Cloud-Sync Inventory', 'Sales Tracking', 'Basic Reporting']}
                      onSelect={() => handlePaystackActivation('beta', billingCycle)}
-                     icon={<Layout size={26} />}
-                     tier="standard"
+                     icon={<Layout size={24} />}
                   />
                   <PlanCard 
-                     title="STOCKBIT MEGA" 
+                     title="StockBit Business" 
                      price={billingCycle === 'monthly' ? "₦7,999" : "₦80,000"}
-                     cycle={billingCycle === 'monthly' ? "/MONTH" : "/YEAR"}
-                     desc="The industry standard for professional growing retail businesses."
+                     cycle={billingCycle === 'monthly' ? "/mo" : "/yr"}
+                     desc="The professional choice for growing retail stores."
                      active={currentUser?.plan === 'mega'}
-                     features={['8 Team Terminals', 'Advanced Analytics Hub', 'Full Marketplace E-Sync', 'Predictive Insights']}
+                     features={['8 Team Members', 'Advanced Analytics', 'Marketplace Sync', 'Inventory Forecasting']}
                      onSelect={() => handlePaystackActivation('mega', billingCycle)}
-                     icon={<Rocket size={26} />}
-                     tier="pro"
+                     icon={<Rocket size={24} />}
                      popular
                   />
                   <PlanCard 
-                     title="MEGA PRO" 
+                     title="StockBit Enterprise" 
                      price={billingCycle === 'monthly' ? "₦12,999" : "₦128,000"}
-                     cycle={billingCycle === 'monthly' ? "/MONTH" : "/YEAR"}
-                     desc="High-performance industrial solution for logistics and multi-terminal chains."
+                     cycle={billingCycle === 'monthly' ? "/mo" : "/yr"}
+                     desc="Scalable solutions for chains and large distribution hubs."
                      active={currentUser?.plan === 'mega_pro'}
-                     features={['Unlimited Terminals', 'Gemini Pro Audit Node', 'Sustainability Impact', 'Priority Operations']}
+                     features={['Unlimited Members', 'Multi-Store Control', 'API Access', 'Priority Support']}
                      onSelect={() => handlePaystackActivation('mega_pro', billingCycle)}
-                     icon={<Star size={26} />}
-                     tier="enterprise"
+                     icon={<Star size={24} />}
                   />
                </div>
             </motion.div>
@@ -734,52 +731,61 @@ const ChannelToggle = ({ label, desc, icon, active, onChange }: any) => (
 );
 
 const PlanCard = ({ title, price, cycle, desc, active, features, onSelect, icon, popular }: any) => (
-  <div className={`relative p-10 md:p-16 rounded-[5rem] flex flex-col justify-between border-2 transition-all duration-700 h-full ${
+  <div className={`relative p-8 md:p-10 rounded-[3rem] flex flex-col transition-all duration-500 h-full border-2 ${
     active 
-      ? 'bg-indigo-600 text-white border-indigo-600 shadow-[0_60px_100px_-20px_rgba(79,70,229,0.5)] scale-105 z-10' 
-      : 'bg-white/80 dark:bg-slate-950/80 backdrop-blur-3xl border-slate-100 dark:border-slate-800/50 hover:border-indigo-500/30 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] hover:translate-y-[-16px]'
+      ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xl shadow-indigo-600/30 scale-[1.02] z-10' 
+      : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-indigo-500/30 shadow-sm'
   }`}>
     {popular && !active && (
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-10 py-3 bg-indigo-600 text-white text-[11px] font-black uppercase tracking-[0.4em] rounded-full shadow-2xl">
-        Elite Selection
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-5 py-2 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-xl whitespace-nowrap z-20">
+        Highly Recommended
       </div>
     )}
     
-    <div>
-      <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center mb-12 shadow-2xl ${
-        active ? 'bg-white/20 text-white' : 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400'
+    <div className="flex-1 flex flex-col">
+      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-8 shadow-sm shrink-0 ${
+        active ? 'bg-white/20 text-white' : 'bg-indigo-50 dark:bg-indigo-400/10 text-indigo-600 dark:text-indigo-400'
       }`}>
          {icon}
       </div>
-      <h3 className="text-3xl font-black uppercase tracking-tighter mb-6">{title}</h3>
-      <div className="flex items-end gap-3 mb-10">
-        <span className="text-5xl font-black tracking-tighter">{price}</span>
-        <span className={`text-[12px] font-black uppercase tracking-[0.2em] mb-3 ${active ? 'text-indigo-200' : 'text-slate-400'}`}>{cycle}</span>
+      
+      <h3 className={`text-2xl md:text-3xl font-black mb-2 tracking-tighter uppercase ${active ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{title}</h3>
+      <div className="flex items-baseline gap-2 mb-6">
+        <span className={`text-4xl md:text-5xl font-black tracking-tighter ${active ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{price}</span>
+        <span className={`text-[10px] md:text-sm font-black uppercase tracking-widest ${active ? 'text-indigo-100/90' : 'text-slate-400 dark:text-slate-500'}`}>{cycle}</span>
       </div>
-      <p className={`text-base font-medium leading-relaxed mb-16 uppercase tracking-[0.05em] h-[80px] ${active ? 'text-indigo-100/70' : 'text-slate-500'}`}>
+      
+      <p className={`text-sm font-medium leading-relaxed mb-10 ${active ? 'text-indigo-100/90' : 'text-slate-600 dark:text-slate-400'}`}>
         {desc}
       </p>
-      <ul className="space-y-8">
-        {features.map((f: string, i: number) => (
-           <li key={i} className="flex items-start gap-5 text-[11px] font-black uppercase tracking-[0.2em] leading-relaxed">
-              <CheckCircle2 size={22} className={`shrink-0 mt-0.5 ${active ? 'text-indigo-200' : 'text-emerald-500'}`} /> {f}
-           </li>
-        ))}
-      </ul>
+      
+      <div className="space-y-6 mb-10">
+        <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${active ? 'text-indigo-200' : 'text-indigo-600 dark:text-indigo-400'}`}>System Capabilities</p>
+        <ul className="space-y-5">
+          {features.map((f: string, i: number) => (
+             <li key={i} className="flex items-start gap-4 text-[12px] md:text-[14px] font-bold leading-snug">
+                <CheckCircle2 size={18} className={`shrink-0 mt-0.5 ${active ? 'text-indigo-200' : 'text-emerald-500 dark:text-emerald-400'}`} /> 
+                <span className={active ? 'text-white' : 'text-slate-700 dark:text-slate-200'}>{f}</span>
+             </li>
+          ))}
+        </ul>
+      </div>
     </div>
     
-    <div className="mt-16">
+    <div className="mt-auto">
       <button 
         onClick={onSelect} 
         disabled={active} 
-        className={`w-full py-8 rounded-[3rem] font-black uppercase text-[12px] tracking-[0.4em] transition-all transform flex items-center justify-center gap-4 ${
-          active ? 'bg-white/20 text-white cursor-default border border-white/30' : 'bg-slate-950 dark:bg-white text-white dark:text-slate-900 shadow-2xl active:scale-95 group'
+        className={`w-full py-5 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
+          active 
+            ? 'bg-white/10 text-white cursor-default border border-white/20' 
+            : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/10 active:scale-[0.98] hover:bg-indigo-700 group'
         }`}
       >
          {active ? (
-           <><ShieldCheck size={24} /> Authenticated</>
+           <><ShieldCheck size={18} /> Protocol Active</>
          ) : (
-           <>Deploy Protocol <ArrowUpRight size={22} className="group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform" /></>
+           <>Choose Protocol <ArrowUpRight size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" /></>
          )}
       </button>
     </div>

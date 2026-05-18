@@ -141,41 +141,32 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
   const formatCurrency = (val: number) => `${settings?.currency || '₦'}${(val || 0).toLocaleString()}`;
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700 pb-32 no-print">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-        <div className="space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 text-brand-primary rounded-full border border-brand-primary/20">
-            <Zap size={14} className="animate-pulse" />
-            <span className="text-[10px] font-bold uppercase tracking-widest leading-none">Intelligence Bureau</span>
-          </div>
-          <h1 className="text-4xl md:text-6xl font-display font-bold tracking-tighter text-slate-900 dark:text-white leading-tight">Operational Insights</h1>
-          <div className="flex items-center gap-4 text-slate-400">
-             <Calendar size={16} />
-             <p className="text-[10px] font-bold uppercase tracking-[0.2em] leading-none">Last Synced: {new Date().toLocaleTimeString()}</p>
-          </div>
+    <div className="space-y-8 animate-in fade-in duration-500 pb-32 no-print max-w-full">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Business Intelligence</h2>
+          <p className="text-sm text-slate-500">Comprehensive overview of sales, revenue, and staff performance.</p>
         </div>
         <button 
           onClick={exportSalesCSV}
-          className="flex items-center justify-center gap-4 px-8 py-5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-neo font-bold text-[11px] uppercase tracking-widest active:scale-95 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 group"
+          className="flex items-center justify-center gap-2 px-6 py-2.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:bg-slate-50 active:scale-95 transition-all font-bold text-sm"
         >
-          <div className="w-8 h-8 bg-brand-primary/10 text-brand-primary rounded-xl flex items-center justify-center group-hover:bg-brand-primary group-hover:text-white transition-all">
-            <Download size={18} />
-          </div>
-          Export Central Ledger
+          <Download size={18} />
+          Export Sales CSV
         </button>
       </header>
 
+      {/* KPI Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
-          <div key={i} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-neo group animate-in slide-in-from-bottom-5" style={{ animationDelay: `${i * 100}ms` }}>
-            <div className="flex items-center justify-between mb-8">
-               <div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-${stat.color}-500/10 text-${stat.color}-500 shadow-inner group-hover:scale-110 group-hover:rotate-12 transition-all duration-500`}>
-                  <stat.icon size={28} />
+          <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-transform hover:translate-y-[-2px]">
+            <div className="flex items-center gap-3 mb-4">
+               <div className={`p-2 rounded-xl bg-${stat.color}-500/10 text-${stat.color}-500`}>
+                  <stat.icon size={20} />
                </div>
-               <ArrowUpRight size={18} className="text-slate-300" />
+               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{stat.label}</p>
             </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 leading-none">{stat.label}</p>
-            <h3 className="text-3xl font-display font-bold tracking-tighter text-slate-900 dark:text-white">
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
                {stat.label.includes('Revenue') || stat.label.includes('Average') ? formatCurrency(stat.value) : stat.value.toLocaleString()}
             </h3>
           </div>
@@ -183,19 +174,18 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <div className="xl:col-span-2 bg-white dark:bg-slate-900 p-10 md:p-14 rounded-[3.5rem] border border-slate-100 dark:border-slate-800 shadow-neo transition-all overflow-hidden relative">
-           <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/5 blur-[100px] rounded-full -mr-32 -mt-32"></div>
-           <div className="flex flex-col md:flex-row items-baseline justify-between gap-8 relative z-10 mb-14">
-              <div className="space-y-1">
-                 <h2 className="text-2xl font-display font-bold tracking-tight text-slate-900 dark:text-white uppercase">Revenue Stream</h2>
-                 <p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.3em]">Value generation timeline</p>
+        <div className="xl:col-span-2 bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+           <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
+              <div>
+                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">Revenue Trend</h2>
+                 <p className="text-xs text-slate-400">Net revenue over selected time period</p>
               </div>
-              <div className="flex bg-slate-50 dark:bg-slate-800 p-1.5 rounded-[1.5rem] border border-slate-100 dark:border-slate-800">
+              <div className="flex bg-slate-50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
                 {(['day', 'week', 'month'] as const).map((period) => (
                   <button
                     key={period}
                     onClick={() => setRevenuePeriod(period)}
-                    className={`px-8 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${revenuePeriod === period ? 'bg-brand-primary text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${revenuePeriod === period ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
                   >
                     {period}
                   </button>
@@ -203,40 +193,37 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
               </div>
            </div>
 
-           <div className="h-[450px] w-full relative z-10">
+           <div className="h-[400px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueTrendData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                <AreaChart data={revenueTrendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                    <linearGradient id="revenueArea" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
                       <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="6 6" vertical={false} stroke={state.settings.theme === 'dark' ? '#1e293b' : '#f1f5f9'} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={state.settings.theme === 'dark' ? '#1e293b' : '#f1f5f9'} />
                   <XAxis 
                     dataKey="name" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 700}} 
-                    dy={15} 
+                    tick={{fontSize: 10, fill: '#94a3b8'}} 
+                    dy={10} 
                   />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 700}}
+                    tick={{fontSize: 10, fill: '#94a3b8'}}
                     tickFormatter={(val) => settings.currency + (val >= 1000 ? (val/1000).toFixed(0)+'K' : val)}
                   />
                   <Tooltip 
-                    cursor={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: '6 6' }}
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
                         return (
-                          <div className="bg-slate-900 dark:bg-black p-6 rounded-[2rem] shadow-2xl border border-white/10 backdrop-blur-3xl animate-in zoom-in-95">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-3">{label}</p>
-                            <div className="space-y-1">
-                               <p className="text-2xl font-display font-bold text-white">{formatCurrency(payload[0].value as number)}</p>
-                               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{payload[0].payload.salesCount} Manifests</p>
-                            </div>
+                          <div className="bg-slate-900 dark:bg-slate-800 p-4 rounded-xl shadow-xl border border-slate-700">
+                            <p className="text-xs font-bold text-slate-500 mb-2">{label}</p>
+                            <p className="text-lg font-bold text-white">{formatCurrency(payload[0].value as number)}</p>
+                            <p className="text-[10px] text-indigo-400 font-bold uppercase mt-1">{payload[0].payload.salesCount} Sales Record</p>
                           </div>
                         );
                       }
@@ -247,38 +234,38 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
                     type="monotone" 
                     dataKey="revenue" 
                     stroke="#6366f1" 
-                    strokeWidth={4} 
+                    strokeWidth={3} 
                     fillOpacity={1} 
-                    fill="url(#revenueGradient)" 
-                    activeDot={{ r: 8, strokeWidth: 4, stroke: state.settings.theme === 'dark' ? '#0f172a' : '#ffffff', fill: '#6366f1' }} 
+                    fill="url(#revenueArea)" 
+                    activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }} 
                   />
                 </AreaChart>
               </ResponsiveContainer>
            </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-10 md:p-14 rounded-[3.5rem] border border-slate-100 dark:border-slate-800 shadow-neo flex flex-col relative overflow-hidden">
-           <div className="space-y-1 mb-14">
-              <h2 className="text-2xl font-display font-bold tracking-tight text-slate-900 dark:text-white uppercase">Personnel Yield</h2>
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.3em]">Value contribution by operator</p>
+        <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+           <div className="mb-8">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Staff Revenue Share</h2>
+              <p className="text-xs text-slate-400">Performance distribution by operator</p>
            </div>
            
-           <div className="flex-1 w-full min-h-[300px]">
+           <div className="flex-1 min-h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={staffPerformance.filter(s => s.revenue > 0)}
+                    data={staffPerformance.filter(s => s.revenue > 0).slice(0, 5)}
                     innerRadius="65%"
                     outerRadius="90%"
-                    paddingAngle={10}
+                    paddingAngle={5}
                     dataKey="revenue"
                     stroke="none"
                     animationBegin={0}
-                    animationDuration={1500}
-                    cornerRadius={12}
+                    animationDuration={1000}
+                    cornerRadius={8}
                   >
                     {staffPerformance.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="outline-none" />
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip 
@@ -286,10 +273,9 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
                        if (active && payload && payload.length) {
                          const data = payload[0].payload;
                          return (
-                           <div className="bg-slate-900 p-5 rounded-[2rem] shadow-2xl border border-white/10 backdrop-blur-xl">
-                             <p className="text-[10px] font-bold uppercase text-indigo-400 mb-2">{data.name}</p>
-                             <p className="text-xl font-display font-bold text-white">{formatCurrency(data.revenue)}</p>
-                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{data.revenuePercent.toFixed(1)}% Yield Share</p>
+                           <div className="bg-slate-900 p-3 rounded-xl border border-slate-700 shadow-xl">
+                             <p className="text-xs font-bold text-white mb-1">{data.name}</p>
+                             <p className="text-sm font-bold text-indigo-400">{formatCurrency(data.revenue)}</p>
                            </div>
                          );
                        }
@@ -300,24 +286,21 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
               </ResponsiveContainer>
            </div>
            
-           <div className="mt-14 space-y-6">
+           <div className="mt-8 space-y-4">
               {staffPerformance.filter(s => s.revenue > 0).slice(0, 4).map((staff, i) => (
-                <div key={i} className="flex items-center justify-between p-5 bg-slate-50/50 dark:bg-slate-800/40 rounded-3xl border border-slate-100 dark:border-white/5 group hover:bg-white dark:hover:bg-slate-800 transition-all shadow-sm">
-                   <div className="flex items-center gap-5">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs text-white shadow-lg shadow-inner" style={{ backgroundColor: COLORS[i % COLORS.length] }}>
+                <div key={i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
+                   <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[10px] text-white" style={{ backgroundColor: COLORS[i % COLORS.length] }}>
                          {staff.name.charAt(0)}
                       </div>
                       <div>
-                         <p className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">{staff.name}</p>
-                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{staff.total} Manifests</p>
+                         <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[100px]">{staff.name}</p>
+                         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{staff.total} Sales</p>
                       </div>
                    </div>
                    <div className="text-right">
-                      <p className="text-[13px] font-display font-bold text-brand-primary">{formatCurrency(staff.revenue)}</p>
-                      <div className="flex items-center gap-1 justify-end text-emerald-500">
-                         <TrendingUp size={10} />
-                         <span className="text-[8px] font-bold uppercase">{staff.revenuePercent.toFixed(0)}%</span>
-                      </div>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">{formatCurrency(staff.revenue)}</p>
+                      <p className="text-[10px] text-emerald-500 font-bold">{staff.revenuePercent.toFixed(0)}% Share</p>
                    </div>
                 </div>
               ))}
@@ -325,33 +308,32 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 p-10 md:p-14 rounded-[3.5rem] border border-slate-100 dark:border-slate-800 shadow-neo">
-         <div className="flex flex-col md:flex-row items-baseline justify-between mb-14 gap-6">
-            <div className="space-y-1">
-               <h2 className="text-2xl font-display font-bold tracking-tight text-slate-900 dark:text-white uppercase">Personnel Efficiency Bureau</h2>
-               <p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.3em]">Comparative metrics analysis</p>
+      <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+         <div className="flex items-center justify-between mb-8">
+            <div>
+               <h2 className="text-lg font-bold text-slate-900 dark:text-white">Performance Overview</h2>
+               <p className="text-xs text-slate-400">Total revenue generated by each staff member</p>
             </div>
-            <div className="flex items-center gap-3 bg-brand-primary/10 text-brand-primary px-5 py-2 rounded-full border border-brand-primary/20">
-               <Users size={16} />
-               <span className="text-[10px] font-bold uppercase tracking-widest">{users.length} Active Nodes</span>
+            <div className="p-2 bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 rounded-xl text-xs font-bold">
+               {users.length} Active Staff Members
             </div>
          </div>
 
          <div className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-               <BarChart data={staffPerformance} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="6 6" vertical={false} stroke={state.settings.theme === 'dark' ? '#1e293b' : '#f1f5f9'} />
+               <BarChart data={staffPerformance} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={state.settings.theme === 'dark' ? '#1e293b' : '#f1f5f9'} />
                   <XAxis 
                     dataKey="name" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 700}} 
-                    dy={15} 
+                    tick={{fontSize: 10, fill: '#94a3b8'}} 
+                    dy={10} 
                   />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{fontSize: 10, fill: '#94a3b8', fontWeight: 700}}
+                    tick={{fontSize: 10, fill: '#94a3b8'}}
                     tickFormatter={(val) => settings.currency + (val >= 1000 ? (val/1000).toFixed(0)+'K' : val)}
                   />
                   <Tooltip 
@@ -359,18 +341,17 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
                         return (
-                          <div className="bg-slate-900 dark:bg-black p-5 rounded-[2rem] shadow-2xl border border-white/10 backdrop-blur-3xl">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-2">{label}</p>
-                            <p className="text-xl font-display font-bold text-white">{formatCurrency(payload[0].value as number)}</p>
-                            <div className="h-0.5 bg-white/20 my-3 rounded-full"></div>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Aggregate Manifest Settlement</p>
+                          <div className="bg-slate-900 dark:bg-slate-800 p-4 rounded-xl shadow-xl border border-slate-700">
+                             <p className="text-xs font-bold text-slate-500 mb-1">{label}</p>
+                             <p className="text-lg font-bold text-white">{formatCurrency(payload[0].value as number)}</p>
+                             <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">Total Contribution</p>
                           </div>
                         );
                       }
                       return null;
                     }}
                   />
-                  <Bar dataKey="revenue" fill="#6366f1" radius={[12, 12, 0, 0]} barSize={40} />
+                  <Bar dataKey="revenue" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={40} />
                </BarChart>
             </ResponsiveContainer>
          </div>

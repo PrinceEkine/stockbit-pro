@@ -117,12 +117,33 @@ export const useStore = () => {
       if (retRes.data) setReturns(retRes.data);
       if (noteRes.data) setNotifications(noteRes.data);
       if (settingsRes.data) {
-        const dbConfig = settingsRes.data.config || {};
-        setSettings(prev => ({
-          ...prev,
-          ...dbConfig,
-          paystackPublicKey: dbConfig.paystackPublicKey || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''
-        }));
+        const dbData = settingsRes.data;
+        setSettings(prev => {
+          const merged = {
+            ...prev,
+            companyName: dbData.company_name || prev.companyName,
+            currency: dbData.currency || prev.currency,
+            categories: dbData.categories || prev.categories,
+            lowStockEmailAlerts: dbData.low_stock_email_alerts ?? prev.lowStockEmailAlerts,
+            notificationEmail: dbData.notification_email || prev.notificationEmail,
+            // Fallback for fields that might not be in their specific table yet
+            language: dbData.language || prev.language,
+            theme: dbData.theme || prev.theme,
+            taxRate: dbData.tax_rate ?? prev.taxRate
+          };
+          localStorage.setItem('stockbit_settings_v1', JSON.stringify(merged));
+          return merged;
+        });
+      } else {
+        const local = localStorage.getItem('stockbit_settings_v1');
+        if (local) {
+          try {
+            const parsed = JSON.parse(local);
+            setSettings(prev => ({ ...prev, ...parsed }));
+          } catch(e) {
+            console.error("Local settings parse failed", e);
+          }
+        }
       }
       if (profilesRes.data) setUsers(profilesRes.data.map(mapProfile));
       
@@ -354,14 +375,25 @@ export const useStore = () => {
     setSettings(prev => {
       const newSettings = { ...prev, ...updates };
       
+      // Local fallback for immediate persistence and offline use
+      localStorage.setItem('stockbit_settings_v1', JSON.stringify(newSettings));
+      
       if (currentUser) {
         const targetId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
         if (targetId) {
+          // Sync to the user's specific schema seen in screenshots
+          // We only sync columns that are confirmed to exist to avoid PGRST errors
           supabase.from('settings').upsert({ 
-            user_id: targetId, 
-            config: newSettings 
+            user_id: targetId,
+            company_name: newSettings.companyName,
+            currency: newSettings.currency,
+            categories: newSettings.categories,
+            low_stock_email_alerts: newSettings.lowStockEmailAlerts,
+            notification_email: newSettings.notificationEmail
           }).then(({ error }) => {
-            if (error) console.error("Settings sync error:", error);
+            if (error) {
+              console.warn("Settings sync skipped (checking schema compatibility):", error.message);
+            }
           });
         }
       }

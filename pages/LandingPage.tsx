@@ -25,6 +25,7 @@ import {
   TrendingUp,
   Languages,
   ChevronDown,
+  Layout,
   LogIn
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
@@ -145,15 +146,15 @@ const LandingPage: React.FC<LandingPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-300 overflow-x-hidden flex flex-col">
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-300 overflow-x-hidden flex flex-col">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-[100] bg-white/90 backdrop-blur-2xl border-b border-slate-100 pt-[env(safe-area-inset-top)] box-content h-16 md:h-20">
+      <nav className="fixed top-0 w-full z-[100] bg-white/90 dark:bg-slate-950/90 backdrop-blur-2xl border-b border-slate-100 dark:border-slate-800 pt-[env(safe-area-inset-top)] box-content h-16 md:h-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <Box size={22} className="text-white" />
             </div>
-            <span className="font-black text-sm md:text-xl tracking-tighter uppercase text-slate-900 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>StockBit Pro</span>
+            <span className="font-bold text-sm md:text-xl tracking-tight text-slate-900 dark:text-white cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>StockBit Pro</span>
           </div>
           
           <div className="hidden lg:flex items-center gap-10">
@@ -166,7 +167,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
             <div className="relative" ref={langRef}>
               <button 
                 onClick={() => setIsLangOpen(!isLangOpen)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 transition-all shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm"
               >
                 <Languages size={14} className="text-indigo-600" />
                 <span className="hidden xs:inline">{language}</span>
@@ -174,12 +175,12 @@ const LandingPage: React.FC<LandingPageProps> = ({
               </button>
               
               {isLangOpen && (
-                <div className="absolute top-full right-0 mt-2 w-40 bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.20)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2 z-[110]">
+                <div className="absolute top-full right-0 mt-2 w-40 bg-white dark:bg-slate-900 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.20)] border border-slate-100 dark:border-slate-800 overflow-hidden animate-in fade-in slide-in-from-top-2 z-[110]">
                   {(['en', 'yo', 'ha', 'ig'] as AppLanguage[]).map((lang) => (
                     <button
                       key={lang}
                       onClick={() => { onLanguageChange(lang); setIsLangOpen(false); }}
-                      className={`w-full px-4 py-3.5 text-left text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-colors ${language === lang ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-500'}`}
+                      className={`w-full px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors ${language === lang ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-500 dark:text-slate-400'}`}
                     >
                       {TRANSLATIONS[language][`lang_${lang}`] || lang}
                     </button>
@@ -191,22 +192,22 @@ const LandingPage: React.FC<LandingPageProps> = ({
             {!isAppInstalled && (
               <button 
                 onClick={onInstall}
-                className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all border border-indigo-100"
+                className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl text-[10px] font-bold uppercase tracking-wider active:scale-95 transition-all border border-indigo-100 dark:border-indigo-900/30"
               >
                 <DownloadCloud size={14} /> {t.get_app}
               </button>
             )}
             
             {isLoggedIn ? (
-              <button onClick={onEnterTerminal} className="px-4 md:px-5 py-2.5 bg-[#4f46e5] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center gap-2">
-                <Terminal size={14} /> <span className="hidden xs:inline">{t.dashboard}</span>
+              <button onClick={onEnterTerminal} className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider shadow-lg shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-2">
+                <Layout size={14} /> <span className="hidden xs:inline">{t.dashboard}</span>
               </button>
             ) : (
               <div className="flex items-center gap-1">
-                <button onClick={() => onAuth('login')} className="px-3 md:px-5 py-2.5 text-slate-500 hover:text-indigo-600 font-black uppercase text-[10px] tracking-widest transition-all">
+                <button onClick={() => onAuth('login')} className="px-4 py-2.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 font-bold uppercase text-[10px] tracking-wider transition-all">
                   {t.login}
                 </button>
-                <button onClick={() => onAuth('register')} className="px-5 md:px-6 py-2.5 bg-[#4f46e5] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+                <button onClick={() => onAuth('register')} className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">
                   {t.start}
                 </button>
               </div>
@@ -219,32 +220,32 @@ const LandingPage: React.FC<LandingPageProps> = ({
       <section className="relative pt-28 md:pt-48 pb-20 px-4 sm:px-8 min-h-[90vh] flex items-center overflow-hidden">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center relative z-10 w-full">
           <div className="space-y-8 md:space-y-12 text-left w-full">
-            <div className="inline-flex items-center gap-3 px-5 py-2 bg-indigo-50/50 rounded-full border border-indigo-100">
-              <Sparkles size={14} className="text-indigo-600" />
-              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">{t.smart_biz}</span>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-full border border-indigo-100 dark:border-indigo-900/30">
+              <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" />
+              <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{t.smart_biz}</span>
             </div>
             
             <div className="space-y-4 w-full">
-              <h1 className="text-[clamp(2.5rem,10vw,4rem)] md:text-[clamp(3.5rem,7vw,5.5rem)] font-black tracking-tight leading-[1.1] uppercase text-slate-900 drop-shadow-sm text-balance">
+              <h1 className="text-[clamp(2.2rem,8vw,3.5rem)] md:text-[clamp(3rem,6vw,5rem)] font-bold tracking-tight leading-[1.1] text-slate-900 dark:text-white text-balance">
                 {t.hero_title_1} <span className="text-indigo-600">{t.hero_title_2}</span>
               </h1>
             </div>
             
-            <p className="max-w-xl text-base md:text-lg text-slate-600 font-medium leading-relaxed">
+            <p className="max-w-xl text-base md:text-lg text-slate-500 dark:text-slate-400 font-normal leading-relaxed">
               {t.hero_subtitle}
             </p>
 
-            <div className="pt-4 pr-2 space-y-4">
+            <div className="pt-4 pr-2 space-y-4" >
               <div className="flex flex-col sm:flex-row gap-4">
                 <button 
                   onClick={isLoggedIn ? onEnterTerminal : () => onAuth('register')}
-                  className="w-full md:w-auto px-10 md:px-16 py-5 md:py-6 bg-[#4f46e5] text-white rounded-[1.5rem] md:rounded-[2rem] font-black uppercase text-[11px] md:text-[12px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4"
+                  className="w-full md:w-auto px-10 md:px-12 py-4 md:py-5 bg-indigo-600 text-white rounded-2xl font-bold uppercase text-[11px] md:text-[12px] tracking-wider shadow-xl shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-3"
                 >
-                  {t.hero_cta} <ArrowRight size={20} />
+                  {t.hero_cta} <ArrowRight size={18} />
                 </button>
                 <button 
                   onClick={() => scrollToSection(architectureRef)}
-                  className="w-full md:w-auto px-10 md:px-16 py-5 md:py-6 bg-slate-100 text-slate-900 rounded-[1.5rem] md:rounded-[2rem] font-black uppercase text-[11px] md:text-[12px] tracking-[0.2em] active:scale-95 transition-all flex items-center justify-center gap-4 border border-slate-200"
+                  className="w-full md:w-auto px-10 md:px-12 py-4 md:py-5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-2xl font-bold uppercase text-[11px] md:text-[12px] tracking-wider active:scale-95 transition-all flex items-center justify-center gap-3 border border-slate-200 dark:border-slate-800"
                 >
                   {t.see_how}
                 </button>
@@ -254,9 +255,9 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 {!isAppInstalled && (
                   <button 
                     onClick={onInstall}
-                    className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-white text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 border-indigo-100 hover:bg-indigo-50 transition-all shadow-sm group"
+                    className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-white dark:bg-slate-900 text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 border-indigo-100 dark:border-indigo-900/30 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-all shadow-sm group"
                   >
-                    <div className="p-1 bg-indigo-100 rounded-lg group-hover:scale-110 transition-transform">
+                    <div className="p-1 bg-indigo-100 dark:bg-indigo-900 rounded-lg group-hover:scale-110 transition-transform">
                       <DownloadCloud size={18} />
                     </div>
                     {t.install_app}
@@ -273,24 +274,24 @@ const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             </div>
 
-            <div className="flex flex-col xs:flex-row items-start xs:items-center gap-6 md:gap-8 pt-10 border-t border-slate-100">
+            <div className="flex flex-col xs:flex-row items-start xs:items-center gap-6 md:gap-8 pt-10 border-t border-slate-100 dark:border-slate-800">
               <div className="flex -space-x-3 shrink-0">
                 {[1,2,3,4].map(i => (
-                  <div key={i} className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-100 border-4 border-white flex items-center justify-center overflow-hidden shadow-sm">
+                  <div key={i} className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-100 dark:bg-slate-800 border-4 border-white dark:border-slate-950 flex items-center justify-center overflow-hidden shadow-sm">
                     <img src={`https://i.pravatar.cc/150?u=stockbit_user_${i}`} alt="User" />
                   </div>
                 ))}
               </div>
               <div className="flex flex-col min-w-0">
-                <p className="text-[13px] font-black uppercase text-slate-900 leading-none mb-1">PROUDLY NIGERIAN</p>
-                <p className="text-[9px] md:text-[10px] font-bold uppercase text-slate-500 tracking-widest truncate">TRUSTED BY 500+ SHOP OWNERS ACROSS NIGERIA</p>
+                <p className="text-[13px] font-black uppercase text-slate-900 dark:text-white leading-none mb-1">PROUDLY NIGERIAN</p>
+                <p className="text-[9px] md:text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest truncate">TRUSTED BY 500+ SHOP OWNERS ACROSS NIGERIA</p>
               </div>
             </div>
           </div>
 
           <div className="relative group hidden lg:block pr-8">
             <div className="absolute inset-0 bg-indigo-600/5 rounded-[5rem] rotate-3 scale-105 group-hover:rotate-6 transition-transform duration-1000"></div>
-            <div className="relative bg-white rounded-[5rem] p-5 border border-slate-100 shadow-2xl overflow-hidden aspect-[4/3]">
+            <div className="relative bg-white dark:bg-slate-900 rounded-[5rem] p-5 border border-slate-100 dark:border-slate-800 shadow-2xl overflow-hidden aspect-[4/3]">
               <img 
                 src="https://images.unsplash.com/photo-1556742044-3c52d6e88c62?auto=format&fit=crop&q=80&w=1200" 
                 alt="StockBit Shop Dashboard" 
@@ -298,14 +299,14 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 loading="eager"
               />
               <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/20 to-transparent"></div>
-              <div className="absolute bottom-10 left-10 p-6 bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-2xl animate-bounce-slow">
+              <div className="absolute bottom-10 left-10 p-6 bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-[2rem] shadow-2xl animate-bounce-slow">
                  <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white">
                        <TrendingUp size={24} />
                     </div>
                     <div>
                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">{t.total_money}</p>
-                       <p className="text-xl font-black text-slate-900">₦245,800.00</p>
+                       <p className="text-xl font-black text-slate-900 dark:text-white">₦245,800.00</p>
                     </div>
                  </div>
               </div>
@@ -315,15 +316,15 @@ const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* Visual Benefits Section */}
-      <section ref={architectureRef} className="py-24 md:py-32 px-6 bg-slate-50">
+      <section ref={architectureRef} className="py-24 md:py-32 px-6 bg-slate-50 dark:bg-slate-900/50">
         <div className="max-w-7xl mx-auto space-y-24">
           <div className="text-center space-y-4 max-w-3xl mx-auto">
-            <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">{t.professional_grade}</h2>
-            <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-none">{t.everything_needs}</h3>
-            <p className="text-base md:text-lg text-slate-500 font-medium">{t.simple_powerful}</p>
+            <h2 className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.4em]">{t.professional_grade}</h2>
+            <h3 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">{t.everything_needs}</h3>
+            <p className="text-base md:text-lg text-slate-500 dark:text-slate-400 font-medium">{t.simple_powerful}</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
             <FeatureImageCard 
               image="https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&q=80&w=800"
               title={t.sales}
@@ -347,15 +348,15 @@ const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* Trust Section - Nigerian Market Focus */}
-      <section className="py-24 md:py-32 px-6 bg-white overflow-hidden">
+      <section className="py-24 md:py-32 px-6 bg-white dark:bg-slate-950 overflow-hidden">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
           <div className="space-y-12">
             <div className="space-y-6">
-              <h2 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em]">{t.built_for_nigeria}</h2>
-              <h3 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter leading-[0.95]">
+              <h2 className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.4em]">{t.built_for_nigeria}</h2>
+              <h3 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-[0.95]">
                 {t.manage_anywhere}
               </h3>
-              <p className="text-lg text-slate-600 font-medium leading-relaxed">
+              <p className="text-lg text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
                 {t.nigeria_desc}
               </p>
             </div>
@@ -383,39 +384,39 @@ const LandingPage: React.FC<LandingPageProps> = ({
               />
             </div>
 
-            <button onClick={() => onAuth('register')} className="inline-flex items-center gap-4 text-[12px] font-black uppercase tracking-[0.3em] text-indigo-600 hover:text-indigo-800 transition-all py-4 group">
+            <button onClick={() => onAuth('register')} className="inline-flex items-center gap-4 text-[12px] font-black uppercase tracking-[0.3em] text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 transition-all py-4 group">
               START YOUR 60-DAY TRIAL <ArrowRight size={18} className="transition-transform group-hover:translate-x-2" />
             </button>
           </div>
 
           <div className="relative group">
-            <div className="bg-slate-100 rounded-[5rem] overflow-hidden aspect-[4/5] shadow-2xl relative">
+            <div className="bg-slate-100 dark:bg-slate-900 rounded-[5rem] overflow-hidden aspect-[4/5] shadow-2xl relative">
               <img 
                 src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=1000" 
                 alt="Nigerian Retail Excellence" 
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3s]"
               />
               <div className="absolute inset-0 bg-indigo-900/20"></div>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] bg-white p-8 rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.15)] space-y-6">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] bg-white dark:bg-slate-800 p-8 rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.15)] space-y-6">
                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Inventory Status</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Inventory Status</span>
                     <Activity size={18} className="text-indigo-600 animate-pulse" />
                  </div>
                  <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                       <span className="text-sm font-black text-slate-900 uppercase">INDOMIE NOODLES</span>
-                       <span className="text-sm font-black text-emerald-600">120 PKTS</span>
+                       <span className="text-sm font-black text-slate-900 dark:text-white uppercase">INDOMIE NOODLES</span>
+                       <span className="text-sm font-black text-emerald-600 uppercase">120 PKTS</span>
                     </div>
-                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
                        <div className="h-full bg-emerald-500 w-[80%]"></div>
                     </div>
                  </div>
                  <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                       <span className="text-sm font-black text-slate-900 uppercase">DANEO MILK 400G</span>
-                       <span className="text-sm font-black text-rose-500">4 UNITS LEFT</span>
+                       <span className="text-sm font-black text-slate-900 dark:text-white uppercase">DANEO MILK 400G</span>
+                       <span className="text-sm font-black text-rose-500 uppercase">4 UNITS LEFT</span>
                     </div>
-                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
                        <div className="h-full bg-rose-500 w-[15%]"></div>
                     </div>
                  </div>
@@ -446,21 +447,21 @@ const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-            <Database className="w-full h-full scale-150 rotate-12" />
+            <Database className="w-full h-full scale-150 rotate-12 text-white" />
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-24 px-6 bg-white border-t border-slate-100">
+      <footer className="py-24 px-6 bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 lg:gap-24">
           <div className="space-y-10">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30">
                 <Box size={22} className="text-white" />
               </div>
-              <span className="font-black text-xl tracking-tighter uppercase">StockBit Pro</span>
+              <span className="font-black text-xl tracking-tighter uppercase dark:text-white">StockBit Pro</span>
             </div>
-            <p className="text-[11px] text-slate-500 font-bold leading-relaxed uppercase tracking-widest">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed uppercase tracking-widest">
               The professional operating system for the modern Nigerian retailer.
             </p>
             <div className="flex items-center gap-5">
@@ -480,11 +481,11 @@ const LandingPage: React.FC<LandingPageProps> = ({
             { label: t.about_us, onClick: () => onNavigateInfo(View.AboutUs) },
             { label: t.help_center, onClick: () => onNavigateInfo(View.HelpCenter) },
             { label: 'Terms & Privacy', onClick: () => onNavigateInfo(View.TermsOfService) },
-            { label: 'Launch Protocol', onClick: onEnterTerminal },
+            { label: 'Dashboard', onClick: onEnterTerminal },
           ]} />
 
           <div className="space-y-10">
-            <h4 className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-900">DIRECT SUPPORT</h4>
+            <h4 className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-900 dark:text-white">DIRECT SUPPORT</h4>
             <div className="space-y-6">
               <ContactLink icon={<Phone size={16} />} label="24/7 Helpline" value="07010698264" onClick={() => window.open('tel:07010698264')} />
               <ContactLink icon={<MessageCircle size={16} />} label="WhatsApp Concierge" value="07072127949" onClick={() => window.open('https://wa.me/2347072127949')} />
@@ -492,8 +493,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
         
-        <div className="max-w-7xl mx-auto pt-20 mt-20 border-t border-slate-100 text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400">© 2025 STOCKBIT TECHNOLOGIES NIGERIA. ALL RIGHTS RESERVED.</p>
+        <div className="max-w-7xl mx-auto pt-20 mt-20 border-t border-slate-100 dark:border-slate-800 text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400 dark:text-slate-600">© 2025 STOCKBIT TECHNOLOGIES NIGERIA. ALL RIGHTS RESERVED.</p>
         </div>
       </footer>
 
@@ -512,7 +513,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
             <div className="p-6 md:p-10 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-4 md:gap-5">
                 <div className="w-10 h-10 md:w-14 md:h-14 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl">
-                  <Cpu size={22} className="md:w-7 md:h-7" />
+                  <Sparkles size={22} className="md:w-7 md:h-7" />
                 </div>
                 <div>
                   <h3 className="text-sm md:text-base font-black uppercase tracking-widest leading-none">STOCKBOT AI</h3>
@@ -578,46 +579,46 @@ const NavOption = ({ label, onClick }: any) => (
 );
 
 const FeatureImageCard = ({ image, title, desc, icon }: any) => (
-  <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group overflow-hidden">
+  <div className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group overflow-hidden">
      <div className="h-48 overflow-hidden relative">
         <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
         <div className="absolute inset-0 bg-indigo-600/10"></div>
-        <div className="absolute bottom-4 left-4 p-3 bg-white/90 backdrop-blur-md rounded-xl text-indigo-600 shadow-xl">
+        <div className="absolute bottom-4 left-4 p-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-xl text-indigo-600 dark:text-indigo-400 shadow-xl">
            {icon}
         </div>
      </div>
      <div className="p-10 space-y-3">
-        <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter">{title}</h4>
-        <p className="text-[12px] text-slate-500 font-medium leading-relaxed">{desc}</p>
+        <h4 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">{title}</h4>
+        <p className="text-[12px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{desc}</p>
      </div>
   </div>
 );
 
 const BenefitItem = ({ title, desc, icon }: any) => (
   <div className="flex items-start gap-4 group">
-    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+    <div className="w-10 h-10 bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
       {icon}
     </div>
     <div>
-      <h5 className="text-[12px] font-black uppercase text-slate-900 tracking-tight">{title}</h5>
-      <p className="text-[10px] text-slate-500 font-bold leading-relaxed">{desc}</p>
+      <h5 className="text-[12px] font-black uppercase text-slate-900 dark:text-white tracking-tight">{title}</h5>
+      <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed">{desc}</p>
     </div>
   </div>
 );
 
 const SocialIcon = ({ icon, onClick }: any) => (
-  <button onClick={onClick} className="w-11 h-11 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-slate-900 text-slate-500 hover:text-white hover:bg-indigo-600 transition-all flex items-center justify-center border border-white/5 active:scale-90 shadow-md">
+  <button onClick={onClick} className="w-11 h-11 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-slate-900 dark:bg-indigo-950 text-slate-500 hover:text-white hover:bg-indigo-600 transition-all flex items-center justify-center border border-white/5 dark:border-white/10 active:scale-90 shadow-md">
     {icon}
   </button>
 );
 
 const FooterSection = ({ title, links }: any) => (
   <div className="space-y-8 md:space-y-10">
-    <h4 className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-900">{title}</h4>
+    <h4 className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-900 dark:text-white">{title}</h4>
     <ul className="space-y-4 md:space-y-5">
       {links.map((l: any, i: number) => (
         <li key={i}>
-          <button onClick={l.onClick} className="text-[11px] md:text-[12px] text-slate-500 hover:text-indigo-600 font-bold transition-all uppercase tracking-widest text-left whitespace-nowrap">{l.label}</button>
+          <button onClick={l.onClick} className="text-[11px] md:text-[12px] text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold transition-all uppercase tracking-widest text-left whitespace-nowrap">{l.label}</button>
         </li>
       ))}
     </ul>
@@ -626,12 +627,12 @@ const FooterSection = ({ title, links }: any) => (
 
 const ContactLink = ({ icon, label, value, onClick }: any) => (
   <div className="flex items-center gap-4 md:gap-5 group cursor-pointer" onClick={onClick}>
-    <div className="w-10 h-10 md:w-11 md:h-11 bg-slate-100 text-indigo-600 rounded-lg md:rounded-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all shrink-0 shadow-sm">
+    <div className="w-10 h-10 md:w-11 md:h-11 bg-slate-100 dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 rounded-lg md:rounded-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all shrink-0 shadow-sm">
       {icon}
     </div>
     <div className="min-w-0">
-      <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">{label}</p>
-      <p className="text-[12px] md:text-[13px] font-black text-slate-900 truncate tracking-tight">{value}</p>
+      <p className="text-[8px] md:text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1.5">{label}</p>
+      <p className="text-[12px] md:text-[13px] font-black text-slate-900 dark:text-white truncate tracking-tight">{value}</p>
     </div>
   </div>
 );

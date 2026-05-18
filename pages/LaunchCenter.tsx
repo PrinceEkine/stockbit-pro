@@ -18,7 +18,8 @@ import {
   ExternalLink,
   Wifi,
   Cloud,
-  AlertTriangle
+  AlertTriangle,
+  Lock
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { AppState } from '../types';
@@ -48,24 +49,33 @@ const LaunchCenter: React.FC<LaunchCenterProps> = ({ state, onUpdateSettings }) 
     try {
       const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
       if (!apiKey) throw new Error("API key not found. Please check your environment variables.");
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ 
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+      
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: "Respond with: 'SYSTEM_ONLINE'",
       });
       
-      if (response.text?.includes('SYSTEM_ONLINE')) {
+      const text = response.text;
+      if (text?.includes('SYSTEM_ONLINE')) {
         setTestResult({
           status: 'success',
-          message: "Gemini API Link Active. Your Free Tier key is correctly configured and authenticated."
+          message: "Gemini API Connection successful. Your API key is correctly configured and authenticated."
         });
       } else {
-        throw new Error("Unexpected response from AI node.");
+        throw new Error("Unexpected response from AI service.");
       }
     } catch (err: any) {
       setTestResult({
         status: 'error',
-        message: err.message || "Connection failed. Please ensure your API key is correctly entered in the browser dialog."
+        message: err.message || "Connection failed. Please ensure your API key is correctly entered in the settings."
       });
     } finally {
       setIsTesting(false);
@@ -92,40 +102,48 @@ VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...`;
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700 pb-20 max-w-6xl mx-auto">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-4">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20 max-w-full">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Launch Center</h1>
-          <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1 flex items-center gap-2">
-            <Rocket size={14} className="text-indigo-600" /> Infrastructure & Deployment Control
-          </p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Setup & Deployment</h2>
+          <p className="text-sm text-slate-500">Configure your cloud infrastructure and validate API connectivity.</p>
         </div>
-        <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800">
-          <button onClick={() => setActiveTab('deploy')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'deploy' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Cloud Deployment</button>
-          <button onClick={() => setActiveTab('connectivity')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'connectivity' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-400'}`}>API Health</button>
+        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+          <button 
+            onClick={() => setActiveTab('deploy')} 
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'deploy' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+          >
+            Infrastructure
+          </button>
+          <button 
+            onClick={() => setActiveTab('connectivity')} 
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'connectivity' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+          >
+            API Health
+          </button>
         </div>
       </header>
 
       {activeTab === 'connectivity' && (
-        <div className="space-y-8 px-4 animate-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
-              <div className="w-16 h-16 bg-indigo-600 text-white rounded-[1.5rem] flex items-center justify-center shadow-xl shadow-indigo-600/30">
-                <Cpu size={32} />
+            <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+              <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 rounded-xl flex items-center justify-center">
+                <Cpu size={24} />
               </div>
-              <div className="space-y-4">
-                <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">AI Connectivity Check</h2>
-                <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                  Validate your Google AI Studio key. This test uses the <strong>Gemini 3 Flash</strong> model which supports the **Free Tier** for inventory insights and scanning.
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">AI Diagnostics</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Verify your Gemini API integration. This check ensures the intelligent inventory modules can communicate with Google's services.
                 </p>
               </div>
 
               {testResult && (
-                <div className={`p-6 rounded-[1.5rem] border-2 flex items-start gap-4 animate-in fade-in zoom-in-95 ${testResult.status === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-800 dark:bg-emerald-900/10 dark:border-emerald-900' : 'bg-rose-50 border-rose-100 text-rose-800 dark:bg-rose-900/10 dark:border-rose-900'}`}>
-                  {testResult.status === 'success' ? <CheckCircle2 className="shrink-0" /> : <AlertTriangle className="shrink-0" />}
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest mb-1">{testResult.status === 'success' ? 'Link Secured' : 'Link Failed'}</p>
-                    <p className="text-xs font-bold leading-relaxed">{testResult.message}</p>
+                <div className={`p-4 rounded-xl border flex items-start gap-3 ${testResult.status === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-800 dark:bg-emerald-900/5 dark:border-emerald-800 dark:text-emerald-400' : 'bg-rose-50 border-rose-100 text-rose-800 dark:bg-rose-900/5 dark:border-rose-800 dark:text-rose-400'}`}>
+                  {testResult.status === 'success' ? <CheckCircle2 size={18} className="shrink-0 mt-0.5" /> : <AlertTriangle size={18} className="shrink-0 mt-0.5" />}
+                  <div className="text-sm">
+                    <p className="font-bold">{testResult.status === 'success' ? 'Connection Verified' : 'Connection Failed'}</p>
+                    <p className="opacity-80">{testResult.message}</p>
                   </div>
                 </div>
               )}
@@ -133,26 +151,26 @@ VITE_SUPABASE_ANON_KEY=...`;
               <button 
                 onClick={testConnectivity}
                 disabled={isTesting}
-                className="w-full py-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4 disabled:opacity-50"
+                className="w-full py-3 bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
               >
-                {isTesting ? <RefreshCw size={20} className="animate-spin" /> : <Wifi size={20} />}
-                {isTesting ? 'PINGING AI NODE...' : 'RUN CONNECTIVITY TEST'}
+                {isTesting ? <RefreshCw size={18} className="animate-spin" /> : <Wifi size={18} />}
+                {isTesting ? 'Testing Link...' : 'Run Connectivity Check'}
               </button>
             </div>
 
-            <div className="bg-slate-900 rounded-[3rem] p-10 flex flex-col justify-between relative overflow-hidden shadow-2xl">
+            <div className="bg-slate-900 rounded-2xl p-8 flex flex-col justify-between relative overflow-hidden">
               <div className="space-y-6 relative z-10">
-                <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
-                  <ShieldCheck className="text-indigo-400" /> Key Security Protocol
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Lock className="text-indigo-400" size={20} /> Security Architecture
                 </h3>
-                <div className="space-y-4">
-                  <SecurityFeature label="End-to-End Encryption" desc="Keys never leave your browser memory." />
-                  <SecurityFeature label="Local Execution" desc="AI requests are made directly from your device." />
-                  <SecurityFeature label="No Data Retention" desc="StockBit Pro does not store your API keys." />
+                <div className="space-y-6">
+                  <SecurityFeature label="Local Key Storage" desc="Secrets are managed via environment variables and never persisted in our database." />
+                  <SecurityFeature label="Proxied Requests" desc="Communication with external APIs is encrypted and follows secure protocols." />
+                  <SecurityFeature label="Privacy First" desc="Your business data remains your own. Minimal telemetry is used for health checks." />
                 </div>
               </div>
-              <div className="absolute -bottom-20 -right-20 text-white/5">
-                <ShieldCheck size={300} />
+              <div className="absolute -bottom-12 -right-12 text-white/5 pointer-events-none">
+                <ShieldCheck size={200} />
               </div>
             </div>
           </div>
@@ -160,20 +178,20 @@ VITE_SUPABASE_ANON_KEY=...`;
       )}
 
       {activeTab === 'deploy' && (
-        <div className="space-y-8 px-4 animate-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30">
-                  <Globe size={24} />
+            <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 rounded-lg">
+                  <Globe size={20} />
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Netlify Cloud (Primary)</h2>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Hosting Guidelines</h3>
               </div>
               
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-[2rem] relative group">
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl relative group">
                 <div className="flex justify-between items-center mb-4">
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">NETLIFY CLI WORKFLOW</p>
-                  <button onClick={() => handleCopy(netlifyCmd, 'netlify')} className="text-indigo-600">
+                  <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Netlify CLI Workflow</p>
+                  <button onClick={() => handleCopy(netlifyCmd, 'netlify')} className="text-indigo-600 hover:text-indigo-700 transition-colors">
                     {copyFeedback === 'netlify' ? <CheckCircle2 size={16} /> : <Copy size={16} />}
                   </button>
                 </div>
@@ -182,10 +200,10 @@ VITE_SUPABASE_ANON_KEY=...`;
                 </pre>
               </div>
 
-              <div className="p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-start gap-4">
-                <Info size={20} className="text-indigo-600 shrink-0 mt-1" />
-                <p className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200 leading-relaxed uppercase">
-                  Netlify is the verified deployment standard for StockBit Pro. It supports our SPA routing doctrine and global CDN requirements.
+              <div className="p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-xl border border-indigo-100 dark:border-indigo-800 flex items-start gap-3">
+                <Info size={18} className="text-indigo-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-indigo-900 dark:text-indigo-300 leading-relaxed font-medium">
+                  We recommend Netlify for static hosting due to its excellent support for SPA routing and global distribution.
                 </p>
               </div>
               
@@ -193,24 +211,24 @@ VITE_SUPABASE_ANON_KEY=...`;
                 href="https://app.netlify.com/start" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all"
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
               >
-                Go to Netlify App <ExternalLink size={14} />
+                Go to Netlify Dashboard <ExternalLink size={16} />
               </a>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm space-y-8">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl flex items-center justify-center shadow-lg">
-                  <Server size={24} />
+            <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-slate-900 dark:bg-slate-800 text-white rounded-lg">
+                  <Server size={20} />
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Environment Configuration</h2>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Environment Variables</h3>
               </div>
               
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-[2rem] relative group">
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl relative group">
                 <div className="flex justify-between items-center mb-4">
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">REQUIRED SECRET KEYS</p>
-                  <button onClick={() => handleCopy(envVariables, 'env')} className="text-indigo-600">
+                  <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Required Config</p>
+                  <button onClick={() => handleCopy(envVariables, 'env')} className="text-indigo-600 hover:text-indigo-700 transition-colors">
                     {copyFeedback === 'env' ? <CheckCircle2 size={16} /> : <Copy size={16} />}
                   </button>
                 </div>
@@ -219,19 +237,19 @@ VITE_SUPABASE_ANON_KEY=...`;
                 </pre>
               </div>
 
-              <div className="space-y-4 pt-2">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 size={18} className="text-emerald-500" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300">Automatic PWA caching</span>
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={16} className="text-emerald-500" />
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Continuous Integration Ready</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 size={18} className="text-emerald-500" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300">Continuous Integration</span>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={16} className="text-emerald-500" />
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">PWA Manifest Optimized</span>
                 </div>
               </div>
               
-              <div className="p-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                 <p className="text-[9px] font-black uppercase text-slate-400 text-center leading-relaxed">Ensure you add these in your Netlify Site Settings &gt; Build &amp; Deploy &gt; Environment Variables.</p>
+              <div className="p-3 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900">
+                 <p className="text-[10px] font-medium text-slate-400 text-center leading-relaxed">Add these to your provider's Build & Deploy settings manually.</p>
               </div>
             </div>
           </div>
@@ -242,13 +260,13 @@ VITE_SUPABASE_ANON_KEY=...`;
 };
 
 const SecurityFeature = ({ label, desc }: any) => (
-  <div className="flex items-start gap-4">
-    <div className="mt-1">
-      <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+  <div className="flex items-start gap-3">
+    <div className="mt-1.5">
+      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
     </div>
     <div>
-      <p className="text-[10px] font-black uppercase text-white tracking-widest leading-none mb-1">{label}</p>
-      <p className="text-[10px] text-slate-500 font-bold uppercase">{desc}</p>
+      <p className="text-xs font-bold text-white mb-0.5">{label}</p>
+      <p className="text-[11px] text-slate-400 leading-normal">{desc}</p>
     </div>
   </div>
 );

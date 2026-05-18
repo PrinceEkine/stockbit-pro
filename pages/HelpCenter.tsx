@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   HelpCircle, 
@@ -13,120 +14,121 @@ import {
   Zap,
   CreditCard,
   ShieldCheck,
-  Box
+  Box,
+  ChevronRight
 } from 'lucide-react';
 
 const HelpCenter: React.FC = () => {
   return (
-    <div className="space-y-12 animate-in fade-in duration-700 max-w-5xl mx-auto">
-      <div className="space-y-6 text-center md:text-left">
-        <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase dark:text-white">Help & Simple Fixes</h1>
-        <p className="text-lg md:text-xl text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-2xl">
-          Easy answers to help you run your shop without any stress.
+    <div className="space-y-12 animate-in fade-in duration-500 max-w-full pb-20">
+      <div className="space-y-4 text-left">
+        <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Help Center</h2>
+        <p className="text-lg text-slate-500 dark:text-slate-400 font-normal leading-relaxed max-w-2xl">
+          Resources and support to help you manage your business efficiently.
         </p>
       </div>
 
       {/* QUICK SOLUTIONS SECTION */}
       <section className="space-y-8">
-        <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
-           <Zap className="text-amber-500" size={24} />
-           <h2 className="text-xl font-black uppercase tracking-tight dark:text-white">Quick Fixes</h2>
+        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
+           <Zap className="text-amber-500" size={20} />
+           <h3 className="text-lg font-bold text-slate-900 dark:text-white">Quick Troubleshooting</h3>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FixCard 
-            icon={<RefreshCw size={24} />}
-            title="App is hanging or slow?"
-            fix="Simply click the 'Start Over' button on the loading screen or refresh your browser page. This fixes 90% of connection problems."
-            color="bg-blue-50 text-blue-600"
+            icon={<RefreshCw size={20} />}
+            title="App Performance Issues"
+            fix="If the applications feels slow, try refreshing your browser or clearing your cache. Most connectivity issues are resolved with a simple reload."
+            color="bg-blue-50 text-blue-600 dark:bg-blue-900/10 dark:text-blue-400"
           />
           <FixCard 
-            icon={<Camera size={24} />}
-            title="Camera won't scan?"
-            fix="Check your phone settings to make sure you 'Allowed' the app to use your camera. Also, wipe your camera lens to make it clear."
-            color="bg-purple-50 text-purple-600"
+            icon={<Camera size={20} />}
+            title="Smarter Scanning"
+            fix="Ensure browser permissions are granted for camera access. For best results, use the stock scan module in well-lit environments."
+            color="bg-purple-50 text-purple-600 dark:bg-purple-900/10 dark:text-purple-400"
           />
           <FixCard 
-            icon={<Wifi size={24} />}
-            title="Stock is not updating?"
-            fix="Wait a few seconds for the green 'Sync' light. If your internet is very slow, turn your data off and on again to reconnect."
-            color="bg-emerald-50 text-emerald-600"
+            icon={<Wifi size={20} />}
+            title="Data Synchronization"
+            fix="Wait for the sync indicator to confirm updates. If working offline, your changes will be pushed once your connection is restored."
+            color="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/10 dark:text-emerald-400"
           />
           <FixCard 
-            icon={<Key size={24} />}
-            title="Staff can't sign in?"
-            fix="Make sure you gave them the correct 'Invite ID' from your settings. They must use that ID when they create their staff account."
-            color="bg-rose-50 text-rose-600"
+            icon={<Key size={20} />}
+            title="Credential Access"
+            fix="Verify staff 'Invite IDs' in the Team Management dashboard. Each staff member requires a valid ID for specialized account creation."
+            color="bg-rose-50 text-rose-600 dark:bg-rose-900/10 dark:text-rose-400"
           />
         </div>
       </section>
 
       {/* DETAILED GUIDES */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <HelpItem 
-          title="Setting up your Shop" 
-          desc="Learn how to add your business name, logo, and staff members correctly." 
-          icon={<Box size={24} />} 
+          title="Business Configuration" 
+          desc="Setup your business profile, upload branding assets, and configure locale settings." 
+          icon={<Box size={20} />} 
         />
         <HelpItem 
-          title="Sales & Receipts" 
-          desc="How to record a sale and print the receipt for your customers." 
-          icon={<Smartphone size={24} />} 
+          title="Sales Intelligence" 
+          desc="Understand how to record transactions and generate professional invoices." 
+          icon={<Smartphone size={20} />} 
         />
         <HelpItem 
-          title="Managing Subscriptions" 
-          desc="How to pay for your plan using Paystack or Bank Transfer." 
-          icon={<CreditCard size={24} />} 
+          title="Billing & Plans" 
+          desc="Manage your subscription tier and view upcoming renewal schedules." 
+          icon={<CreditCard size={20} />} 
         />
         <HelpItem 
-          title="Security & Privacy" 
-          desc="How we keep your shop records safe from other people." 
-          icon={<ShieldCheck size={24} />} 
+          title="Data Stewardship" 
+          desc="Learn about our encryption protocols and how we protect your commercial data." 
+          icon={<ShieldCheck size={20} />} 
         />
       </div>
 
       {/* DIRECT CONTACT */}
-      <div className="bg-indigo-600 dark:bg-indigo-900/40 p-8 md:p-12 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
-           <div className="space-y-4 text-center md:text-left">
-              <h2 className="text-3xl font-black uppercase tracking-tighter">Still Need Help?</h2>
-              <p className="text-indigo-100/80 text-sm font-medium max-w-sm">Our team is online from 8am to 6pm daily. Chat with us on WhatsApp for a fast response.</p>
+      <div className="bg-slate-900 dark:bg-slate-800 p-8 md:p-10 rounded-2xl text-white shadow-xl relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+           <div className="space-y-2 text-center md:text-left">
+              <h3 className="text-2xl font-bold">Still need assistance?</h3>
+              <p className="text-slate-400 text-sm font-normal max-w-sm">Our support engineers are available daily to resolve technical queries.</p>
            </div>
            <div className="flex flex-wrap justify-center gap-4">
-              <a href="tel:07010698264" className="flex items-center gap-3 px-8 py-5 bg-white text-indigo-600 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 transition-all">
-                <Phone size={18}/> Call Support
+              <a href="tel:07010698264" className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-xl font-bold text-xs hover:bg-slate-100 transition-all">
+                <Phone size={16}/> Voice Support
               </a>
-              <a href="https://wa.me/2347072127949" className="flex items-center gap-3 px-8 py-5 bg-emerald-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 transition-all">
-                <MessageCircle size={18}/> Chat WhatsApp
+              <a href="https://wa.me/2347072127949" className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold text-xs hover:bg-emerald-600 transition-all">
+                <MessageCircle size={16}/> WhatsApp Chat
               </a>
            </div>
         </div>
-        <HelpCircle className="absolute -bottom-10 -right-10 text-white/5 w-64 h-64" />
       </div>
     </div>
   );
 };
 
 const FixCard = ({ icon, title, fix, color }: any) => (
-  <div className="p-8 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex gap-6">
-    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${color}`}>
+  <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-transform hover:scale-[1.01]">
+    <div className={`w-10 h-10 ${color} rounded-lg flex items-center justify-center mb-4`}>
       {icon}
     </div>
-    <div className="space-y-2">
-      <h3 className="text-sm font-black uppercase tracking-tight dark:text-white">{title}</h3>
-      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{fix}</p>
-    </div>
+    <h4 className="text-md font-bold text-slate-900 dark:text-white mb-2">{title}</h4>
+    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-normal">{fix}</p>
   </div>
 );
 
 const HelpItem = ({ title, desc, icon }: any) => (
-  <div className="p-8 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm group hover:border-indigo-500/30 transition-all cursor-pointer">
-    <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all mb-6">
-      {icon}
+  <button className="flex items-center justify-between p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all text-left">
+    <div className="flex items-center gap-4">
+      <div className="text-indigo-600 dark:text-indigo-400">{icon}</div>
+      <div>
+        <p className="text-sm font-bold text-slate-900 dark:text-white">{title}</p>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">{desc}</p>
+      </div>
     </div>
-    <h3 className="text-lg font-black uppercase tracking-tighter mb-2 dark:text-white">{title}</h3>
-    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{desc}</p>
-  </div>
+    <ChevronRight size={16} className="text-slate-300" />
+  </button>
 );
 
 export default HelpCenter;

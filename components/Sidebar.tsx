@@ -103,26 +103,23 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <Box size={24} className="text-white" />
               </div>
               <div className="flex flex-col">
-                <span className="font-black text-white text-xl tracking-tighter uppercase leading-none">StockBit Pro</span>
+                <span className="font-bold text-white text-xl tracking-tight">StockBit Pro</span>
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="lg:hidden text-slate-400 p-2 hover:bg-slate-800 rounded-xl transition-colors">
+            <button onClick={() => setIsOpen(false)} className="lg:hidden text-slate-400 p-2 hover:bg-slate-800 rounded-lg transition-colors">
               <X size={20} />
             </button>
           </div>
-          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em] leading-relaxed">
-            EASY SHOP & STOCK MANAGEMENT
-          </p>
         </div>
 
-        <nav className="flex-1 px-4 space-y-8 overflow-y-auto scrollbar-hide py-4">
+        <nav className="flex-1 px-4 space-y-6 overflow-y-auto scrollbar-hide py-2">
           {sections.map((section, sIdx) => {
             const visibleItems = section.items.filter(i => !i.hidden);
             if (visibleItems.length === 0 || section.hidden) return null;
 
             return (
               <div key={sIdx} className="space-y-1">
-                <h3 className="px-5 text-[9px] font-black text-slate-600 uppercase tracking-[0.3em] mb-3">
+                <h3 className="px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
                   {section.label}
                 </h3>
                 {visibleItems.map((item) => (
@@ -132,27 +129,23 @@ const Sidebar: React.FC<SidebarProps> = ({
                       onViewChange(item.id);
                       if (window.innerWidth < 1024) setIsOpen(false);
                     }} 
-                    className={`w-full group flex items-center justify-between px-5 py-3 rounded-2xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 ${
+                    className={`w-full group flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                       activeView === item.id 
-                      ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20' 
-                      : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800'
+                      ? 'bg-indigo-600 text-white shadow-md' 
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className={`p-1.5 rounded-lg transition-all duration-300 ${activeView === item.id ? 'bg-white/10 scale-110' : ''}`}>
-                        <item.icon 
-                          size={18} 
-                          className={`transition-colors duration-300 ${
-                            activeView === item.id ? 'text-white' : 'text-slate-600 group-hover:text-indigo-400'
-                          }`} 
-                        />
-                      </div>
-                      <span className="transition-all duration-300">
-                        {item.label}
-                      </span>
+                    <div className="flex items-center gap-3">
+                      <item.icon 
+                        size={18} 
+                        className={`transition-colors ${
+                          activeView === item.id ? 'text-white' : 'text-slate-500 group-hover:text-indigo-400'
+                        }`} 
+                      />
+                      <span>{item.label}</span>
                     </div>
                     {activeView === item.id && (
-                      <ChevronRight size={14} className="animate-in fade-in slide-in-from-left-2" />
+                      <ChevronRight size={14} />
                     )}
                   </button>
                 ))}
@@ -161,35 +154,35 @@ const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        <div className="shrink-0 p-6 bg-slate-900/50 backdrop-blur-md border-t border-slate-800/60 space-y-4">
+        <div className="shrink-0 p-4 border-t border-slate-800 space-y-4">
           {!isAppInstalled && (
             <button 
               onClick={onInstall} 
-              className="w-full flex items-center gap-3 px-5 py-4 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-2xl transition-all duration-300 text-[10px] font-black uppercase tracking-[0.2em]"
+              className="w-full flex items-center gap-3 px-4 py-3 bg-slate-800 text-slate-300 hover:bg-indigo-600 hover:text-white rounded-xl transition-all text-sm font-medium"
             >
-              <DownloadCloud size={16} /> Get the App
+              <DownloadCloud size={16} /> Install App
             </button>
           )}
           
-          <div className="flex flex-col gap-4 p-4 bg-slate-800/40 rounded-2xl border border-slate-700/30">
+          <div className="flex flex-col gap-3 p-3 bg-slate-800/50 rounded-xl">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black text-sm uppercase">
+              <div className="w-10 h-10 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold text-sm">
                 {user?.name?.charAt(0)}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-white truncate uppercase tracking-tighter">
+                <p className="text-sm font-semibold text-white truncate">
                   {user?.name}
                 </p>
-                <p className="text-[8px] text-slate-500 truncate uppercase font-bold tracking-[0.2em]">
-                  {user?.role === 'admin' ? 'Shop Admin' : user?.role === 'staff' ? 'Shop Staff' : 'Shop Owner'}
+                <p className="text-xs text-slate-500 truncate">
+                  {user?.role === 'admin' ? 'Administrator' : user?.role === 'staff' ? 'Staff' : 'Owner'}
                 </p>
               </div>
             </div>
             <button 
               onClick={onLogout} 
-              className="w-full py-4 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all duration-300 text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 mt-2"
+              className="w-full py-2.5 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg transition-all text-xs font-semibold flex items-center justify-center gap-2"
             >
-              <LogOut size={16} /> Sign Out Terminal
+              <LogOut size={14} /> Logout
             </button>
           </div>
         </div>

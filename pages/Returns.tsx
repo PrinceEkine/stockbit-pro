@@ -66,139 +66,108 @@ const Returns: React.FC<ReturnsProps> = ({ returns, products, onRecordReturn, se
     setFormData({ productId: '', quantity: 1, reason: '', refunded: true, location: 'Main Branch' });
   };
 
-  const inputClasses = "w-full px-8 py-5 bg-slate-100 dark:bg-slate-900/50 border-2 border-transparent focus:border-rose-500/50 rounded-[2rem] font-bold text-sm dark:text-white outline-none transition-all shadow-inner";
+  const inputClasses = "w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 font-medium text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500/20 outline-none transition-all";
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-1000 max-w-7xl mx-auto px-4 md:px-8 pb-32">
+    <div className="space-y-6 animate-in fade-in duration-500 max-w-full px-4 md:px-0 pb-32">
       {/* Header Section */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-             <div className="w-14 h-14 bg-rose-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-rose-500/30">
-               <RotateCcw className="text-white" size={28} />
-             </div>
-             <div>
-               <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">Reverse <span className="text-rose-500 italic">Logistics</span></h1>
-               <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-2">Inbound Inventory Management Protocol</p>
-             </div>
-          </div>
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Returns & Recovery</h2>
+          <p className="text-sm text-slate-500">Record and track product returns, refunds, and restocks.</p>
         </div>
         
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center gap-4 px-10 py-6 bg-rose-500 text-white rounded-[2.5rem] shadow-2xl shadow-rose-500/30 active:scale-95 transition-all font-black text-[11px] uppercase tracking-[0.3em] group"
+          className="flex items-center justify-center gap-2 px-6 py-2.5 bg-rose-500 text-white rounded-xl shadow-sm hover:bg-rose-600 active:scale-95 transition-all font-bold text-sm"
         >
-          <Plus size={22} className="group-hover:rotate-90 transition-transform" /> Register Return
+          <Plus size={18} /> Record New Return
         </button>
       </header>
 
-      {/* Search & Stats Bento */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-8 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-slate-200/50 dark:border-slate-800 p-8 md:p-10 rounded-[3.5rem] shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 blur-[100px] rounded-full -mr-32 -mt-32"></div>
-          <div className="relative space-y-8">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-[0.3em] flex items-center gap-3">
-                Trace Transmission <Search size={16} className="text-rose-500" />
-              </h2>
-              <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-500/10 px-3 py-1 rounded-full">Monitoring Active</span>
-            </div>
-            <div className="relative group">
-              <Search className="absolute left-7 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-rose-500 transition-all duration-300" size={24} />
-              <input 
-                type="text" 
-                placeholder="Trace inbound units by name or transaction ID..." 
-                className="w-full pl-18 pr-10 py-7 bg-slate-100/50 dark:bg-slate-950/50 border-2 border-transparent focus:border-rose-500/50 rounded-[2.5rem] text-sm font-bold placeholder:text-slate-400 text-slate-900 dark:text-white outline-none shadow-inner transition-all" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+      {/* Search & Stats Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="relative group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input 
+              type="text" 
+              placeholder="Search returns by product name or sale ID..." 
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm placeholder:text-slate-400 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </div>
 
-        <div className="lg:col-span-4 bg-slate-900 rounded-[3.5rem] p-10 text-white relative overflow-hidden shadow-2xl flex flex-col justify-between group">
-           <div className="relative z-10">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10">
-                  <Box size={24} className="text-rose-400" />
-                </div>
-                <div>
-                   <h3 className="text-xl font-black uppercase tracking-tight">Recovery</h3>
-                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Post-Sale Adjustment</p>
-                </div>
+        <div className="lg:col-span-4 bg-slate-900 rounded-2xl p-6 text-white shadow-lg flex flex-col justify-between">
+           <div>
+              <div className="flex items-center gap-3 mb-4">
+                <RotateCcw size={20} className="text-rose-400" />
+                <h3 className="text-lg font-bold">Inbound Returns</h3>
               </div>
-              <p className="text-4xl font-black tracking-tighter mb-2">{returns.length < 10 ? `0${returns.length}` : returns.length}</p>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Inbound Incidents logged</p>
+              <p className="text-3xl font-bold mb-1">{returns.length}</p>
+              <p className="text-xs text-slate-400">Total recovery incidents recorded</p>
            </div>
            
-           <div className="relative z-10 pt-8 border-t border-slate-800">
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase text-emerald-400">
+           <div className="pt-4 mt-4 border-t border-slate-800">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-emerald-400 tracking-wider">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Network Healthy
+                System Active
               </div>
-           </div>
-           
-           <div className="absolute -bottom-10 -right-10 opacity-[0.05] group-hover:rotate-12 transition-transform duration-[4000ms]">
-              <RotateCcw size={300} />
            </div>
         </div>
       </div>
 
       {/* Returns Table Section */}
-      <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl rounded-[4rem] border border-slate-200/50 dark:border-slate-800 shadow-2xl overflow-hidden relative group">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/[0.02] rounded-full -mr-32 -mt-32"></div>
-        
-        <div className="overflow-x-auto scrollbar-hide">
-          <table className="w-full text-left border-collapse min-w-[1000px]">
-            <thead className="bg-slate-50/50 dark:bg-slate-950/50 text-slate-400 dark:text-slate-500 text-[11px] uppercase font-black tracking-[0.2em]">
-              <tr>
-                <th className="px-12 py-10">Vulnerability Report</th>
-                <th className="px-12 py-10 text-center">Inbound Qty</th>
-                <th className="px-12 py-10 text-center">Resolution Protocol</th>
-                <th className="px-12 py-10 text-right">Timestamp / Origin</th>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[800px]">
+            <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-xs uppercase font-bold tracking-wider">
+              <tr className="border-b border-slate-200 dark:border-slate-700">
+                <th className="px-6 py-4">Product Details</th>
+                <th className="px-6 py-4 text-center">Quantity</th>
+                <th className="px-6 py-4 text-center">Resolution</th>
+                <th className="px-6 py-4 text-right">Date / Location</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               <AnimatePresence mode="popLayout">
-                {filteredReturns.map((r, index) => (
+                {filteredReturns.map((r) => (
                   <motion.tr 
                     layout
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     key={r.id} 
-                    className="group/row hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-300"
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
                   >
-                    <td className="px-12 py-10">
-                      <div className="space-y-3">
-                        <p className="text-xl font-black text-slate-900 dark:text-white group-hover/row:text-rose-600 transition-colors uppercase tracking-tight leading-none">{r.product_name}</p>
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-rose-500/5 text-rose-500 rounded-full text-[10px] font-black uppercase tracking-widest border border-rose-500/10">
-                           <BadgeAlert size={12} /> {r.reason}
-                        </div>
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white uppercase truncate max-w-[200px]">{r.product_name}</p>
+                        <p className="text-xs text-rose-500 mt-1 flex items-center gap-1.5">
+                          <AlertCircle size={12} /> {r.reason}
+                        </p>
                       </div>
                     </td>
-                    <td className="px-12 py-10 text-center">
-                       <span className="text-4xl font-black text-rose-500/30 group-hover/row:text-rose-500 tracking-tighter tabular-nums transition-colors">{r.quantity < 10 ? `0${r.quantity}` : r.quantity}</span>
+                    <td className="px-6 py-4 text-center">
+                       <span className="text-2xl font-bold text-slate-300 tabular-nums">{r.quantity}</span>
                     </td>
-                    <td className="px-12 py-10 text-center">
-                      <span className={`inline-flex items-center gap-3 px-6 py-3 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest shadow-sm transition-all ${r.refunded ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-slate-100 dark:bg-slate-950 text-slate-400 border border-slate-200 dark:border-slate-800'}`}>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${r.refunded ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border border-emerald-100 dark:border-emerald-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700'}`}>
                         {r.refunded ? (
-                          <>
-                            <CreditCard size={14} /> Liquidity Refunded
-                          </>
+                          <><CreditCard size={12} /> Refunded</>
                         ) : (
-                          <>
-                            <Box size={14} /> Unit Credited
-                          </>
+                          <><Box size={12} /> Restocked</>
                         )}
                       </span>
                     </td>
-                    <td className="px-12 py-10 text-right">
-                      <div className="space-y-2">
-                         <p className="text-[12px] text-slate-900 dark:text-white font-black uppercase tracking-[0.2em] leading-none">{new Date(r.date).toLocaleDateString()}</p>
-                         <div className="flex items-center justify-end gap-2 text-[10px] text-slate-400 font-black uppercase tracking-widest opacity-60">
-                            <MapPin size={12} className="text-rose-500" /> {r.location}
-                         </div>
+                    <td className="px-6 py-4 text-right">
+                      <div className="space-y-1">
+                         <p className="text-xs font-bold text-slate-900 dark:text-white">{new Date(r.date).toLocaleDateString()}</p>
+                         <p className="text-[10px] text-slate-400 flex items-center justify-end gap-1">
+                            <MapPin size={10} /> {r.location}
+                         </p>
                       </div>
                     </td>
                   </motion.tr>
@@ -207,15 +176,10 @@ const Returns: React.FC<ReturnsProps> = ({ returns, products, onRecordReturn, se
 
               {filteredReturns.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-40 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-8">
-                      <div className="w-24 h-24 bg-slate-50 dark:bg-slate-950 rounded-[2.5rem] flex items-center justify-center border border-slate-200 dark:border-slate-800 shadow-2xl">
-                         <ShieldCheck size={40} className="text-emerald-500" />
-                      </div>
-                      <div className="space-y-2">
-                         <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Zero Incidents</h2>
-                         <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em]">Inbound recovery spectrum is currently dormant</p>
-                      </div>
+                  <td colSpan={4} className="py-20 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                       <CheckCircle2 size={48} className="text-emerald-200 mb-4" />
+                       <p className="text-slate-500 font-medium">No return incidents recorded in this view</p>
                     </div>
                   </td>
                 </tr>
@@ -228,57 +192,41 @@ const Returns: React.FC<ReturnsProps> = ({ returns, products, onRecordReturn, se
       {/* Modal Section */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-12">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm no-print">
             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-slate-950/90 backdrop-blur-3xl" 
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 40 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 40 }}
-              className="bg-white dark:bg-slate-900 rounded-[5rem] w-full max-w-2xl relative shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden border border-white/5"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800"
             >
-              <div className="p-12 md:p-16 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <div>
-                  <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">Incident <span className="text-rose-500 italic">Flow</span></h3>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3">Link Inventory Recovery Node</p>
-                </div>
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Record Return</h3>
                 <button 
                   onClick={() => setIsModalOpen(false)} 
-                  className="w-16 h-16 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 rounded-full flex items-center justify-center transition-all hover:rotate-90 shadow-inner group"
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
                 >
-                  <X size={28} className="group-hover:scale-110 transition-transform" />
+                  <X size={24} />
                 </button>
               </div>
               
-              <form onSubmit={handleSubmit} className="p-12 md:p-16 space-y-12">
-                <div className="space-y-8">
-                  <div className="space-y-4">
-                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] ml-6 flex items-center gap-2">
-                       <PackageCheck size={14} className="text-rose-500" /> Affected Component
-                    </label>
-                    <div className="relative group">
-                      <Box className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-rose-500 transition-colors" size={24} />
-                      <select 
-                        required 
-                        className={`${inputClasses} pl-20 appearance-none cursor-pointer`}
-                        value={formData.productId} 
-                        onChange={e => setFormData({...formData, productId: e.target.value})}
-                      >
-                         <option value="">SCAN ENTITY MATRIX...</option>
-                         {products.map(p => <option key={p.id} value={p.id}>{p.name} — SRN: {p.sku}</option>)}
-                      </select>
-                      <ChevronRight size={20} className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" />
-                    </div>
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Select Product</label>
+                    <select 
+                      required 
+                      className={inputClasses}
+                      value={formData.productId} 
+                      onChange={e => setFormData({...formData, productId: e.target.value})}
+                    >
+                       <option value="">Choose product...</option>
+                       {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
+                    </select>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                      <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] ml-6">Inbound Qty</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Quantity</label>
                       <input 
                         type="number" 
                         min="1" 
@@ -288,48 +236,48 @@ const Returns: React.FC<ReturnsProps> = ({ returns, products, onRecordReturn, se
                         onChange={e => setFormData({...formData, quantity: Number(e.target.value)})} 
                       />
                     </div>
-                    <div className="space-y-4">
-                      <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] ml-6">Liquidity Protocol</label>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Refund Status</label>
                       <select 
-                        className={`${inputClasses} appearance-none cursor-pointer`}
+                        className={inputClasses}
                         value={formData.refunded ? 'yes' : 'no'} 
                         onChange={e => setFormData({...formData, refunded: e.target.value === 'yes'})}
                       >
-                        <option value="yes">EXECUTE LIQUID REFUND</option>
-                        <option value="no">ASSIGN UNIT CREDIT</option>
+                        <option value="yes">Issue Refund</option>
+                        <option value="no">Restock Only</option>
                       </select>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] ml-6">Incident Diagnostics</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Reason for Return</label>
                     <textarea 
                       required 
-                      className={`${inputClasses} h-40 resize-none py-8 leading-relaxed`} 
-                      placeholder="Enter failure reason or diagnostic report..." 
+                      className={`${inputClasses} h-24 resize-none`} 
+                      placeholder="Why is this product being returned?" 
                       value={formData.reason} 
                       onChange={e => setFormData({...formData, reason: e.target.value})} 
                     />
                   </div>
                 </div>
 
-                <div className="pt-10 flex flex-col md:flex-row gap-6">
+                <div className="pt-4 flex gap-4">
                   <button 
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="flex-1 py-7 text-slate-400 font-black uppercase text-[12px] tracking-[0.4em] hover:text-slate-600 transition-colors"
+                    className="flex-1 py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors"
                   >
-                    Abort Flow
+                    Cancel
                   </button>
                   <button 
                     type="submit" 
                     disabled={isSaving}
-                    className="flex-[2] py-7 bg-rose-500 text-white font-black rounded-[3rem] shadow-[0_30px_60px_rgba(244,63,94,0.4)] transition-all active:scale-95 uppercase text-[12px] tracking-[0.4em] flex items-center justify-center gap-4"
+                    className="flex-[2] py-3 bg-rose-500 text-white font-bold rounded-xl shadow-lg shadow-rose-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   >
                     {isSaving ? (
-                      <><Loader2 size={24} className="animate-spin" /> Committing</>
+                      <><Loader2 size={18} className="animate-spin" /> Recording...</>
                     ) : (
-                      <><ShieldCheck size={24} /> Commit Record</>
+                      <><CheckCircle2 size={18} /> Record Return</>
                     )}
                   </button>
                 </div>

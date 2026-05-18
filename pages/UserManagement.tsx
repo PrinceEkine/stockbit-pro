@@ -59,13 +59,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdatePlan, on
 
   const getStatusBadge = (user: User) => {
     if (user.role === 'admin') return (
-      <div className="flex items-center gap-2 text-[10px] font-black text-brand-primary uppercase tracking-widest bg-brand-primary/10 px-3 py-1.5 rounded-lg border border-brand-primary/20">
-         <Fingerprint size={12} className="animate-pulse" /> Root Entity
+      <div className="flex items-center gap-2 text-[10px] font-bold text-indigo-600 uppercase tracking-wider bg-indigo-50 dark:bg-indigo-900/10 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-800">
+         <ShieldCheck size={12} /> Administrator
       </div>
     );
     if (user.isSubscribed) return (
-      <div className="flex items-center gap-2 text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
-         <ShieldCheck size={12} /> Pro-Node
+      <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600 uppercase tracking-wider bg-emerald-50 dark:bg-emerald-900/10 px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-800">
+         <CheckCircle2 size={12} /> Active Pro
       </div>
     );
     
@@ -75,111 +75,103 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdatePlan, on
     expiry.setDate(expiry.getDate() + 60);
     
     if (now > expiry) return (
-      <div className="flex items-center gap-2 text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20">
-         <XCircle size={12} /> Expired Link
+      <div className="flex items-center gap-2 text-[10px] font-bold text-rose-600 uppercase tracking-wider bg-rose-50 dark:bg-rose-900/10 px-2.5 py-1 rounded-full border border-rose-100 dark:border-rose-800">
+         <XCircle size={12} /> Expired Trial
       </div>
     );
     return (
-      <div className="flex items-center gap-2 text-[10px] font-black text-amber-500 uppercase tracking-widest bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20">
-         <Clock size={12} /> Trial Matrix
+      <div className="flex items-center gap-2 text-[10px] font-bold text-amber-600 uppercase tracking-wider bg-amber-50 dark:bg-amber-900/10 px-2.5 py-1 rounded-full border border-amber-100 dark:border-amber-800">
+         <Clock size={12} /> Free Trial
       </div>
     );
   };
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700 pb-32">
-       <header className="flex flex-col md:flex-row md:items-end justify-between gap-10 no-print px-4 md:px-0">
-        <div className="space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 text-brand-primary rounded-full border border-brand-primary/20">
-             <Lock size={14} className="animate-pulse" />
-             <span className="text-[10px] font-bold uppercase tracking-widest leading-none">Access Control Bureau</span>
-          </div>
-          <h1 className="text-4xl md:text-7xl font-display font-bold text-slate-900 dark:text-white tracking-tighter leading-tight">Entity Ops</h1>
-          <div className="flex items-center gap-4 text-slate-400">
-             <Users size={16} />
-             <p className="text-[10px] font-bold uppercase tracking-[0.2em] leading-none">{users.length} Managed Identifiers</p>
-          </div>
+    <div className="space-y-8 animate-in fade-in duration-500 pb-32 max-w-full">
+       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 no-print px-4 md:px-0">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Account Management</h2>
+          <p className="text-sm text-slate-500">Manage business accounts, parent-child links, and subscriptions.</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-3 rounded-[2rem] shadow-neo border border-slate-100 dark:border-slate-800 flex items-center gap-6">
-           <div className="px-6 space-y-1 border-r border-slate-100 dark:border-slate-800">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Global Status</p>
-              <p className="text-xs font-bold text-slate-900 dark:text-white uppercase flex items-center gap-2">
-                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Operational
-              </p>
+        <div className="bg-white dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-4 shadow-sm">
+           <div className="px-4 py-1 border-r border-slate-100 dark:border-slate-800">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Accounts</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white uppercase">{users.length}</p>
            </div>
-           <div className="px-6 space-y-1">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Active Links</p>
-              <p className="text-xs font-bold text-slate-900 dark:text-white uppercase">Sync 100%</p>
+           <div className="px-4 py-1">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">System State</p>
+              <p className="text-sm font-bold text-emerald-500 uppercase flex items-center gap-1.5">
+                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" /> Stable
+              </p>
            </div>
         </div>
       </header>
 
-      <div className="bg-white dark:bg-slate-900 p-8 md:p-12 rounded-[3.5rem] border border-slate-100 dark:border-slate-800 shadow-neo mx-4 md:mx-0 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 blur-3xl rounded-full -mr-16 -mt-16"></div>
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm mx-4 md:mx-0">
         <div className="relative group">
-          <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-primary transition-all duration-300" size={24} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors" size={18} />
           <input 
             type="text" 
-            placeholder="Trace business nodes by company, email, or identifier..." 
-            className="w-full pl-16 pr-10 py-6 bg-slate-50 dark:bg-slate-800/50 border-none rounded-3xl text-sm font-bold placeholder:text-slate-400 text-slate-900 dark:text-white outline-none focus:ring-4 focus:ring-brand-primary/10 shadow-inner"
+            placeholder="Search accounts by company, email, or ID..." 
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm placeholder:text-slate-400 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/10 transition-all"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-[4rem] border border-slate-100 dark:border-slate-800 shadow-neo mx-4 md:mx-0 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm mx-4 md:mx-0 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest">
-              <tr>
-                <th className="px-10 py-8">Business Node & Auth</th>
-                <th className="px-10 py-8">Security Level</th>
-                <th className="px-10 py-8">Parent Matrix</th>
-                <th className="px-10 py-8 text-right">System Control</th>
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 text-[10px] uppercase font-bold tracking-wider">
+              <tr className="border-b border-slate-200 dark:border-slate-700">
+                <th className="px-6 py-4">Account Details</th>
+                <th className="px-6 py-4">Subscription Status</th>
+                <th className="px-6 py-4">Parent Account</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-300">
-                  <td className="px-10 py-8">
-                    <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 rounded-[1.5rem] bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white flex items-center justify-center font-display font-bold text-xl shadow-neo group-hover:bg-brand-primary group-hover:text-white transition-all duration-500">
+                <tr key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 flex items-center justify-center font-bold text-sm">
                         {user.companyName.charAt(0)}
                       </div>
-                      <div className="min-w-0 space-y-1">
-                        <p className="text-base font-bold text-slate-900 dark:text-white uppercase tracking-tight leading-none group-hover:text-brand-primary transition-colors">{user.companyName}</p>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-2"><Mail size={12} className="text-slate-200 dark:text-slate-700" /> {user.email}</span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[200px]">{user.companyName}</p>
+                        <p className="text-[10px] text-slate-400 truncate max-w-[200px]">{user.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-10 py-8">
+                  <td className="px-6 py-4">
                     {getStatusBadge(user)}
                   </td>
-                  <td className="px-10 py-8">
-                    <div className="flex items-center gap-3">
-                       <LinkIcon size={14} className={user.parentId ? 'text-brand-primary' : 'text-slate-200 dark:text-slate-800'} />
-                       <span className={`text-[10px] font-mono font-bold tracking-widest ${user.parentId ? 'text-slate-900 dark:text-white' : 'text-rose-400 italic font-black'}`}>
-                        {user.parentId || 'ORPHAN_NODE'}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                       <LinkIcon size={12} className={user.parentId ? 'text-indigo-500' : 'text-slate-200'} />
+                       <span className={`text-[10px] font-mono ${user.parentId ? 'text-slate-600 dark:text-slate-400 font-bold' : 'text-slate-300 italic'}`}>
+                        {user.parentId || 'Unlinked'}
                        </span>
                     </div>
                   </td>
-                  <td className="px-10 py-8 text-right">
+                  <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-3">
                       <button 
                         onClick={() => setLinkingId(user.id)}
-                        className="p-4 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-brand-primary rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:scale-110 active:scale-95 group/btn"
-                        data-tooltip="Reprogram Parent Matrix"
+                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
+                        title="Link Parent Account"
                       >
-                        <LinkIcon size={18} className="group-hover/btn:rotate-12 transition-transform" />
+                        <LinkIcon size={16} />
                       </button>
                       <button 
                         disabled={updatingId === user.id}
                         onClick={() => onUpdatePlan(user.id, user.isSubscribed ? 'revoke' : 'monthly')}
-                        className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center gap-3 ${user.isSubscribed ? 'bg-rose-500 text-white shadow-rose-500/20' : 'bg-emerald-500 text-white shadow-emerald-500/20'}`}
+                        className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95 flex items-center gap-2 ${user.isSubscribed ? 'bg-rose-50 text-rose-600 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
                       >
-                        {user.isSubscribed ? <ShieldAlert size={16} /> : <Zap size={16} />}
-                        {user.isSubscribed ? 'Revoke Protocol' : 'Approve Node'}
+                        {user.isSubscribed ? <ShieldAlert size={14} /> : <CheckCircle2 size={14} />}
+                        {user.isSubscribed ? 'Revoke Pro' : 'Approve Pro'}
                       </button>
                     </div>
                   </td>
@@ -187,8 +179,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdatePlan, on
               ))}
               {filteredUsers.length === 0 && (
                  <tr>
-                    <td colSpan={4} className="py-24 text-center">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No matching entities found in current spectrum</p>
+                    <td colSpan={4} className="py-20 text-center">
+                       <p className="text-sm text-slate-400">No accounts found matching your search</p>
                     </td>
                  </tr>
               )}
@@ -198,58 +190,53 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdatePlan, on
       </div>
 
       {linkingId && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-2xl animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 rounded-[3.5rem] md:rounded-[4.5rem] w-full max-w-2xl relative shadow-neo-lg border border-white/5 animate-in zoom-in-95 duration-500 overflow-hidden">
-            <div className="p-10 md:p-14 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="text-3xl md:text-4xl font-display font-bold text-slate-900 dark:text-white tracking-tighter uppercase">Parent Sync</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1">Operational Linking Protocol</p>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Account Linking</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Assign parent account to this entity</p>
               </div>
               <button 
                 onClick={() => setLinkingId(null)} 
-                className="w-14 h-14 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 rounded-full flex items-center justify-center transition-all hover:rotate-90"
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
               >
-                <X size={28} />
+                <X size={20} />
               </button>
             </div>
 
-            <div className="p-10 md:p-14 space-y-10">
-              <div className="p-8 bg-brand-primary/5 rounded-[2.5rem] border border-brand-primary/10 flex gap-6">
-                 <div className="w-12 h-12 bg-brand-primary text-white rounded-2xl flex items-center justify-center shrink-0">
-                    <ShieldCheck size={24} />
-                 </div>
-                 <div className="space-y-1">
-                    <p className="text-[10px] font-black text-brand-primary uppercase tracking-widest">Security Advisory</p>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight opacity-80">Linking a node to a parent matrix converts the entity into a subspace staff member. This action grants shared resource access.</p>
-                 </div>
+            <div className="p-6 space-y-6">
+              <div className="p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-xl border border-indigo-100 dark:border-indigo-800 flex gap-4">
+                 <ShieldCheck size={20} className="text-indigo-600 shrink-0" />
+                 <p className="text-xs text-indigo-900 dark:text-indigo-300 leading-relaxed font-medium">Linking an account to a parent converts them into a staff member. This grants them access to shared inventory and resources.</p>
               </div>
 
-              <div className="space-y-4">
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-3 ml-2">Target Host Node (Parent)</label>
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Select Parent Account</label>
                 <select 
-                  className="w-full px-8 py-6 bg-slate-50 dark:bg-slate-800 dark:text-white rounded-[2rem] border-none outline-none font-bold text-sm focus:ring-4 focus:ring-brand-primary/10 transition-all appearance-none"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 outline-none font-bold text-sm focus:ring-2 focus:ring-indigo-500/20 transition-all"
                   value={targetParentId}
                   onChange={e => setTargetParentId(e.target.value)}
                 >
-                  <option value="">SCANNING ACTIVE HOSTS...</option>
+                  <option value="">Select a host account...</option>
                   {admins.filter(a => a.id !== linkingId).map(a => (
-                    <option key={a.id} value={a.id}>{a.companyName} (Auth: {a.name})</option>
+                    <option key={a.id} value={a.id}>{a.companyName} ({a.name})</option>
                   ))}
                 </select>
               </div>
 
-              <div className="flex flex-col md:flex-row gap-6">
+              <div className="flex gap-3 pt-2">
                 <button 
                    onClick={() => setLinkingId(null)} 
-                   className="px-10 py-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest hover:text-rose-500 transition-colors leading-none"
+                   className="flex-1 px-4 py-2.5 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
                 >
-                   Abort Sync
+                   Cancel
                 </button>
                 <button 
                    onClick={() => handleLink(linkingId)} 
-                   className="flex-1 py-6 bg-brand-primary text-white font-bold rounded-[2.5rem] shadow-neo-brand transition-all active:scale-95 uppercase text-[11px] tracking-widest translate-y-0 hover:-translate-y-1 shadow-xl shadow-brand-primary/20"
+                   className="flex-1 px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-95 text-sm"
                 >
-                   Finalize Neural Link
+                   Confirm Link
                 </button>
               </div>
             </div>
