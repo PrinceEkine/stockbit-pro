@@ -19,6 +19,7 @@ import LaunchCenter from './pages/LaunchCenter';
 import LandingPage from './pages/LandingPage';
 import NotificationPanel from './components/NotificationPanel';
 import ScannerModal from './components/ScannerModal';
+import PasswordResetModal from './components/PasswordResetModal';
 import AboutUs from './pages/AboutUs';
 import HelpCenter from './pages/HelpCenter';
 import TermsOfService from './pages/TermsOfService';
@@ -69,6 +70,7 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setAuthStep('update_password');
+        setActiveView(View.Dashboard);
       }
     });
 
@@ -80,6 +82,7 @@ const App: React.FC = () => {
         supabase.auth.getSession().then(({ data: { session } }) => {
           if (session) {
             setAuthStep('update_password');
+            setActiveView(View.Dashboard);
           }
         });
       }, 500);
@@ -655,6 +658,14 @@ const App: React.FC = () => {
           </div>
         </header>
         <div className="p-3 md:p-10 flex-1 overflow-x-hidden min-h-0 pb-[env(safe-area-inset-bottom)]">{renderView()}</div>
+        <AnimatePresence>
+          {authStep === 'update_password' && store.isLoggedIn && (
+            <PasswordResetModal 
+              onUpdate={store.updatePassword} 
+              onClose={() => setAuthStep('landing')} 
+            />
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
