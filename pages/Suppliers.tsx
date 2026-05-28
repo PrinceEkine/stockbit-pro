@@ -23,7 +23,8 @@ import {
   MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Supplier } from '../types';
+import { TRANSLATIONS } from '../constants/translations';
+import { Supplier, Settings } from '../types';
 import { DEFAULT_CATEGORIES as CATEGORIES } from '../constants';
 
 interface SuppliersProps {
@@ -31,9 +32,11 @@ interface SuppliersProps {
   onAdd: (supplier: Omit<Supplier, 'id' | 'user_id'>) => void;
   onUpdate: (id: string, updates: Partial<Supplier>) => void;
   onDelete: (id: string) => void;
+  settings: Settings;
 }
 
-const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onAdd, onUpdate, onDelete }) => {
+const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onAdd, onUpdate, onDelete, settings }) => {
+  const t = TRANSLATIONS[settings?.language || 'en'] || TRANSLATIONS.en;
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -69,15 +72,15 @@ const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onAdd, onUpdate, onDel
       {/* Header Section */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Suppliers & Partners</h2>
-          <p className="text-sm text-slate-500">Manage your procurement network and contact information.</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white uppercase tracking-tight">{t.suppliers}</h2>
+          <p className="text-sm text-slate-500">{t.suppliers_desc || 'Manage your procurement network and contact information.'}</p>
         </div>
         
         <button 
           onClick={() => setIsModalOpen(true)}
           className="flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl shadow-sm hover:bg-indigo-700 active:scale-95 transition-all font-bold text-sm"
         >
-          <Plus size={18} /> Add New Supplier
+          <Plus size={18} /> {t.add_product ? `${t.add_product}` : 'Add New Supplier'}
         </button>
       </header>
 
@@ -132,7 +135,7 @@ const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onAdd, onUpdate, onDel
                   {supplier.name.charAt(0)}
                 </div>
                 
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   <button 
                     className="p-2 text-slate-400 hover:text-indigo-600 rounded-lg transition-colors"
                   >

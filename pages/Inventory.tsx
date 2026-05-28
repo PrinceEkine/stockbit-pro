@@ -69,6 +69,7 @@ interface InventoryProps {
 const BRANCHES = ['Main Branch', 'Jumia Mall Warehouse', 'Lagos Warehouse', 'Abuja Showroom', 'Port Harcourt Hub'];
 
 const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], onAdd, onDelete, settings, currentUser }) => {
+  const t = TRANSLATIONS[settings.language || 'en'] || TRANSLATIONS.en;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedBranch, setSelectedBranch] = useState('All');
@@ -277,21 +278,21 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
 
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2 px-4 md:px-0">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Inventory Management</h2>
-          <p className="text-sm text-slate-500">Manage your product catalog, stock levels, and locations.</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white uppercase tracking-tight">{t.inventory}</h2>
+          <p className="text-sm text-slate-500">{t.everything_needs || 'Manage your product catalog, stock levels, and locations.'}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button 
             onClick={() => { resetForm(); setIsModalOpen(true); }} 
             className="flex-1 sm:flex-none px-6 py-2.5 bg-brand-primary text-white rounded-xl flex items-center justify-center gap-2 font-medium text-sm hover:bg-brand-primary/90 transition-all active:scale-95 shadow-sm"
           >
-            <Plus size={18} /> Add Product
+            <Plus size={18} /> {t.add_product}
           </button>
           <div className="h-8 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
           <button 
             onClick={() => { setScannerMode('id'); setIsScannerOpen(true); }} 
             className="w-10 h-10 bg-white dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95"
-            title="Scan Barcode"
+            title={t.scan}
           >
             <Scan size={20} />
           </button>
@@ -311,7 +312,7 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input 
             type="text" 
-            placeholder="Search products by name or SKU..." 
+            placeholder={t.search} 
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm placeholder:text-slate-400 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-primary/10 transition-all" 
             value={searchTerm} 
             onChange={(e) => setSearchTerm(e.target.value)} 

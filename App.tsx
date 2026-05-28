@@ -20,6 +20,7 @@ import LandingPage from './pages/LandingPage';
 import NotificationPanel from './components/NotificationPanel';
 import ScannerModal from './components/ScannerModal';
 import PasswordResetModal from './components/PasswordResetModal';
+import BottomNavigation from './components/BottomNavigation';
 import AboutUs from './pages/AboutUs';
 import HelpCenter from './pages/HelpCenter';
 import TermsOfService from './pages/TermsOfService';
@@ -91,11 +92,12 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // PWA & Install state - Check if standalone OR if we previously marked it as installed
+  // PWA & Install state - Check if standalone OR if we previously marked it as installed or dismissed
   const [isAppInstalled, setIsAppInstalled] = useState(() => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                         (window.navigator as any).standalone === true;
-    const wasMarkedInstalled = localStorage.getItem('stockbit_pwa_installed') === 'true';
+    const wasMarkedInstalled = localStorage.getItem('stockbit_pwa_installed') === 'true' ||
+                               localStorage.getItem('stockbit_pwa_dismissed') === 'true';
     return isStandalone || wasMarkedInstalled;
   });
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -108,10 +110,14 @@ const App: React.FC = () => {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                           (window.navigator as any).standalone === true ||
                           document.referrer.includes('android-app://');
+      const wasMarkedInstalled = localStorage.getItem('stockbit_pwa_installed') === 'true' ||
+                                 localStorage.getItem('stockbit_pwa_dismissed') === 'true';
       
-      if (isStandalone) {
+      if (isStandalone || wasMarkedInstalled) {
         setIsAppInstalled(true);
-        localStorage.setItem('stockbit_pwa_installed', 'true');
+        if (isStandalone) {
+          localStorage.setItem('stockbit_pwa_installed', 'true');
+        }
       }
     };
     
@@ -161,7 +167,15 @@ const App: React.FC = () => {
   const handleInstallApp = async () => {
     if (isAppInstalled) return;
     if (!deferredPrompt) {
-      alert("To install: Tap the browser menu (3 dots or share icon) and select 'Add to Home Screen'.");
+      const msg = "To install StockBit Pro:\n\n" +
+                  "• iOS / Safari: Tap the 'Share' menu and select 'Add to Home Screen'.\n" +
+                  "• Android / Chrome: Tap the three vertical dots menu and select 'Install app'.\n\n" +
+                  "If you have already installed it, or want to hide this message, would you like to dismiss and hide this install button?";
+      const hideVal = confirm(msg);
+      if (hideVal) {
+        setIsAppInstalled(true);
+        localStorage.setItem('stockbit_pwa_dismissed', 'true');
+      }
       return;
     }
     deferredPrompt.prompt();
@@ -170,6 +184,12 @@ const App: React.FC = () => {
       setDeferredPrompt(null);
       setIsAppInstalled(true);
       localStorage.setItem('stockbit_pwa_installed', 'true');
+    } else {
+      const hideNow = confirm("Would you like to hide the install button for now?");
+      if (hideNow) {
+        setIsAppInstalled(true);
+        localStorage.setItem('stockbit_pwa_dismissed', 'true');
+      }
     }
   };
 
@@ -611,10 +631,10 @@ const App: React.FC = () => {
       case View.Inventory: return <Inventory products={store.products || []} suppliers={store.suppliers || []} onAdd={store.addProduct} onUpdate={store.updateProduct} onDelete={store.deleteProduct} settings={store.settings} currentUser={store.currentUser} />;
       case View.Sales: return <Sales sales={store.sales || []} products={store.products || []} onRecordSale={store.recordSale} settings={store.settings} currentUser={store.currentUser} />;
       case View.AIInsights: return <AIInsights state={store} />;
-      case View.Stocktake: return <Stocktake products={store.products || []} onReconcile={store.reconcileInventory} />;
+      case View.Stocktake: return <Stocktake products={store.products || []} onReconcile={store.reconcileInventory} settings={store.settings} />;
       case View.Returns: return <Returns returns={store.returns || []} products={store.products || []} onRecordReturn={store.recordReturn} settings={store.settings} />;
       case View.Reports: return <Reports state={store} />;
-      case View.Suppliers: return <Suppliers suppliers={store.suppliers || []} onAdd={store.addSupplier} onUpdate={() => {}} onDelete={() => {}} />;
+      case View.Suppliers: return <Suppliers suppliers={store.suppliers || []} onAdd={store.addSupplier} onUpdate={() => {}} onDelete={() => {}} settings={store.settings} />;
       case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} staff={store.users || []} currentUser={store.currentUser} onAddStaff={store.addStaffMember} onRemoveStaff={store.removeStaffMember} onActivateSubscription={async (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => { await store.activateSubscription(plan, cycle); }} />;
       case View.LaunchCenter: return <LaunchCenter state={store} onUpdateSettings={store.updateSettings} />;
       default: return <Dashboard state={store} onNavigate={setActiveView} />;
@@ -657,7 +677,15 @@ const App: React.FC = () => {
             </button>
           </div>
         </header>
-        <div className="p-3 md:p-10 flex-1 overflow-x-hidden min-h-0 pb-[env(safe-area-inset-bottom)]">{renderView()}</div>
+        <div className="p-3 pb-28 md:p-10 flex-1 overflow-x-hidden min-h-0 md:pb-[env(safe-area-inset-bottom)]">{renderView()}</div>
+        <BottomNavigation 
+          activeView={activeView}
+          onViewChange={setActiveView}
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
+          user={store.currentUser}
+          settings={store.settings}
+        />
         <AnimatePresence>
           {authStep === 'update_password' && store.isLoggedIn && (
             <PasswordResetModal 

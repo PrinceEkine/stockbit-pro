@@ -17,14 +17,17 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Product, StocktakeItem } from '../types';
+import { Product, StocktakeItem, Settings } from '../types';
+import { TRANSLATIONS } from '../constants/translations';
 
 interface StocktakeProps {
   products: Product[];
   onReconcile: (items: StocktakeItem[]) => Promise<void>;
+  settings: Settings;
 }
 
-const Stocktake: React.FC<StocktakeProps> = ({ products = [], onReconcile }) => {
+const Stocktake: React.FC<StocktakeProps> = ({ products = [], onReconcile, settings }) => {
+  const t = TRANSLATIONS[settings?.language || 'en'] || TRANSLATIONS.en;
   const [searchTerm, setSearchTerm] = useState('');
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [isSuccess, setIsSuccess] = useState(false);
@@ -81,8 +84,8 @@ const Stocktake: React.FC<StocktakeProps> = ({ products = [], onReconcile }) => 
       {/* Header Section */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Physical Audit</h2>
-          <p className="text-sm text-slate-500">Reconcile system inventory with physical shelf counts.</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white uppercase tracking-tight">{t.stocktake}</h2>
+          <p className="text-sm text-slate-500">{t.stocktake_desc || 'Reconcile system inventory with physical shelf counts.'}</p>
         </div>
         
         <div className="flex gap-3">

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Sale, Product, Settings, SaleItem, User as UserType, PaymentMethod } from '../types';
 import ScannerModal from '../components/ScannerModal';
+import { TRANSLATIONS } from '../constants/translations';
 
 interface SalesProps {
   sales: Sale[];
@@ -26,6 +27,7 @@ interface CartTab {
 }
 
 const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, settings, currentUser }) => {
+  const t = TRANSLATIONS[settings.language || 'en'] || TRANSLATIONS.en;
   const [searchTerm, setSearchTerm] = useState('');
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -647,7 +649,7 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
 
       {showConfirmDialog && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm no-print animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col md:flex-row transition-colors">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-y-auto md:overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col md:flex-row transition-colors max-h-[90vh]">
              <div className="flex-1 p-8 md:p-10 space-y-8 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-center text-center md:text-left transition-colors">
                 <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto md:mx-0 mb-4">
                    <CreditCard size={32} />

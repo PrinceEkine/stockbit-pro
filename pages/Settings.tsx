@@ -591,11 +591,11 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
                       initial={{ opacity: 0, scale: 0.9, y: 40 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.9, y: 40 }}
-                      className="bg-white dark:bg-slate-900 rounded-[4.5rem] w-full max-w-2xl p-12 md:p-16 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] relative z-10 border border-white/5"
+                      className="bg-white dark:bg-slate-900 rounded-[2rem] sm:rounded-[4.5rem] w-full max-w-2xl p-6 sm:p-12 md:p-16 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] relative z-10 border border-white/5 max-h-[90vh] overflow-y-auto"
                     >
-                        <header className="mb-12">
-                          <h3 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-6 leading-none">Adding <span className="text-indigo-600">Personnel</span></h3>
-                          <div className="p-10 bg-indigo-50 dark:bg-indigo-950/30 rounded-[3rem] border border-indigo-100 dark:border-indigo-900 focus-within:border-indigo-500 transition-all text-center">
+                        <header className="mb-6 sm:mb-12">
+                          <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-4 sm:mb-6 leading-none animate-in fade-in">Adding <span className="text-indigo-600">Personnel</span></h3>
+                          <div className="p-6 sm:p-10 bg-indigo-50 dark:bg-indigo-950/30 rounded-[2rem] sm:rounded-[3rem] border border-indigo-100 dark:border-indigo-900 focus-within:border-indigo-500 transition-all text-center">
                             <div className="w-20 h-20 bg-indigo-600 text-white rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-2xl">
                               <Plus size={40} />
                             </div>

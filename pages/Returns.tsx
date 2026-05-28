@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ProductReturn, Product, Settings } from '../types';
+import { TRANSLATIONS } from '../constants/translations';
 
 interface ReturnsProps {
   returns: ProductReturn[];
@@ -29,6 +30,7 @@ interface ReturnsProps {
 }
 
 const Returns: React.FC<ReturnsProps> = ({ returns, products, onRecordReturn, settings }) => {
+  const t = TRANSLATIONS[settings.language || 'en'] || TRANSLATIONS.en;
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -73,15 +75,15 @@ const Returns: React.FC<ReturnsProps> = ({ returns, products, onRecordReturn, se
       {/* Header Section */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Returns & Recovery</h2>
-          <p className="text-sm text-slate-500">Record and track product returns, refunds, and restocks.</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white uppercase tracking-tight">{t.returns}</h2>
+          <p className="text-sm text-slate-500">{t.returns_desc || 'Record and track product returns, refunds, and restocks.'}</p>
         </div>
         
         <button 
           onClick={() => setIsModalOpen(true)}
           className="flex items-center justify-center gap-2 px-6 py-2.5 bg-rose-500 text-white rounded-xl shadow-sm hover:bg-rose-600 active:scale-95 transition-all font-bold text-sm"
         >
-          <Plus size={18} /> Record New Return
+          <Plus size={18} /> {t.new_sale ? `${t.returns}` : 'Record New Return'}
         </button>
       </header>
 

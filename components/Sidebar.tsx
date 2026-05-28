@@ -187,7 +187,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
       </aside>
-      {isOpen && window.innerWidth < 1024 && (
+      {isOpen && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-40 lg:hidden" onClick={() => setIsOpen(false)} />
       )}
     </>

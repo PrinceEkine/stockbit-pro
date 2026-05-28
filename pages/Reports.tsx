@@ -30,6 +30,7 @@ import {
   Bar
 } from 'recharts';
 import { AppState } from '../types';
+import { TRANSLATIONS } from '../constants/translations';
 
 interface ReportsProps {
   state: AppState;
@@ -38,6 +39,7 @@ interface ReportsProps {
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
 
 const Reports: React.FC<ReportsProps> = ({ state }) => {
+  const t = TRANSLATIONS[state.settings.language || 'en'] || TRANSLATIONS.en;
   const sales = state?.sales || [];
   const settings = state?.settings;
   const users = state?.users || [];
@@ -144,8 +146,8 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
     <div className="space-y-8 animate-in fade-in duration-500 pb-32 no-print max-w-full">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Business Intelligence</h2>
-          <p className="text-sm text-slate-500">Comprehensive overview of sales, revenue, and staff performance.</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white uppercase tracking-tight">{t.reports}</h2>
+          <p className="text-sm text-slate-500">{t.reports_desc || 'Comprehensive overview of sales, revenue, and staff performance.'}</p>
         </div>
         <button 
           onClick={exportSalesCSV}
@@ -157,7 +159,7 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
       </header>
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
           <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-transform hover:translate-y-[-2px]">
             <div className="flex items-center gap-3 mb-4">
