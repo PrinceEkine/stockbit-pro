@@ -299,6 +299,21 @@ const App: React.FC = () => {
     }
   };
 
+  const handleGoogleAuth = async () => {
+    setIsSubmitting(true);
+    setAuthError('');
+    try {
+      await store.loginWithGoogle();
+      setActiveView(View.Dashboard);
+      setAuthStep('landing');
+    } catch (err: any) {
+      console.error("Google Auth failed:", err);
+      setAuthError(err.message || "Failed to authenticate with Google. Please retry.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleLogout = useCallback(async () => {
     // Clear hash and local states immediately for responsive UI
     if (window.location.hash) {
@@ -413,13 +428,13 @@ const App: React.FC = () => {
     if (!store.isLoggedIn) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] relative overflow-hidden transition-colors duration-500">
-          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[3.5rem] p-8 md:p-16 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] animate-in zoom-in-95 duration-500 relative z-10 border border-slate-100 dark:border-slate-800 overflow-y-auto max-h-[95vh] scrollbar-hide">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-[3rem] p-6 sm:p-10 md:p-14 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] animate-in zoom-in-95 duration-500 relative z-10 border border-slate-100 dark:border-slate-800 overflow-y-auto max-h-[92vh]">
              
-             <div className="flex flex-col items-center mb-12 text-center">
-                <div className="w-20 h-20 bg-[#4f46e5] rounded-[1.5rem] flex items-center justify-center mb-6 shadow-2xl shadow-indigo-600/20 active:scale-95 transition-all" onClick={() => { setAuthStep('landing'); setActiveView(View.Landing); }}>
-                  <Box size={40} className="text-white" />
+             <div className="flex flex-col items-center mb-6 sm:mb-8 text-center">
+                <div className="w-14 h-14 sm:w-20 sm:h-20 bg-[#4f46e5] rounded-[1.2rem] sm:rounded-[1.5rem] flex items-center justify-center mb-3 sm:mb-5 shadow-2xl shadow-indigo-600/20 active:scale-95 transition-all" onClick={() => { setAuthStep('landing'); setActiveView(View.Landing); }}>
+                  <Box size={32} className="text-white" />
                 </div>
-                <h1 className="text-4xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">
+                <h1 className="text-xl sm:text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-none">
                   {authStep === 'login' ? 'SIGN IN' : authStep === 'register' ? 'CREATE SHOP' : 'ACCOUNT RECOVERY'}
                 </h1>
              </div>
@@ -455,6 +470,27 @@ const App: React.FC = () => {
                   <button disabled={isSubmitting} type="submit" className="w-full py-6 bg-[#4f46e5] text-white font-black uppercase tracking-[0.2em] text-[13px] rounded-[2rem] shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-4">
                     {isSubmitting ? <Loader2 className="animate-spin" size={22} /> : <LogIn size={22} />}
                     {isSubmitting ? 'SYNCING...' : 'SIGN IN NOW'}
+                  </button>
+
+                  <div className="flex items-center my-4">
+                    <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+                    <span className="px-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">OR</span>
+                    <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+                  </div>
+
+                  <button 
+                    disabled={isSubmitting}
+                    type="button" 
+                    onClick={handleGoogleAuth} 
+                    className="w-full py-5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-600 dark:hover:border-indigo-500 rounded-[2rem] shadow-sm font-black text-[11px] text-slate-700 dark:text-white uppercase tracking-widest active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                      <path fill="#EA4335" d="M12 5.04c1.64 0 3.12.56 4.28 1.67l3.2-3.2C17.52 1.58 14.93 1 12 1 7.35 1 3.37 3.65 1.41 7.51l3.79 2.94C6.12 7.51 8.85 5.04 12 5.04z" />
+                      <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.47-1.11 2.71-2.36 3.55l3.66 2.84c2.14-1.97 3.39-4.88 3.39-8.49z" />
+                      <path fill="#FBBC05" d="M5.2 14.51c-.24-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29L1.41 6.99C.51 8.79 0 10.82 0 13s.51 4.21 1.41 6.01l3.79-2.5z" />
+                      <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.92l-3.66-2.84c-1.1.74-2.51 1.18-4.3 1.18-3.15 0-5.88-2.47-6.8-5.41L1.41 15.95C3.37 19.81 7.35 23 12 23z" />
+                    </svg>
+                    Continue with Google
                   </button>
                   <div className="pt-6 text-center">
                     <p className="text-[12px] font-black uppercase text-slate-400 tracking-widest">
@@ -499,9 +535,30 @@ const App: React.FC = () => {
                     <input name="password" type="password" required className="w-full px-8 py-4 bg-slate-50 dark:bg-slate-800 rounded-[1.5rem] font-bold text-slate-900 dark:text-white border-none outline-none" placeholder="••••••••" />
                   </div>
 
-                  <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-[#4f46e5] text-white font-black uppercase tracking-[0.2em] text-[12px] rounded-[1.5rem] shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed">
-                    {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <UserPlus size={20} />}
-                    {isSubmitting ? 'PLEASE WAIT...' : 'INITIATE PROTOCOL'}
+                   <button disabled={isSubmitting} type="submit" className="w-full py-5 bg-[#4f46e5] text-white font-black uppercase tracking-[0.2em] text-[12px] rounded-[1.5rem] shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed">
+                     {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <UserPlus size={20} />}
+                     {isSubmitting ? 'PLEASE WAIT...' : 'INITIATE PROTOCOL'}
+                   </button>
+
+                  <div className="flex items-center my-4">
+                    <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+                    <span className="px-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">OR</span>
+                    <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+                  </div>
+
+                  <button 
+                    disabled={isSubmitting}
+                    type="button" 
+                    onClick={handleGoogleAuth} 
+                    className="w-full py-4 px-6 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-600 dark:hover:border-indigo-500 rounded-[1.5rem] shadow-sm font-black text-[11px] text-slate-700 dark:text-white uppercase tracking-widest active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                      <path fill="#EA4335" d="M12 5.04c1.64 0 3.12.56 4.28 1.67l3.2-3.2C17.52 1.58 14.93 1 12 1 7.35 1 3.37 3.65 1.41 7.51l3.79 2.94C6.12 7.51 8.85 5.04 12 5.04z" />
+                      <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.47-1.11 2.71-2.36 3.55l3.66 2.84c2.14-1.97 3.39-4.88 3.39-8.49z" />
+                      <path fill="#FBBC05" d="M5.2 14.51c-.24-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29L1.41 6.99C.51 8.79 0 10.82 0 13s.51 4.21 1.41 6.01l3.79-2.5z" />
+                      <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.92l-3.66-2.84c-1.1.74-2.51 1.18-4.3 1.18-3.15 0-5.88-2.47-6.8-5.41L1.41 15.95C3.37 19.81 7.35 23 12 23z" />
+                    </svg>
+                    Continue with Google
                   </button>
                   
                   <div className="text-center pt-4">

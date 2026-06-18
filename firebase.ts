@@ -1,22 +1,36 @@
+import { initializeApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-/**
- * PRO TIP: In a production environment, these keys should be handled via 
- * environment variables. For this web-based deployment, ensure you restrict 
- * your API key in the Google Cloud Console to only allow your domain.
- */
+// Read environment config, falling back to safe local sandbox settings
 const firebaseConfig = {
-  apiKey: "PASTE_YOUR_API_KEY_HERE",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: process.env.VITE_FIREBASE_API_KEY || import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDummyKeyForSandboxAuthTesting123456",
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "stockbit-pro.firebaseapp.com",
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID || import.meta.env.VITE_FIREBASE_PROJECT_ID || "stockbit-pro",
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "stockbit-pro.appspot.com",
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "1234567890",
+  appId: process.env.VITE_FIREBASE_APP_ID || import.meta.env.VITE_FIREBASE_APP_ID || "1:1234546:web:abcd1234efgh"
 };
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const googleProvider = new GoogleAuthProvider();
+
+export const signInWithGoogle = async () => {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    return result.user;
+  } catch (error) {
+    console.error("Firebase Google Sign-In Error:", error);
+    throw error;
+  }
+};
+
+export const logoutFirebase = async () => {
+  try {
+    await firebaseSignOut(auth);
+  } catch (error) {
+    console.error("Firebase Sign-Out Error:", error);
+  }
+};

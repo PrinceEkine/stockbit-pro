@@ -28,7 +28,7 @@ import {
   Layout,
   LogIn
 } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+import { callQwenPlus } from '../services/qwenService';
 import { View, AppLanguage } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
 
@@ -105,31 +105,26 @@ const LandingPage: React.FC<LandingPageProps> = ({
     setIsTyping(true);
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-      if (!apiKey) throw new Error("API key not found.");
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
-        contents: userMsg,
-        config: {
-          systemInstruction: `You are StockBot, the official industrial-grade retail consultant for StockBit Pro. 
-          Technical Context for you:
-          1. APP REGISTRATION: Users sign up with Name, Business Name, Email, and Password. We do NOT ask for a Phone Number on the signup form. Staff join via an "Invite ID" from their boss.
-          2. CORE TOOLS: 
-             - "Strict Sensor": Advanced mobile barcode scanning.
-             - "Smart Extractor": Gemini-powered metadata capture from product photos.
-             - "Multi-Channel Bridge": Syncing inventory with Jumia Mall and Konga.
-             - "Sustainability Audit": Only on Mega Pro, gives Eco-scores to inventory.
-          3. BUSINESS MODEL: 60-day free trial. Plans: Beta (₦5k), Mega (₦8k), Mega Pro (₦13k). Payments via Paystack.
-          4. MARKET: Nigerian retailers (Lagos, Abuja, PH, etc.). Currency is Naira (₦).
-          5. CONTACT SUPPORT: 07010698264 for calls, 07072127949 for WhatsApp.
-          
-          Always be professional, concise, and accurate to these specific app features. Do not hallucinate non-existent features or requirements. Currently responding in ${language} mode.`,
-        }
-      });
+      const systemInstruction = `You are StockBot, the official industrial-grade retail consultant for StockBit Pro, powered by Alibaba Qwen Plus. 
+      Technical Context for you:
+      1. APP REGISTRATION: Users sign up with Name, Business Name, Email, and Password. We do NOT ask for a Phone Number on the signup form. Staff join via an "Invite ID" from their boss.
+      2. CORE TOOLS: 
+         - "Strict Sensor": Advanced mobile barcode scanning.
+         - "Smart Extractor": Gemini-powered metadata capture from product photos.
+         - "Multi-Channel Bridge": Syncing inventory with Jumia Mall and Konga.
+         - "Sustainability Audit": Only on Mega Pro, gives Eco-scores to inventory.
+      3. BUSINESS MODEL: 2 Months (60 days) free trial. Plans: Beta (₦5k), Mega (₦8k), Mega Pro (₦13k). Payments via Paystack.
+      4. MARKET: Nigerian retailers (Lagos, Abuja, PH, etc.). Currency is Naira (₦).
+      5. CONTACT SUPPORT: 07010698264 for calls, 07072127949 for WhatsApp.
+      
+      Always be professional, concise, and accurate to these specific app features. Do not hallucinate non-existent features or requirements. Currently responding in ${language} mode.`;
+
+      const botText = await callQwenPlus([
+        { role: 'system', content: systemInstruction },
+        { role: 'user', content: userMsg }
+      ], "I'm having trouble connecting. Please call our support line directly at 07010698264.");
       
       if (isMounted.current) {
-        const botText = response.text || "I'm having trouble connecting. Please call our support line directly at 07010698264.";
         setChatMessages(prev => [...prev, { role: 'bot', text: botText }]);
       }
     } catch (error: any) {
@@ -499,37 +494,40 @@ const LandingPage: React.FC<LandingPageProps> = ({
       </footer>
 
       {/* Floating AI ChatBot Bubble */}
-      <div className="fixed bottom-10 right-10 z-[100] group">
+      <div className="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-[100]">
         <button 
           onClick={() => setIsChatOpen(!isChatOpen)}
-          className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 relative ${isChatOpen ? 'bg-slate-900 text-white rotate-90 scale-110' : 'bg-indigo-600 text-white hover:scale-110'}`}
+          className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-500 relative ${isChatOpen ? 'bg-slate-900 text-white rotate-90 scale-110' : 'bg-indigo-600 text-white hover:scale-110'}`}
         >
-          {isChatOpen ? <X size={28} /> : <MessageSquare size={28} />}
-          {!isChatOpen && <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-white rounded-full"></span>}
+          {isChatOpen ? <X size={24} className="md:w-7 md:h-7" /> : <MessageSquare size={24} className="md:w-7 md:h-7" />}
+          {!isChatOpen && <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-emerald-500 border-4 border-white rounded-full"></span>}
         </button>
         
         {isChatOpen && (
-          <div className="absolute bottom-24 right-0 w-[300px] xs:w-[320px] md:w-[480px] bg-white rounded-[2.5rem] md:rounded-[3rem] shadow-[0_40px_120px_rgba(0,0,0,0.25)] border border-slate-100 flex flex-col overflow-hidden animate-in slide-in-from-bottom-12 fade-in duration-500 z-[150]">
-            <div className="p-6 md:p-10 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-4 md:gap-5">
-                <div className="w-10 h-10 md:w-14 md:h-14 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl">
-                  <Sparkles size={22} className="md:w-7 md:h-7" />
+          <div className="absolute bottom-18 md:bottom-20 right-0 w-[280px] xs:w-[320px] sm:w-[380px] md:w-[420px] h-[460px] sm:h-[520px] bg-white dark:bg-slate-900 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.35)] border border-slate-100 dark:border-slate-800/80 flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 fade-in duration-300 z-[150]">
+            <div className="p-4 sm:p-6 bg-slate-900 dark:bg-slate-950 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-8 h-8 sm:w-11 sm:h-11 bg-indigo-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg">
+                  <Sparkles size={18} className="sm:w-5 sm:h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-sm md:text-base font-black uppercase tracking-widest leading-none">STOCKBOT AI</h3>
-                  <p className="text-[8px] md:text-[10px] font-bold uppercase opacity-60 mt-1">NIGERIA SHOP ASSISTANT</p>
+                  <h3 className="text-[11px] sm:text-xs font-black uppercase tracking-widest leading-none">STOCKBOT AI</h3>
+                  <p className="text-[7px] sm:text-[9px] font-bold uppercase opacity-60 mt-1">NIGERIA SHOP ASSISTANT</p>
                 </div>
               </div>
-              <Activity size={20} className="text-emerald-500 animate-pulse md:w-6 md:h-6" />
+              <div className="flex items-center gap-1.5 bg-slate-800/50 dark:bg-slate-900/50 px-2.5 py-1 rounded-full border border-slate-700/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="text-[8px] sm:text-[10px] font-black text-slate-300 uppercase tracking-wider">ONLINE</span>
+              </div>
             </div>
 
-            <div className="flex-1 p-6 md:p-10 overflow-y-auto max-h-[400px] md:max-h-[450px] space-y-6 md:space-y-8 scrollbar-hide bg-slate-50/50">
+            <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 scrollbar-hide bg-slate-50/50 dark:bg-slate-950/20">
               {chatMessages.map((m, i) => (
-                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-4 duration-500`}>
-                  <div className={`max-w-[90%] md:max-w-[85%] p-5 md:p-6 rounded-[1.8rem] md:rounded-[2.2rem] text-[12px] md:text-[13px] font-semibold leading-relaxed shadow-sm ${
+                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}>
+                  <div className={`max-w-[85%] p-3.5 sm:p-4 rounded-[1.2rem] sm:rounded-[1.5rem] text-[11px] sm:text-xs font-semibold leading-relaxed shadow-sm ${
                     m.role === 'user' 
                     ? 'bg-indigo-600 text-white rounded-tr-none' 
-                    : 'bg-white text-slate-600 rounded-tl-none border border-slate-100'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-800/80'
                   }`}>
                     {m.text}
                   </div>
@@ -537,31 +535,31 @@ const LandingPage: React.FC<LandingPageProps> = ({
               ))}
               {isTyping && (
                 <div className="flex justify-start">
-                  <div className="bg-white p-5 md:p-6 rounded-[1.8rem] md:rounded-[2.2rem] rounded-tl-none border border-slate-100 shadow-sm flex gap-1.5 items-center">
-                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce"></div>
-                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce delay-100"></div>
-                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce delay-200"></div>
+                  <div className="bg-white dark:bg-slate-800 px-4 py-3 rounded-[1.2rem] rounded-tl-none border border-slate-100 dark:border-slate-800 shadow-sm flex gap-1 items-center">
+                    <span className="w-1.5 h-1.5 bg-indigo-600 dark:bg-indigo-400 rounded-full animate-bounce"></span>
+                    <span className="w-1.5 h-1.5 bg-indigo-600 dark:bg-indigo-400 rounded-full animate-bounce [animation-delay:0.15s]"></span>
+                    <span className="w-1.5 h-1.5 bg-indigo-600 dark:bg-indigo-400 rounded-full animate-bounce [animation-delay:0.3s]"></span>
                   </div>
                 </div>
               )}
               <div ref={chatEndRef} />
             </div>
 
-            <form onSubmit={handleSendMessage} className="p-6 md:p-8 bg-white border-t border-slate-100">
-              <div className="relative">
+            <form onSubmit={handleSendMessage} className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="relative flex items-center">
                 <input 
                   type="text" 
-                  placeholder="ASK ME A QUESTION..." 
-                  className="w-full pl-6 md:pl-8 pr-16 md:pr-20 py-4 md:py-5 bg-slate-50 border-none rounded-[1.5rem] md:rounded-[1.8rem] text-[10px] md:text-xs font-black uppercase outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-slate-400"
+                  placeholder="Ask StockBot a question..." 
+                  className="w-full pl-5 pr-12 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800/50 rounded-xl text-xs font-semibold normal-case tracking-normal outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-900 dark:text-white"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                 />
                 <button 
                   type="submit"
                   disabled={!chatInput.trim() || isTyping}
-                  className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 bg-slate-900 text-white rounded-xl md:rounded-2xl flex items-center justify-center hover:bg-indigo-600 transition-all disabled:opacity-20 active:scale-90"
+                  className="absolute right-1.5 w-8 h-8 bg-slate-900 dark:bg-indigo-600 text-white rounded-lg flex items-center justify-center hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-all disabled:opacity-20 active:scale-90"
                 >
-                  <Send size={18} className="md:w-5 md:h-5" />
+                  <Send size={14} />
                 </button>
               </div>
             </form>

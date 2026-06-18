@@ -12,7 +12,7 @@ export const identifyProductFromImage = async (base64Image: string): Promise<str
     if (!apiKey) throw new Error("Gemini API key not found in environment.");
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.5-flash',
       contents: {
         parts: [
           {
@@ -43,7 +43,7 @@ export const extractProductDetailsFromImage = async (base64Image: string) => {
     if (!apiKey) throw new Error("Gemini API key not found in environment.");
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.5-flash',
       contents: {
         parts: [
           {
@@ -106,7 +106,7 @@ export const getInventoryInsights = async (products: Product[], sales: Sale[]): 
     if (!apiKey) throw new Error("Gemini API key not found in environment.");
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.5-flash',
       contents: `
       SHOP INVENTORY: ${JSON.stringify(inventoryState)}
       HISTORICAL SALES (Last 50): ${JSON.stringify(itemSalesHistory)}

@@ -463,11 +463,11 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
               className="space-y-12"
             >
                   <div className="bg-gradient-to-br from-indigo-600 to-indigo-900 p-10 md:p-16 rounded-[4.5rem] text-white shadow-[0_50px_100px_-20px_rgba(79,70,229,0.3)] relative overflow-hidden group border border-white/10">
-                  <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                  <div className="relative z-10 grid grid-cols-1 xl:grid-cols-2 gap-8 items-center">
                     <div>
                        <div className="flex items-center gap-4 mb-8">
                           <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20">
-                            <Share2 size={32} className="text-white" />
+                             <Share2 size={32} className="text-white" />
                           </div>
                           <h3 className="text-3xl font-black uppercase tracking-tighter leading-tight">Terminal <br/><span className="text-indigo-300 italic">Provisioning</span></h3>
                        </div>
@@ -475,26 +475,26 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
                           Distributed workforce protocol. To link a new team member, ask them to select 'Join a Business' during sign-up and enter this identifier.
                        </p>
                        
-                       <div className="flex flex-col sm:flex-row items-center gap-4">
-                          <div className="flex-1 w-full flex items-center gap-5 bg-black/20 backdrop-blur-md rounded-[2.5rem] px-10 py-6 font-mono text-sm font-bold border border-white/10 group-hover:border-white/30 transition-all shadow-inner">
-                             <Fingerprint size={20} className="text-indigo-300" />
-                             <span className="truncate tracking-tighter">{currentUser?.id || 'PROVISIONING...'}</span>
+                       <div className="flex flex-col gap-3 w-full">
+                          <div className="w-full flex items-center gap-4 bg-black/20 backdrop-blur-md rounded-2xl px-6 py-4 font-mono text-sm font-bold border border-white/10 group-hover:border-white/30 transition-all shadow-inner">
+                             <Fingerprint size={18} className="text-indigo-300 shrink-0" />
+                             <span className="truncate tracking-tighter text-xs">{currentUser?.id || 'PROVISIONING...'}</span>
                           </div>
                           <button 
                             onClick={copyInviteId} 
-                            className={`w-full sm:w-auto py-6 px-10 rounded-[2.5rem] transition-all flex items-center justify-center gap-3 font-black uppercase text-[11px] tracking-widest h-[70px] ${
+                            className={`w-full py-4 px-6 rounded-2xl transition-all flex items-center justify-center gap-3 font-black uppercase text-[11px] tracking-widest ${
                               copyFeedback 
                                 ? 'bg-emerald-400 text-white shadow-emerald-400/40' 
                                 : 'bg-white text-indigo-900 shadow-2xl active:scale-95 hover:bg-slate-50'
                             }`}
                           >
-                             {copyFeedback ? <CheckCircle2 size={24} /> : <Copy size={24} />}
+                             {copyFeedback ? <CheckCircle2 size={18} /> : <Copy size={18} />}
                              {copyFeedback ? 'LINK READY' : 'COPY PROTOCOL'}
                           </button>
                        </div>
                     </div>
                     
-                    <div className="hidden lg:grid grid-cols-2 gap-6">
+                    <div className="hidden xl:grid grid-cols-2 gap-6">
                       <div className="space-y-6">
                         <div className="bg-white/10 backdrop-blur-md rounded-[2.5rem] p-10 border border-white/5 shadow-xl">
                           <h5 className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50 mb-3">Active Squad</h5>
