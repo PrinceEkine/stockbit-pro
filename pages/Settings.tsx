@@ -28,7 +28,8 @@ import {
   Languages,
   ArrowUpRight,
   ShieldAlert,
-  Fingerprint
+  Fingerprint,
+  Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Settings as SettingsType, User, SubscriptionPlan, AppLanguage } from '../types';
@@ -42,9 +43,10 @@ interface SettingsProps {
   onAddStaff: (data: any) => Promise<void>;
   onRemoveStaff: (id: string) => Promise<void>;
   onActivateSubscription: (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => Promise<void>;
+  onUpdatePassword?: (password: string) => Promise<any>;
 }
 
-const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentUser, onAddStaff, onRemoveStaff, onActivateSubscription }) => {
+const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentUser, onAddStaff, onRemoveStaff, onActivateSubscription, onUpdatePassword }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'market' | 'staff' | 'billing'>('profile');
   const [companyName, setCompanyName] = useState(settings.companyName);
   const [notificationEmail, setNotificationEmail] = useState(settings.notificationEmail);
@@ -56,6 +58,13 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
 
+  // Password Security state
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
   const t = TRANSLATIONS[settings.language || 'en'];
 
   useEffect(() => {
@@ -65,6 +74,43 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
       setLowStockAlerts(settings.lowStockEmailAlerts);
     }
   }, [settings]);
+
+  const handlePasswordUpdateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match.');
+      return;
+    }
+
+    if (!onUpdatePassword) {
+      setPasswordError('Password update service is currently unavailable.');
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      const res = await onUpdatePassword(newPassword);
+      if (res?.error) {
+        setPasswordError(res.error.message || 'Failed to update password.');
+      } else {
+        setPasswordSuccess('Account password configured successfully! You can now log in using your email and password.');
+        setNewPassword('');
+        setConfirmPassword('');
+        setTimeout(() => setPasswordSuccess(''), 5000);
+      }
+    } catch (err: any) {
+      setPasswordError(err.message || 'An error occurred while setting your password.');
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
 
   const handleApplyChanges = async () => {
     setIsSaving(true);
@@ -348,35 +394,95 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
               </div>
               
               <div className="lg:col-span-4 space-y-8">
-                {/* Security Card */}
-                <div className="bg-slate-900 rounded-[3.5rem] p-10 text-white relative overflow-hidden shadow-2xl min-h-[400px] flex flex-col justify-between group">
-                  <div className="relative z-10 space-y-8">
-                    <div className="w-16 h-16 bg-white/10 rounded-3xl flex items-center justify-center backdrop-blur-xl border border-white/20 group-hover:scale-110 transition-transform duration-500">
-                      <ShieldCheck size={32} className="text-indigo-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 leading-tight">Data Integrity <br/>Protocol</h3>
-                      <p className="text-slate-400 text-xs font-medium leading-relaxed uppercase tracking-wider">
-                        All configuration changes are logged and synchronized across your global terminal network with military-grade encryption.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="relative z-10 pt-10 border-t border-slate-800 space-y-4">
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      <span>Cloud Node</span>
-                      <span className="text-emerald-400 flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/> Verified
+                {/* Security & Password Card */}
+                <div className="bg-slate-900 rounded-[3.5rem] p-8 md:p-10 text-white relative overflow-hidden shadow-2xl space-y-6 border border-slate-800">
+                  <div className="relative z-10 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="w-14 h-14 bg-indigo-500/20 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-indigo-500/30">
+                        <Key size={26} className="text-indigo-400" />
+                      </div>
+                      <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                        <ShieldCheck size={12} /> Account Active
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      <span>Sync Latency</span>
-                      <span className="text-indigo-400 tracking-tighter">0.02ms</span>
+
+                    <div>
+                      <h3 className="text-xl font-black uppercase tracking-tight text-white flex items-center gap-2">
+                        Account Password
+                      </h3>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                        Set or update your password for email sign-in
+                      </p>
                     </div>
+
+                    {currentUser && (
+                      <div className="p-4 bg-slate-950/80 rounded-2xl border border-slate-800/80 space-y-1">
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Signed In As</p>
+                        <p className="text-xs font-bold text-slate-200 truncate">{currentUser.email}</p>
+                        <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider">
+                          {currentUser.name} ({currentUser.role})
+                        </p>
+                      </div>
+                    )}
+
+                    <form onSubmit={handlePasswordUpdateSubmit} className="space-y-4 pt-2">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">New Password</label>
+                        <div className="relative">
+                          <Lock size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" />
+                          <input 
+                            type="password" 
+                            required
+                            placeholder="At least 6 characters"
+                            className="w-full pl-12 pr-4 py-3.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs font-bold text-white placeholder:text-slate-600 outline-none focus:border-indigo-500 transition-all"
+                            value={newPassword}
+                            onChange={e => setNewPassword(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Confirm Password</label>
+                        <div className="relative">
+                          <Lock size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" />
+                          <input 
+                            type="password" 
+                            required
+                            placeholder="Re-enter password"
+                            className="w-full pl-12 pr-4 py-3.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs font-bold text-white placeholder:text-slate-600 outline-none focus:border-indigo-500 transition-all"
+                            value={confirmPassword}
+                            onChange={e => setConfirmPassword(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {passwordError && (
+                        <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-[10px] font-bold">
+                          {passwordError}
+                        </div>
+                      )}
+
+                      {passwordSuccess && (
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-[10px] font-bold flex items-center gap-2">
+                          <CheckCircle2 size={14} /> {passwordSuccess}
+                        </div>
+                      )}
+
+                      <button 
+                        type="submit"
+                        disabled={passwordSaving}
+                        className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 active:scale-95 disabled:opacity-50"
+                      >
+                        {passwordSaving ? <Loader2 size={16} className="animate-spin" /> : <Lock size={14} />}
+                        {passwordSaving ? 'Updating Password...' : 'Save Password'}
+                      </button>
+                    </form>
                   </div>
 
-                  <div className="absolute -bottom-20 -right-20 opacity-[0.03] group-hover:scale-125 transition-transform duration-[2000ms]">
-                    <ShieldCheck size={400} />
+                  <div className="relative z-10 pt-4 border-t border-slate-800">
+                    <p className="text-[9px] text-slate-500 font-medium leading-relaxed">
+                      💡 Google Users: Setting a password enables direct email & password sign-in for your account on any device.
+                    </p>
                   </div>
                 </div>
 

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { KeyRound, Eye, EyeOff, Loader2, ShieldCheck, X } from 'lucide-react';
 
 interface PasswordResetModalProps {
-  onUpdate: (password: string) => Promise<{ error: any }>;
+  onUpdate: (password: string) => Promise<{ error?: any }>;
   onClose: () => void;
 }
 

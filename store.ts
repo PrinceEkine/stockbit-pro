@@ -503,8 +503,40 @@ export const useStore = () => {
   }, []);
 
   const updatePassword = useCallback(async (newPassword: string) => {
-    return await supabase.auth.updateUser({ password: newPassword });
-  }, []);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session) {
+        const res = await supabase.auth.updateUser({ password: newPassword });
+        if (!res.error) return res;
+      }
+      
+      if (currentUser?.email) {
+        const { data, error } = await supabase.auth.signUp({ 
+          email: currentUser.email, 
+          password: newPassword,
+          options: {
+            data: {
+              full_name: currentUser.name,
+              company_name: currentUser.companyName,
+              role: currentUser.role
+            }
+          }
+        });
+
+        if (error && (error.message.includes("already registered") || error.message.includes("already exist") || error.message.includes("User already registered"))) {
+          const updateRes = await supabase.auth.updateUser({ password: newPassword });
+          return updateRes;
+        } else if (!error) {
+          return { data };
+        }
+      }
+      
+      return await supabase.auth.updateUser({ password: newPassword });
+    } catch (err: any) {
+      console.error("updatePassword error:", err);
+      return { error: err };
+    }
+  }, [currentUser]);
 
   const logout = useCallback(async () => {
     try {
