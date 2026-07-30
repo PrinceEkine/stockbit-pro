@@ -128,6 +128,7 @@ export type AppState = {
   currentUser: User | null;
   settings: Settings;
   error: string | null;
+  loading?: boolean;
 };
 
 export enum View {

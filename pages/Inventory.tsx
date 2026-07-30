@@ -64,11 +64,12 @@ interface InventoryProps {
   onDelete: (id: string) => void;
   settings: Settings;
   currentUser: UserType | null;
+  loading?: boolean;
 }
 
 const BRANCHES = ['Main Branch', 'Jumia Mall Warehouse', 'Lagos Warehouse', 'Abuja Showroom', 'Port Harcourt Hub'];
 
-const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], onAdd, onDelete, settings, currentUser }) => {
+const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], onAdd, onDelete, settings, currentUser, loading = false }) => {
   const t = TRANSLATIONS[settings.language || 'en'] || TRANSLATIONS.en;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -214,6 +215,112 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
     if (score >= 40) return 'text-amber-500';
     return 'text-rose-500';
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 md:space-y-10 px-4 md:px-0 animate-pulse">
+        {/* HEADER SECTION SKELETON */}
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2">
+          <div className="space-y-3">
+            <div className="h-8 w-44 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+            <div className="h-4 w-72 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="h-10 w-36 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+            <div className="h-10 w-10 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+            <div className="h-10 w-10 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+          </div>
+        </header>
+
+        {/* FILTER SECTION SKELETON */}
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row gap-4 shadow-sm">
+          <div className="h-11 bg-slate-100 dark:bg-slate-800/40 rounded-xl flex-1" />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="h-10 w-36 bg-slate-100 dark:bg-slate-800/40 rounded-xl" />
+            <div className="h-10 w-36 bg-slate-100 dark:bg-slate-800/40 rounded-xl" />
+            <div className="h-10 w-10 bg-slate-100 dark:bg-slate-800/40 rounded-xl" />
+          </div>
+        </div>
+
+        {/* MOBILE LIST SKELETON */}
+        <div className="lg:hidden space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <div className="flex justify-between items-start">
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 w-16 bg-slate-200 dark:bg-slate-800 rounded" />
+                  <div className="h-5 w-40 bg-slate-200 dark:bg-slate-800 rounded-md" />
+                  <div className="h-3 w-24 bg-slate-200 dark:bg-slate-800 rounded font-mono" />
+                </div>
+                <div className="w-6 h-6 bg-slate-200 dark:bg-slate-800 rounded" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-700 space-y-2">
+                  <div className="h-3 w-12 bg-slate-200 dark:bg-slate-800 rounded" />
+                  <div className="h-6 w-16 bg-slate-200 dark:bg-slate-800 rounded-md" />
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-700 space-y-2">
+                  <div className="h-3 w-12 bg-slate-200 dark:bg-slate-800 rounded" />
+                  <div className="h-6 w-20 bg-slate-200 dark:bg-slate-800 rounded-md" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* DESKTOP TABLE SKELETON */}
+        <div className="hidden lg:block bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden mb-32">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                  <th className="pl-6 py-4 w-12">
+                    <div className="w-4 h-4 bg-slate-200 dark:bg-slate-800 rounded" />
+                  </th>
+                  {['Product Name', 'SKU', 'Category', 'Price', 'Qty', 'Location', 'Actions'].map((h, i) => (
+                    <th key={i} className="px-4 py-4 text-xs font-bold uppercase text-slate-400">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[1, 2, 3, 4, 5, 6].map((row) => (
+                  <tr key={row} className="border-b border-slate-200 dark:border-slate-800">
+                    <td className="pl-6 py-4">
+                      <div className="w-4 h-4 bg-slate-200 dark:bg-slate-800 rounded" />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="h-5 w-44 bg-slate-200 dark:bg-slate-800 rounded-md" />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="h-4 w-16 bg-slate-200 dark:bg-slate-800 rounded font-mono" />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="h-4 w-20 bg-slate-200 dark:bg-slate-800 rounded" />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="h-4 w-16 bg-slate-200 dark:bg-slate-800 rounded" />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="h-4 w-10 bg-slate-200 dark:bg-slate-800 rounded" />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="h-4 w-24 bg-slate-200 dark:bg-slate-800 rounded-md" />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex gap-2">
+                        <div className="w-6 h-6 bg-slate-200 dark:bg-slate-800 rounded" />
+                        <div className="w-6 h-6 bg-slate-200 dark:bg-slate-800 rounded" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 md:space-y-10 animate-in fade-in duration-700 max-w-full overflow-x-hidden">

@@ -1,6 +1,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabase';
+import { doc, setDoc, deleteDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "./firebase";
 import { Product, Sale, Supplier, AppState, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod } from './types';
 import { DEFAULT_CATEGORIES } from './constants';
 
@@ -251,6 +253,14 @@ export const useStore = () => {
             }
             
             setCurrentUser(user);
+            try {
+              const { auth } = await import('./firebase');
+              if (auth.currentUser) {
+                await setDoc(doc(db, "profiles", data.id), data, { merge: true });
+              }
+            } catch (err) {
+              // Firestore sync optional
+            }
             loadData(user.id, user.role === 'staff', user.parentId);
           } else if (profileError && profileError.code === 'PGRST116') {
             // Profile missing - create it from metadata
@@ -318,6 +328,14 @@ export const useStore = () => {
             }
             
             setCurrentUser(user);
+            try {
+              const { auth } = await import('./firebase');
+              if (auth.currentUser) {
+                await setDoc(doc(db, "profiles", data.id), data, { merge: true });
+              }
+            } catch (err) {
+              // Firestore sync optional
+            }
             loadData(user.id, user.role === 'staff', user.parentId);
           } else if (profileError && profileError.code === 'PGRST116') {
              // Profile missing - create it from metadata
@@ -362,7 +380,7 @@ export const useStore = () => {
     return await supabase.auth.signInWithPassword({ email, password: pass });
   }, []);
 
-  const loginWithGoogle = useCallback(async () => {
+  const loginWithGoogle = useCallback(async (customEmail?: string) => {
     let email = '';
     let name = '';
 
@@ -374,10 +392,20 @@ export const useStore = () => {
         name = firebaseUser.displayName || 'Google Merchant';
       }
     } catch (err: any) {
-      console.warn("Real Firebase Google Sign-In failed or not configured. Activating sandboxed/authenticated simulation for developer review.", err);
-      // Fallback to active developer email context to allow the user to test the applet seamlessly
-      email = "princedagogoekine@gmail.com";
-      name = "Prince Dagogo (Demo)";
+      console.warn("Google Sign-In failed or cancelled:", err);
+      
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request' || err?.message?.includes('popup-closed-by-user')) {
+        throw new Error("Sign-in window was closed. Please try signing in again.");
+      }
+      if (err?.code === 'auth/popup-blocked' || err?.message?.includes('popup-blocked')) {
+        throw new Error("Sign-in pop-up was blocked by your browser. Please allow pop-ups for this site and try again.");
+      }
+      if (customEmail) {
+        email = customEmail;
+        name = customEmail.split('@')[0];
+      } else {
+        throw new Error(err?.message || "Failed to sign in with Google. Please try again.");
+      }
     }
 
     if (!email) {
@@ -396,6 +424,15 @@ export const useStore = () => {
       const user = mapProfile(existingProfile);
       setCurrentUser(user);
       localStorage.setItem('stockbit_firebase_email', email);
+      
+      try {
+        const { auth } = await import('./firebase');
+        if (auth.currentUser) {
+          await setDoc(doc(db, "profiles", existingProfile.id), existingProfile, { merge: true });
+        }
+      } catch (err) {
+        // Firestore sync optional
+      }
       await loadData(user.id, user.role === 'staff', user.parentId);
       return { user };
     } else {
@@ -412,8 +449,8 @@ export const useStore = () => {
       const newProfile = {
         id: newId,
         email: email,
-        name: name,
-        company_name: name + " Shop",
+        name: name || 'Google Merchant',
+        company_name: (name || 'Google Merchant') + " Shop",
         role: 'user',
         parent_id: null,
         trial_start_date: new Date().toISOString()
@@ -433,6 +470,15 @@ export const useStore = () => {
       const user = mapProfile(createdProfile);
       setCurrentUser(user);
       localStorage.setItem('stockbit_firebase_email', email);
+      
+      try {
+        const { auth } = await import('./firebase');
+        if (auth.currentUser) {
+          await setDoc(doc(db, "profiles", createdProfile.id), createdProfile);
+        }
+      } catch (err) {
+        // Firestore sync optional
+      }
       await loadData(user.id, user.role === 'staff', user.parentId);
       return { user };
     }
@@ -509,6 +555,21 @@ export const useStore = () => {
               console.warn("Settings sync skipped (checking schema compatibility):", error.message);
             }
           });
+
+          // Sync with Firestore settings collection
+          setDoc(doc(db, "settings", targetId), {
+            user_id: targetId,
+            company_name: newSettings.companyName,
+            currency: newSettings.currency,
+            categories: newSettings.categories,
+            low_stock_email_alerts: newSettings.lowStockEmailAlerts,
+            notification_email: newSettings.notificationEmail,
+            tax_rate: newSettings.taxRate,
+            theme: newSettings.theme,
+            language: newSettings.language
+          }, { merge: true }).catch(err => {
+            console.error("Firestore settings sync failed:", err);
+          });
         }
       }
       return newSettings;
@@ -522,6 +583,11 @@ export const useStore = () => {
     const { data, error } = await supabase.from('products').insert([{ ...product, user_id: userId }]).select().single();
     if (!error && data) {
       setProducts(prev => [...prev, data]);
+      try {
+        await setDoc(doc(db, "products", data.id), { ...data, user_id: userId });
+      } catch (err) {
+        console.error("Firestore persistence failed for products:", err);
+      }
     }
   };
 
@@ -529,6 +595,11 @@ export const useStore = () => {
     const { data, error } = await supabase.from('products').update(updates).eq('id', id).select().single();
     if (!error && data) {
       setProducts(prev => prev.map(p => p.id === id ? data : p));
+      try {
+        await setDoc(doc(db, "products", id), data, { merge: true });
+      } catch (err) {
+        console.error("Firestore update failed for products:", err);
+      }
     }
   };
 
@@ -536,6 +607,11 @@ export const useStore = () => {
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (!error) {
       setProducts(prev => prev.filter(p => p.id !== id));
+      try {
+        await deleteDoc(doc(db, "products", id));
+      } catch (err) {
+        console.error("Firestore delete failed for products:", err);
+      }
     }
   };
 
@@ -576,6 +652,11 @@ export const useStore = () => {
     // Success - Update local sales state instantly
     if (newSale) {
       setSales(prev => [newSale, ...prev]);
+      try {
+        await setDoc(doc(db, "sales", newSale.id), newSale);
+      } catch (err) {
+        console.error("Firestore persistence failed for sales:", err);
+      }
     }
 
     // Success - Decrease inventory local state and DB
@@ -587,6 +668,11 @@ export const useStore = () => {
         setProducts(prev => prev.map(prod => prod.id === p.id ? { ...prod, quantity: newQty } : prod));
         // Update DB
         await supabase.from('products').update({ quantity: newQty }).eq('id', p.id);
+        try {
+          await setDoc(doc(db, "products", p.id), { quantity: newQty }, { merge: true });
+        } catch (err) {
+          console.error("Firestore quantity update failed:", err);
+        }
       }
     }
     return true;
@@ -599,11 +685,21 @@ export const useStore = () => {
     const { data: ret, error } = await supabase.from('returns').insert([{ ...data, user_id: userId }]).select().single();
     if (!error && ret) {
       setReturns(prev => [ret, ...prev]);
+      try {
+        await setDoc(doc(db, "returns", ret.id), ret);
+      } catch (err) {
+        console.error("Firestore return persistence failed:", err);
+      }
       const p = products.find(prod => prod.id === data.product_id);
       if (p) {
         const newQty = p.quantity + data.quantity;
         setProducts(prev => prev.map(prod => prod.id === p.id ? { ...prod, quantity: newQty } : prod));
         await supabase.from('products').update({ quantity: newQty }).eq('id', p.id);
+        try {
+          await setDoc(doc(db, "products", p.id), { quantity: newQty }, { merge: true });
+        } catch (err) {
+          console.error("Firestore quantity update failed on return:", err);
+        }
       }
     }
   };
@@ -615,6 +711,11 @@ export const useStore = () => {
         setProducts(prev => prev.map(p => p.id === item.productId ? { ...p, quantity: item.physicalQty } : p));
         // Update DB
         await supabase.from('products').update({ quantity: item.physicalQty }).eq('id', item.productId);
+        try {
+          await setDoc(doc(db, "products", item.productId), { quantity: item.physicalQty }, { merge: true });
+        } catch (err) {
+          console.error("Firestore reconcile update failed:", err);
+        }
       }
     }
   };
@@ -626,6 +727,11 @@ export const useStore = () => {
     const { data, error } = await supabase.from('suppliers').insert([{ ...supplier, user_id: userId }]).select().single();
     if (!error && data) {
       setSuppliers(prev => [...prev, data]);
+      try {
+        await setDoc(doc(db, "suppliers", data.id), { ...data, user_id: userId });
+      } catch (err) {
+        console.error("Firestore supplier sync failed:", err);
+      }
     }
   };
 

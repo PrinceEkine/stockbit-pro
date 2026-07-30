@@ -26,6 +26,7 @@ import HelpCenter from './pages/HelpCenter';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Governance from './pages/Governance';
+import { TRANSLATIONS } from './constants/translations';
 import { 
   Menu, Bell, Box, Loader2, 
   Eye, EyeOff, ShieldAlert,
@@ -353,7 +354,7 @@ const App: React.FC = () => {
     }
   };
 
-  if (store.loading) {
+  if (store.loading && !store.isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 gap-8 relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -382,14 +383,38 @@ const App: React.FC = () => {
 
   if (!store.isLoggedIn || activeView === View.Landing || isInfoView) {
     if (isInfoView) {
+      const infoLang = store.settings?.language || 'en';
+      const tInfo = TRANSLATIONS[infoLang] || TRANSLATIONS.en;
       return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors flex flex-col">
           <nav className="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 h-20 pt-[env(safe-area-inset-top)] box-content">
             <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
               <button onClick={() => { setActiveView(View.Landing); setAuthStep('landing'); }} className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-[#4f46e5] rounded-xl flex items-center justify-center shadow-lg"><Box size={22} className="text-white" /></div>
-                <span className="font-black text-xl uppercase dark:text-white">StockBit Pro</span>
+                <span className="font-black text-sm md:text-xl uppercase dark:text-white">StockBit Pro</span>
               </button>
+              
+              <div className="hidden lg:flex items-center gap-10">
+                <button 
+                  onClick={() => { setActiveView(View.Landing); setAuthStep('landing'); }} 
+                  className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 hover:text-indigo-600 transition-all"
+                >
+                  {tInfo.inventory}
+                </button>
+                <button 
+                  onClick={() => setActiveView(View.AboutUs)} 
+                  className={`text-[11px] font-black uppercase tracking-[0.3em] transition-all ${activeView === View.AboutUs ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600'}`}
+                >
+                  {tInfo.about_us}
+                </button>
+                <button 
+                  onClick={() => setActiveView(View.HelpCenter)} 
+                  className={`text-[11px] font-black uppercase tracking-[0.3em] transition-all ${activeView === View.HelpCenter ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600'}`}
+                >
+                  {tInfo.help_center}
+                </button>
+              </div>
+
               {store.isLoggedIn ? (
                 <button onClick={() => setActiveView(View.Dashboard)} className="px-6 py-2.5 bg-[#4f46e5] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2">
                   <ArrowLeft size={14} /> Back to Dashboard
@@ -685,7 +710,7 @@ const App: React.FC = () => {
 
     switch (activeView) {
       case View.Dashboard: return <Dashboard state={store} onNavigate={setActiveView} />;
-      case View.Inventory: return <Inventory products={store.products || []} suppliers={store.suppliers || []} onAdd={store.addProduct} onUpdate={store.updateProduct} onDelete={store.deleteProduct} settings={store.settings} currentUser={store.currentUser} />;
+      case View.Inventory: return <Inventory products={store.products || []} suppliers={store.suppliers || []} onAdd={store.addProduct} onUpdate={store.updateProduct} onDelete={store.deleteProduct} settings={store.settings} currentUser={store.currentUser} loading={store.loading} />;
       case View.Sales: return <Sales sales={store.sales || []} products={store.products || []} onRecordSale={store.recordSale} settings={store.settings} currentUser={store.currentUser} />;
       case View.AIInsights: return <AIInsights state={store} />;
       case View.Stocktake: return <Stocktake products={store.products || []} onReconcile={store.reconcileInventory} settings={store.settings} />;

@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Box, 
   Sparkles, 
@@ -43,6 +44,35 @@ interface LandingPageProps {
   onEnterTerminal: () => void;
 }
 
+const FLOATING_PARTICLES = [
+  { Icon: Box, size: 32, top: '12%', left: '6%', duration: 14, delay: 0, color: 'text-indigo-500/20 dark:text-indigo-400/30' },
+  { Icon: ShoppingCart, size: 26, top: '25%', left: '84%', duration: 18, delay: 1, color: 'text-emerald-500/20 dark:text-emerald-400/30' },
+  { Icon: TrendingUp, size: 28, top: '58%', left: '10%', duration: 22, delay: 2, color: 'text-blue-500/20 dark:text-blue-400/30' },
+  { Icon: Sparkles, size: 20, top: '70%', left: '76%', duration: 12, delay: 0.5, color: 'text-amber-500/25 dark:text-amber-400/35' },
+  { Icon: Database, size: 24, top: '38%', left: '90%', duration: 16, delay: 1.5, color: 'text-indigo-500/20 dark:text-indigo-400/30' },
+  { Icon: Scan, size: 26, top: '84%', left: '16%', duration: 20, delay: 3, color: 'text-rose-500/20 dark:text-rose-400/30' },
+  { Icon: BarChart3, size: 22, top: '45%', left: '5%', duration: 19, delay: 4, color: 'text-sky-500/20 dark:text-sky-400/30' },
+  { Icon: CreditCard, size: 24, top: '8%', left: '75%', duration: 15, delay: 2.5, color: 'text-emerald-500/20 dark:text-emerald-400/30' },
+  { Icon: Cpu, size: 20, top: '50%', left: '82%', duration: 21, delay: 1.2, color: 'text-indigo-500/15 dark:text-indigo-400/25' },
+  { Icon: Smartphone, size: 22, top: '30%', left: '18%', duration: 17, delay: 3.5, color: 'text-purple-500/20 dark:text-purple-400/30' },
+  { Icon: Layout, size: 24, top: '65%', left: '88%', duration: 24, delay: 0.8, color: 'text-pink-500/15 dark:text-pink-400/25' },
+  { Icon: CheckCircle2, size: 18, top: '78%', left: '42%', duration: 11, delay: 5, color: 'text-teal-500/20 dark:text-teal-400/30' },
+  { Icon: Terminal, size: 20, top: '92%', left: '68%', duration: 16, delay: 2.2, color: 'text-violet-500/20 dark:text-violet-400/30' },
+  { Icon: Activity, size: 22, top: '5%', left: '35%', duration: 13, delay: 1.8, color: 'text-rose-500/15 dark:text-rose-400/25' },
+  { Icon: MessageSquare, size: 18, top: '18%', left: '52%', duration: 15, delay: 4.1, color: 'text-blue-500/15 dark:text-blue-400/25' }
+];
+
+const LIVE_FEED_TRANSACTIONS = [
+  "🛒 Ikeja: New sale recorded • ₦18,500.00",
+  "📦 Abuja: Inventory synced • 140 units",
+  "⚡ Lekki: Auto-restock triggered for Category A",
+  "💳 PH Hub: Retail invoice generated",
+  "🌱 Mega Pro: Sustainability score of 85 verified",
+  "📈 Jumia Mall: Multi-channel stock updated",
+  "🛒 Kano: Walk-in customer checked out • ₦42,000.00",
+  "📦 Lagos Main: Received batch from Supplier A",
+];
+
 const LandingPage: React.FC<LandingPageProps> = ({ 
   isLoggedIn, 
   isAppInstalled, 
@@ -60,6 +90,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
     { role: 'bot', text: 'Hello! I am StockBot. How can I help you manage your shop today?' }
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const [feedIndex, setFeedIndex] = useState(0);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const architectureRef = useRef<HTMLElement>(null);
@@ -67,6 +98,13 @@ const LandingPage: React.FC<LandingPageProps> = ({
   const isMounted = useRef(true);
 
   const t = TRANSLATIONS[language] || TRANSLATIONS.en;
+
+  useEffect(() => {
+    const feedInterval = setInterval(() => {
+      setFeedIndex((prev) => (prev + 1) % LIVE_FEED_TRANSACTIONS.length);
+    }, 4000);
+    return () => clearInterval(feedInterval);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -213,24 +251,96 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
       {/* Hero Section */}
       <section className="relative pt-28 md:pt-48 pb-20 px-4 sm:px-8 min-h-[90vh] flex items-center overflow-hidden">
+        {/* Floating Particles and Ambient Blurs background layer */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 select-none">
+          {/* Ambient blur gradients */}
+          <motion.div 
+            animate={{ x: [0, 45, 0], y: [0, -35, 0] }}
+            transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-1/4 left-1/12 w-[30rem] h-[30rem] bg-indigo-500/5 dark:bg-indigo-500/10 blur-[120px] rounded-full" 
+          />
+          <motion.div 
+            animate={{ x: [0, -45, 0], y: [0, 35, 0] }}
+            transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute bottom-1/4 right-1/12 w-[35rem] h-[35rem] bg-emerald-500/5 dark:bg-emerald-500/5 blur-[140px] rounded-full" 
+          />
+          
+          {/* Retail Floating Particles */}
+          {FLOATING_PARTICLES.map((p, idx) => {
+            const IconComponent = p.Icon;
+            return (
+              <motion.div
+                key={idx}
+                initial={{ y: 0, x: 0, scale: 0.8, opacity: 0.05, rotate: 0 }}
+                animate={{ 
+                  y: [0, -40, 0],
+                  x: [0, idx % 2 === 0 ? 30 : -30, 0],
+                  scale: [0.8, 1.15, 0.8],
+                  rotate: [0, idx % 2 === 0 ? 360 : -360],
+                  opacity: [0.12, 0.35, 0.12]
+                }}
+                transition={{ 
+                  duration: p.duration, 
+                  delay: p.delay, 
+                  repeat: Infinity, 
+                  ease: "easeInOut" 
+                }}
+                style={{
+                  position: 'absolute',
+                  top: p.top,
+                  left: p.left,
+                }}
+                className={`hidden sm:block ${p.color || 'text-indigo-600 dark:text-indigo-400'} filter drop-shadow-[0_0_12px_rgba(99,102,241,0.12)]`}
+              >
+                <IconComponent size={p.size} />
+              </motion.div>
+            );
+          })}
+        </div>
+
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center relative z-10 w-full">
-          <div className="space-y-8 md:space-y-12 text-left w-full">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-full border border-indigo-100 dark:border-indigo-900/30">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="space-y-8 md:space-y-12 text-left w-full"
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-full border border-indigo-100 dark:border-indigo-900/30"
+            >
               <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" />
               <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{t.smart_biz}</span>
-            </div>
+            </motion.div>
             
-            <div className="space-y-4 w-full">
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="space-y-4 w-full"
+            >
               <h1 className="text-[clamp(2.2rem,8vw,3.5rem)] md:text-[clamp(3rem,6vw,5rem)] font-bold tracking-tight leading-[1.1] text-slate-900 dark:text-white text-balance">
                 {t.hero_title_1} <span className="text-indigo-600">{t.hero_title_2}</span>
               </h1>
-            </div>
+            </motion.div>
             
-            <p className="max-w-xl text-base md:text-lg text-slate-500 dark:text-slate-400 font-normal leading-relaxed">
+            <motion.p 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="max-w-xl text-base md:text-lg text-slate-500 dark:text-slate-400 font-normal leading-relaxed"
+            >
               {t.hero_subtitle}
-            </p>
+            </motion.p>
 
-            <div className="pt-4 pr-2 space-y-4" >
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="pt-4 pr-2 space-y-4"
+            >
               <div className="flex flex-col sm:flex-row gap-4">
                 <button 
                   onClick={isLoggedIn ? onEnterTerminal : () => onAuth('register')}
@@ -267,9 +377,14 @@ const LandingPage: React.FC<LandingPageProps> = ({
                   </button>
                 )}
               </div>
-            </div>
+            </motion.div>
 
-            <div className="flex flex-col xs:flex-row items-start xs:items-center gap-6 md:gap-8 pt-10 border-t border-slate-100 dark:border-slate-800">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              className="flex flex-col xs:flex-row items-start xs:items-center gap-6 md:gap-8 pt-10 border-t border-slate-100 dark:border-slate-800"
+            >
               <div className="flex -space-x-3 shrink-0">
                 {[1,2,3,4].map(i => (
                   <div key={i} className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-100 dark:bg-slate-800 border-4 border-white dark:border-slate-950 flex items-center justify-center overflow-hidden shadow-sm">
@@ -281,10 +396,15 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 <p className="text-[13px] font-black uppercase text-slate-900 dark:text-white leading-none mb-1">PROUDLY NIGERIAN</p>
                 <p className="text-[9px] md:text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest truncate">TRUSTED BY 500+ SHOP OWNERS ACROSS NIGERIA</p>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
-          <div className="relative group hidden lg:block pr-8">
+          <motion.div 
+            initial={{ opacity: 0, x: 40, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+            className="relative group hidden lg:block pr-8"
+          >
             <div className="absolute inset-0 bg-indigo-600/5 rounded-[5rem] rotate-3 scale-105 group-hover:rotate-6 transition-transform duration-1000"></div>
             <div className="relative bg-white dark:bg-slate-900 rounded-[5rem] p-5 border border-slate-100 dark:border-slate-800 shadow-2xl overflow-hidden aspect-[4/3]">
               <img 
@@ -294,7 +414,43 @@ const LandingPage: React.FC<LandingPageProps> = ({
                 loading="eager"
               />
               <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/20 to-transparent"></div>
-              <div className="absolute bottom-10 left-10 p-6 bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-[2rem] shadow-2xl animate-bounce-slow">
+              
+              {/* Simulated Live Ledger Feed Overlay */}
+              <motion.div 
+                animate={{ y: [0, 8, 0] }}
+                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                className="absolute top-8 right-8 p-4 bg-slate-950/90 backdrop-blur-xl rounded-[1.8rem] border border-white/10 shadow-2xl w-72 pointer-events-none select-none"
+              >
+                 <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-indigo-500/20 text-indigo-400 rounded-xl flex items-center justify-center shrink-0">
+                       <Activity size={16} className="animate-pulse" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                       <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 leading-none mb-1">
+                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                         LIVE TERMINAL FEED
+                       </p>
+                       <AnimatePresence mode="wait">
+                         <motion.p 
+                           key={feedIndex}
+                           initial={{ opacity: 0, y: 5 }}
+                           animate={{ opacity: 1, y: 0 }}
+                           exit={{ opacity: 0, y: -5 }}
+                           transition={{ duration: 0.3 }}
+                           className="text-[10px] font-bold text-white mt-0.5 leading-normal uppercase truncate"
+                         >
+                           {LIVE_FEED_TRANSACTIONS[feedIndex]}
+                         </motion.p>
+                       </AnimatePresence>
+                    </div>
+                 </div>
+              </motion.div>
+
+              <motion.div 
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute bottom-10 left-10 p-6 bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-[2rem] shadow-2xl"
+              >
                  <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white">
                        <TrendingUp size={24} />
@@ -304,9 +460,9 @@ const LandingPage: React.FC<LandingPageProps> = ({
                        <p className="text-xl font-black text-slate-900 dark:text-white">₦245,800.00</p>
                     </div>
                  </div>
-              </div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -533,6 +689,30 @@ const LandingPage: React.FC<LandingPageProps> = ({
                   </div>
                 </div>
               ))}
+              
+              {chatMessages.length === 1 && (
+                <div className="pt-2 flex flex-col gap-2">
+                  <p className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider mb-1">Common Questions:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      "What is StockBit Pro?",
+                      "How long is the free trial?",
+                      "Is barcode scanning supported?",
+                      "Show support contact"
+                    ].map((promptText, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setChatInput(promptText)}
+                        className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-slate-600 dark:text-slate-300 text-[10px] font-bold rounded-xl border border-slate-200/50 dark:border-slate-800 transition-all shadow-sm cursor-pointer"
+                      >
+                        {promptText}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {isTyping && (
                 <div className="flex justify-start">
                   <div className="bg-white dark:bg-slate-800 px-4 py-3 rounded-[1.2rem] rounded-tl-none border border-slate-100 dark:border-slate-800 shadow-sm flex gap-1 items-center">
@@ -577,7 +757,13 @@ const NavOption = ({ label, onClick }: any) => (
 );
 
 const FeatureImageCard = ({ image, title, desc, icon }: any) => (
-  <div className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group overflow-hidden">
+  <motion.div 
+    initial={{ opacity: 0, y: 30 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, margin: "-50px" }}
+    transition={{ duration: 0.6 }}
+    className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group overflow-hidden"
+  >
      <div className="h-48 overflow-hidden relative">
         <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
         <div className="absolute inset-0 bg-indigo-600/10"></div>
@@ -589,11 +775,17 @@ const FeatureImageCard = ({ image, title, desc, icon }: any) => (
         <h4 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">{title}</h4>
         <p className="text-[12px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{desc}</p>
      </div>
-  </div>
+  </motion.div>
 );
 
 const BenefitItem = ({ title, desc, icon }: any) => (
-  <div className="flex items-start gap-4 group">
+  <motion.div 
+    initial={{ opacity: 0, x: -15 }}
+    whileInView={{ opacity: 1, x: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.5 }}
+    className="flex items-start gap-4 group"
+  >
     <div className="w-10 h-10 bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
       {icon}
     </div>
@@ -601,7 +793,7 @@ const BenefitItem = ({ title, desc, icon }: any) => (
       <h5 className="text-[12px] font-black uppercase text-slate-900 dark:text-white tracking-tight">{title}</h5>
       <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed">{desc}</p>
     </div>
-  </div>
+  </motion.div>
 );
 
 const SocialIcon = ({ icon, onClick }: any) => (

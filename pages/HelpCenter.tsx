@@ -1,5 +1,5 @@
-
 import React from 'react';
+import { motion } from 'motion/react';
 import { 
   HelpCircle, 
   MessageCircle, 
@@ -20,13 +20,18 @@ import {
 
 const HelpCenter: React.FC = () => {
   return (
-    <div className="space-y-12 animate-in fade-in duration-500 max-w-full pb-20">
-      <div className="space-y-4 text-left">
+    <div className="space-y-12 max-w-full pb-20">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="space-y-4 text-left"
+      >
         <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Help Center</h2>
         <p className="text-lg text-slate-500 dark:text-slate-400 font-normal leading-relaxed max-w-2xl">
           Resources and support to help you manage your business efficiently.
         </p>
-      </div>
+      </motion.div>
 
       {/* QUICK SOLUTIONS SECTION */}
       <section className="space-y-8">
@@ -37,24 +42,28 @@ const HelpCenter: React.FC = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FixCard 
+            index={0}
             icon={<RefreshCw size={20} />}
             title="App Performance Issues"
             fix="If the applications feels slow, try refreshing your browser or clearing your cache. Most connectivity issues are resolved with a simple reload."
             color="bg-blue-50 text-blue-600 dark:bg-blue-900/10 dark:text-blue-400"
           />
           <FixCard 
+            index={1}
             icon={<Camera size={20} />}
             title="Smarter Scanning"
             fix="Ensure browser permissions are granted for camera access. For best results, use the stock scan module in well-lit environments."
             color="bg-purple-50 text-purple-600 dark:bg-purple-900/10 dark:text-purple-400"
           />
           <FixCard 
+            index={2}
             icon={<Wifi size={20} />}
             title="Data Synchronization"
             fix="Wait for the sync indicator to confirm updates. If working offline, your changes will be pushed once your connection is restored."
             color="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/10 dark:text-emerald-400"
           />
           <FixCard 
+            index={3}
             icon={<Key size={20} />}
             title="Credential Access"
             fix="Verify staff 'Invite IDs' in the Team Management dashboard. Each staff member requires a valid ID for specialized account creation."
@@ -66,21 +75,25 @@ const HelpCenter: React.FC = () => {
       {/* DETAILED GUIDES */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <HelpItem 
+          index={0}
           title="Business Configuration" 
           desc="Setup your business profile, upload branding assets, and configure locale settings." 
           icon={<Box size={20} />} 
         />
         <HelpItem 
+          index={1}
           title="Sales Intelligence" 
           desc="Understand how to record transactions and generate professional invoices." 
           icon={<Smartphone size={20} />} 
         />
         <HelpItem 
+          index={2}
           title="Billing & Plans" 
           desc="Manage your subscription tier and view upcoming renewal schedules." 
           icon={<CreditCard size={20} />} 
         />
         <HelpItem 
+          index={3}
           title="Data Stewardship" 
           desc="Learn about our encryption protocols and how we protect your commercial data." 
           icon={<ShieldCheck size={20} />} 
@@ -88,38 +101,56 @@ const HelpCenter: React.FC = () => {
       </div>
 
       {/* DIRECT CONTACT */}
-      <div className="bg-slate-900 dark:bg-slate-800 p-8 md:p-10 rounded-2xl text-white shadow-xl relative overflow-hidden">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+        className="bg-slate-900 dark:bg-slate-800 p-8 md:p-10 rounded-2xl text-white shadow-xl relative overflow-hidden"
+      >
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
            <div className="space-y-2 text-center md:text-left">
               <h3 className="text-2xl font-bold">Still need assistance?</h3>
               <p className="text-slate-400 text-sm font-normal max-w-sm">Our support engineers are available daily to resolve technical queries.</p>
            </div>
            <div className="flex flex-wrap justify-center gap-4">
-              <a href="tel:07010698264" className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-xl font-bold text-xs hover:bg-slate-100 transition-all">
+              <a href="tel:07010698264" className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-xl font-bold text-xs hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all">
                 <Phone size={16}/> Voice Support
               </a>
-              <a href="https://wa.me/2347072127949" className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold text-xs hover:bg-emerald-600 transition-all">
+              <a href="https://wa.me/2347072127949" className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold text-xs hover:bg-emerald-600 hover:scale-105 active:scale-95 transition-all">
                 <MessageCircle size={16}/> WhatsApp Chat
               </a>
            </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
 
-const FixCard = ({ icon, title, fix, color }: any) => (
-  <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-transform hover:scale-[1.01]">
+const FixCard = ({ icon, title, fix, color, index }: any) => (
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.5, delay: index * 0.1 }}
+    className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:scale-[1.01] hover:shadow-md"
+  >
     <div className={`w-10 h-10 ${color} rounded-lg flex items-center justify-center mb-4`}>
       {icon}
     </div>
     <h4 className="text-md font-bold text-slate-900 dark:text-white mb-2">{title}</h4>
     <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-normal">{fix}</p>
-  </div>
+  </motion.div>
 );
 
-const HelpItem = ({ title, desc, icon }: any) => (
-  <button className="flex items-center justify-between p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all text-left">
+const HelpItem = ({ title, desc, icon, index }: any) => (
+  <motion.button 
+    initial={{ opacity: 0, x: -15 }}
+    whileInView={{ opacity: 1, x: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.4, delay: index * 0.05 }}
+    className="flex items-center justify-between p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:scale-[1.01] transition-all text-left"
+  >
     <div className="flex items-center gap-4">
       <div className="text-indigo-600 dark:text-indigo-400">{icon}</div>
       <div>
@@ -128,7 +159,7 @@ const HelpItem = ({ title, desc, icon }: any) => (
       </div>
     </div>
     <ChevronRight size={16} className="text-slate-300" />
-  </button>
+  </motion.button>
 );
 
 export default HelpCenter;
