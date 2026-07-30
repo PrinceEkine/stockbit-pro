@@ -608,9 +608,9 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
                         </div>
                         <div className="bg-white/10 backdrop-blur-md rounded-[2.5rem] p-10 border border-white/5 shadow-xl">
                           <h5 className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50 mb-3">Sync Node</h5>
-                          <p className="text-[11px] font-black uppercase tracking-[0.3em] text-emerald-400 flex items-center gap-2">
-                             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Operational
-                          </p>
+                          <div className="text-[11px] font-black uppercase tracking-[0.3em] text-emerald-400 flex items-center gap-2">
+                             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" /> Operational
+                          </div>
                         </div>
                       </div>
                       <div className="pt-12">
