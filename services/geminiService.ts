@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Product, Sale } from "../types";
 import { DEFAULT_CATEGORIES } from "../constants";
+import { sanitizeAiText } from "./qwenService";
 
 const cleanBase64 = (base64: string) => {
   return base64.replace(/^data:image\/(png|jpeg|jpg);base64,/, '').replace(/\s/g, '');
@@ -111,9 +112,10 @@ export const getInventoryInsights = async (products: Product[], sales: Sale[]): 
       SHOP INVENTORY: ${JSON.stringify(inventoryState)}
       HISTORICAL SALES (Last 50): ${JSON.stringify(itemSalesHistory)}
       
-      You are an elite retail logistics analyst for Nigerian businesses. 
+      You are an elite retail logistics analyst for Nigerian businesses.
       Based on this data and your research of current market trends in Nigeria, provide a detailed predictive audit.
-      Suggest high priority restocks, risk warnings for expiry, and market opportunities.`,
+      Suggest high priority restocks, risk warnings for expiry, and market opportunities.
+      Reply in plain text only. Do NOT use markdown, asterisks (*), underscores, hashes (#), or backticks. For lists, start each item on a new line with a simple dot (•).`,
       config: {
         tools: [{ googleSearch: {} }]
       }
@@ -131,7 +133,7 @@ export const getInventoryInsights = async (products: Product[], sales: Sale[]): 
     }
 
     return {
-      text: response.text || "Analysis complete.",
+      text: sanitizeAiText(response.text || "Analysis complete."),
       sources: sources
     };
   } catch (error) {

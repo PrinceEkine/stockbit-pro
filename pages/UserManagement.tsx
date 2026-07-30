@@ -25,6 +25,7 @@ import {
   Activity
 } from 'lucide-react';
 import { User } from '../types';
+import { getTrialStatus } from '../store';
 
 interface UserManagementProps {
   users: User[];
@@ -69,12 +70,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdatePlan, on
       </div>
     );
     
-    const start = new Date(user.trialStartDate);
-    const now = new Date();
-    const expiry = new Date(start);
-    expiry.setDate(expiry.getDate() + 60);
-    
-    if (now > expiry) return (
+    // Use the canonical trial logic so this badge matches the actual access enforced app-wide.
+    const { isExpired } = getTrialStatus(user);
+
+    if (isExpired) return (
       <div className="flex items-center gap-2 text-[10px] font-bold text-rose-600 uppercase tracking-wider bg-rose-50 dark:bg-rose-900/10 px-2.5 py-1 rounded-full border border-rose-100 dark:border-rose-800">
          <XCircle size={12} /> Expired Trial
       </div>

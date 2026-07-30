@@ -6,16 +6,53 @@ export interface InsightResult {
   sources: { title: string; uri: string }[];
 }
 
+/**
+ * Converts raw markdown from the AI models into clean, readable plain text.
+ * Removes asterisk emphasis (**bold**, *italic*), heading hashes and stray
+ * backticks so the customer-care chat and analytics never show raw "*" markers.
+ */
+export const sanitizeAiText = (raw: string): string => {
+  if (!raw) return raw;
+  return raw
+    .split('\n')
+    .map((line) => {
+      let l = line;
+      // Turn markdown bullets ("* ", "- ", "+ ") at the start of a line into a clean dot.
+      l = l.replace(/^(\s*)[*\-+]\s+/, '$1• ');
+      // Drop leading heading markers ("#", "##", ...).
+      l = l.replace(/^\s*#{1,6}\s*/, '');
+      // Strip bold/italic emphasis wrappers while keeping the inner text.
+      l = l.replace(/\*\*(.+?)\*\*/g, '$1');
+      l = l.replace(/__(.+?)__/g, '$1');
+      l = l.replace(/\*(.+?)\*/g, '$1');
+      l = l.replace(/`([^`]+)`/g, '$1');
+      // Remove any remaining stray asterisks or backticks.
+      l = l.replace(/[*`]/g, '');
+      return l;
+    })
+    .join('\n')
+    .trim();
+};
+
+// Shared directive appended to every AI prompt so responses come back as plain text.
+const PLAIN_TEXT_DIRECTIVE =
+  "Formatting rules: reply in plain text only. Do NOT use markdown, asterisks (*), underscores, hashes (#), or backticks for emphasis, bullets, or headings. Use plain sentences, and where you need a list start each item on a new line with a simple dot (•).";
+
 export const callQwenPlus = async (
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
   fallbackText: string = ""
 ): Promise<string> => {
   const apiKey = process.env.ALIBABA_API_KEY || process.env.QWEN_API_KEY || import.meta.env.VITE_ALIBABA_API_KEY || '';
-  
+
   if (!apiKey) {
     console.log("Alibaba API key not configured. Falling back to Gemini...");
     return await callGeminiFallback(messages);
   }
+
+  // Reinforce the system message with the plain-text formatting directive.
+  const directedMessages = messages.some(m => m.role === 'system')
+    ? messages.map(m => m.role === 'system' ? { ...m, content: `${m.content}\n\n${PLAIN_TEXT_DIRECTIVE}` } : m)
+    : [{ role: 'system' as const, content: PLAIN_TEXT_DIRECTIVE }, ...messages];
 
   try {
     const endpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
@@ -27,7 +64,7 @@ export const callQwenPlus = async (
       },
       body: JSON.stringify({
         model: "qwen-plus",
-        messages: messages,
+        messages: directedMessages,
         temperature: 0.7
       })
     });
@@ -38,7 +75,8 @@ export const callQwenPlus = async (
     }
 
     const data = await response.json();
-    return data.choices?.[0]?.message?.content || fallbackText;
+    const content = data.choices?.[0]?.message?.content;
+    return content ? sanitizeAiText(content) : fallbackText;
   } catch (error) {
     console.error("Qwen API Call failed, falling back to Gemini:", error);
     return await callGeminiFallback(messages);
@@ -62,11 +100,11 @@ const callGeminiFallback = async (
       model: 'gemini-2.5-flash',
       contents: userMsgs,
       config: {
-        systemInstruction: systemMsg || undefined,
+        systemInstruction: `${systemMsg}\n\n${PLAIN_TEXT_DIRECTIVE}`.trim(),
       }
     });
 
-    return response.text || "Hello! I am StockBot. I am currently running on fallback mode because no API keys could be authorized.";
+    return sanitizeAiText(response.text || "Hello! I am StockBot. I am currently running on fallback mode because no API keys could be authorized.");
   } catch (err) {
     console.error("Gemini Fallback failed as well:", err);
     return "Service is temporarily unavailable. Please verify your API key configurations in the Settings menu.";

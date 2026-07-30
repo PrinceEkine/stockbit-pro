@@ -485,7 +485,28 @@ export const useStore = () => {
   }, [loadData]);
 
   const register = useCallback(async ({ email, password, name, companyName, inviteId }: any) => {
-    const { data, error: authError } = await supabase.auth.signUp({ 
+    // If joining as staff, verify the owner's Invite ID exists before creating the account
+    // so team members are never orphaned under a non-existent business.
+    if (inviteId) {
+      const { data: owner, error: ownerError } = await supabase
+        .from('profiles')
+        .select('id, role')
+        .eq('id', inviteId)
+        .maybeSingle();
+
+      if (ownerError) {
+        // A malformed (non-UUID) ID also lands here, so guide the user to re-check it.
+        return { error: { message: "Could not verify the Invite ID. Please paste the exact Link ID from your owner's Settings page and try again." } };
+      }
+      if (!owner) {
+        return { error: { message: "Invalid Invite ID. Please confirm the exact Link ID from your business owner's Settings page." } };
+      }
+      if (owner.role === 'staff') {
+        return { error: { message: "This Invite ID belongs to a staff member, not a business owner. Ask your owner for their Link ID." } };
+      }
+    }
+
+    const { data, error: authError } = await supabase.auth.signUp({
       email, 
       password, 
       options: { 

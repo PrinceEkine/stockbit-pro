@@ -145,15 +145,26 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
 
     const amount = cycle === 'monthly' ? prices[plan].monthly : prices[plan].annual;
 
-    const handler = (window as any).PaystackPop.setup({
-      key: publicKey,
-      email: currentUser?.email || 'billing@stockbit.pro',
-      amount: amount * 100, 
-      currency: "NGN",
-      callback: () => onActivateSubscription(plan, cycle),
-      onClose: () => console.log("Payment window closed.")
-    });
-    handler.openIframe();
+    const PaystackPop = (window as any).PaystackPop;
+    if (!PaystackPop || typeof PaystackPop.setup !== 'function') {
+      alert("Payment gateway is still loading or was blocked by your browser. Please check your connection, disable any ad-blockers, and try again.");
+      return;
+    }
+
+    try {
+      const handler = PaystackPop.setup({
+        key: publicKey,
+        email: currentUser?.email || 'billing@stockbit.pro',
+        amount: amount * 100,
+        currency: "NGN",
+        callback: () => onActivateSubscription(plan, cycle),
+        onClose: () => console.log("Payment window closed.")
+      });
+      handler.openIframe();
+    } catch (err) {
+      console.error("Paystack initialization failed:", err);
+      alert("Could not open the payment window. Please try again in a moment.");
+    }
   };
 
   const handleAddStaff = () => {
