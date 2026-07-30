@@ -616,7 +616,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
               The professional operating system for the modern Nigerian retailer.
             </p>
             <div className="flex items-center gap-5">
-              <SocialIcon icon={<Twitter size={20}/>} onClick={() => window.open('https://twitter.com/stockbit', '_blank')} />
+              <SocialIcon icon={<Twitter size={20}/>} onClick={() => window.open('https://x.com/stockbitpro', '_blank')} />
               {!isAppInstalled && <SocialIcon icon={<Smartphone size={20}/>} onClick={onInstall} />}
             </div>
           </div>
