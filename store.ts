@@ -5,6 +5,7 @@ import { doc, setDoc, deleteDoc, collection, query, where, getDocs } from "fireb
 import { db } from "./firebase";
 import { Product, Sale, Supplier, AppState, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod } from './types';
 import { DEFAULT_CATEGORIES } from './constants';
+import { getEntitlements, isUnlimited } from './constants/plans';
 
 const mapProfile = (dbProfile: any): User => {
   // For old users without a trial_start_date, we use created_at.
@@ -490,7 +491,7 @@ export const useStore = () => {
     if (inviteId) {
       const { data: owner, error: ownerError } = await supabase
         .from('profiles')
-        .select('id, role')
+        .select('*')
         .eq('id', inviteId)
         .maybeSingle();
 
@@ -503,6 +504,20 @@ export const useStore = () => {
       }
       if (owner.role === 'staff') {
         return { error: { message: "This Invite ID belongs to a staff member, not a business owner. Ask your owner for their Link ID." } };
+      }
+
+      // Enforce the owner's plan staff limit so a business cannot exceed its tier.
+      const entitlements = getEntitlements(mapProfile(owner));
+      if (!isUnlimited(entitlements.staffLimit)) {
+        const { count, error: countError } = await supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .eq('parent_id', inviteId)
+          .eq('role', 'staff');
+
+        if (!countError && typeof count === 'number' && count >= entitlements.staffLimit) {
+          return { error: { message: `This business has reached its team limit of ${entitlements.staffLimit} on the ${entitlements.label} plan. Ask the owner to upgrade to add more staff.` } };
+        }
       }
     }
 

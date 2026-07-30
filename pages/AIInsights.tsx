@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, RefreshCw, Zap, TrendingUp, AlertTriangle, ShieldCheck, PieChart, Activity, ExternalLink, Globe, BookOpen, Leaf, Lock } from 'lucide-react';
 import { AppState } from '../types';
 import { getInventoryInsightsQwen, InsightResult } from '../services/qwenService';
+import { getEntitlements } from '../constants/plans';
 
 interface AIInsightsProps {
   state: AppState;
@@ -11,7 +12,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
   const [insightData, setInsightData] = useState<InsightResult | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const isMegaPro = state.currentUser?.plan === 'mega_pro';
+  const isMegaPro = getEntitlements(state.currentUser).esgAudit;
 
   const fetchInsights = async () => {
     setLoading(true);

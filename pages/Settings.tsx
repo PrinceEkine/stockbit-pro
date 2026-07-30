@@ -34,6 +34,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { Settings as SettingsType, User, SubscriptionPlan, AppLanguage } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
+import { getEntitlements, isUnlimited } from '../constants/plans';
 
 interface SettingsProps {
   settings: SettingsType;
@@ -67,6 +68,17 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
   const [passwordError, setPasswordError] = useState('');
 
   const t = TRANSLATIONS[settings.language || 'en'];
+
+  // Plan entitlements for the signed-in business (staff limits, marketplace access, etc.)
+  const entitlements = getEntitlements(currentUser);
+  const staffCount = staff.filter(u => u.role === 'staff' && u.parentId === currentUser?.id).length;
+  const staffLimitReached = !isUnlimited(entitlements.staffLimit) && staffCount >= entitlements.staffLimit;
+  const staffLimitLabel = isUnlimited(entitlements.staffLimit) ? 'Unlimited' : String(entitlements.staffLimit);
+
+  const toggleMarketplace = (key: 'jumia' | 'konga' | 'whatsapp') => {
+    if (!entitlements.marketplaces) return; // gated to Business plan and above
+    onUpdate({ marketplaces: { ...settings.marketplaces, [key]: !settings.marketplaces[key] } });
+  };
 
   useEffect(() => {
     if (settings) {
@@ -549,28 +561,38 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
                       Connect your warehouse to Nigeria's largest e-commerce networks. Orders will automatically synchronize and deduct from your primary inventory pool.
                     </p>
                   </div>
-                  
-                  <div className="grid grid-cols-1 gap-8">
-                    <ChannelToggle 
-                      label="Jumia Seller Portal" 
-                      desc="Direct vendor portal synchronization" 
-                      icon={<Globe size={22} />} 
-                      active={settings.marketplaces.jumia} 
-                      onChange={() => onUpdate({ marketplaces: { ...settings.marketplaces, jumia: !settings.marketplaces.jumia }})} 
+
+                  {!entitlements.marketplaces && (
+                    <div className="mb-10 px-6 py-4 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-700 dark:bg-indigo-900/10 dark:border-indigo-800 dark:text-indigo-300 flex items-center gap-3 text-sm font-medium">
+                      <Lock size={18} className="shrink-0" />
+                      <span>Marketplace Sync is available on the Business and Enterprise plans. Upgrade in the Subscription tab to connect these channels.</span>
+                    </div>
+                  )}
+
+                  <div className={`grid grid-cols-1 gap-8 ${!entitlements.marketplaces ? 'opacity-60' : ''}`}>
+                    <ChannelToggle
+                      label="Jumia Seller Portal"
+                      desc="Direct vendor portal synchronization"
+                      icon={<Globe size={22} />}
+                      active={entitlements.marketplaces && settings.marketplaces.jumia}
+                      locked={!entitlements.marketplaces}
+                      onChange={() => toggleMarketplace('jumia')}
                     />
-                    <ChannelToggle 
-                      label="Konga Online" 
-                      desc="Automated logistics ledger linkage" 
-                      icon={<ShoppingBag size={22} />} 
-                      active={settings.marketplaces.konga} 
-                      onChange={() => onUpdate({ marketplaces: { ...settings.marketplaces, konga: !settings.marketplaces.konga }})} 
+                    <ChannelToggle
+                      label="Konga Online"
+                      desc="Automated logistics ledger linkage"
+                      icon={<ShoppingBag size={22} />}
+                      active={entitlements.marketplaces && settings.marketplaces.konga}
+                      locked={!entitlements.marketplaces}
+                      onChange={() => toggleMarketplace('konga')}
                     />
-                    <ChannelToggle 
-                      label="WhatsApp Store" 
-                      desc="Intelligent catalog broadcasting" 
-                      icon={<MessageCircle size={22} />} 
-                      active={settings.marketplaces.whatsapp} 
-                      onChange={() => onUpdate({ marketplaces: { ...settings.marketplaces, whatsapp: !settings.marketplaces.whatsapp }})} 
+                    <ChannelToggle
+                      label="WhatsApp Store"
+                      desc="Intelligent catalog broadcasting"
+                      icon={<MessageCircle size={22} />}
+                      active={entitlements.marketplaces && settings.marketplaces.whatsapp}
+                      locked={!entitlements.marketplaces}
+                      onChange={() => toggleMarketplace('whatsapp')}
                     />
                   </div>
                   
@@ -661,14 +683,28 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
                      <div>
                         <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">Terminal <span className="text-indigo-600">Squad</span></h2>
                         <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.3em] mt-4">Authorized personnel with system permissions</p>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.3em] mt-3">
+                           <span className="text-slate-400">Team usage: </span>
+                           <span className={staffLimitReached ? 'text-rose-500' : 'text-emerald-500'}>{staffCount} / {staffLimitLabel}</span>
+                           <span className="text-slate-400"> · {entitlements.label}</span>
+                        </p>
                      </div>
-                     <button 
-                       onClick={() => setIsAddingStaff(true)} 
-                       className="group px-10 py-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[2.5rem] flex items-center justify-center gap-4 font-black text-[12px] uppercase tracking-[0.3em] shadow-2xl active:scale-95 transition-all"
+                     <button
+                       onClick={() => setIsAddingStaff(true)}
+                       disabled={staffLimitReached}
+                       title={staffLimitReached ? 'Staff limit reached for your plan — upgrade to add more.' : undefined}
+                       className="group px-10 py-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[2.5rem] flex items-center justify-center gap-4 font-black text-[12px] uppercase tracking-[0.3em] shadow-2xl active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
                      >
                        <Plus size={22} className="group-hover:rotate-90 transition-transform" /> Add Crew Member
                      </button>
                   </div>
+
+                  {staffLimitReached && (
+                    <div className="mx-6 px-6 py-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 dark:bg-amber-900/10 dark:border-amber-800 dark:text-amber-400 flex items-center gap-3 text-sm font-medium">
+                      <ShieldAlert size={18} className="shrink-0" />
+                      <span>You've reached the {staffLimitLabel}-member limit on the {entitlements.label} plan. Upgrade your subscription to add more team members.</span>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                      {staff.filter(u => u.role === 'staff' && u.parentId === currentUser?.id).map(member => (
@@ -852,7 +888,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
   );
 };
 
-const ChannelToggle = ({ label, desc, icon, active, onChange }: any) => (
+const ChannelToggle = ({ label, desc, icon, active, onChange, locked }: any) => (
   <div className={`flex items-center justify-between p-8 md:p-10 bg-white/50 dark:bg-slate-900/40 backdrop-blur-2xl rounded-[3.5rem] border-2 transition-all group ${
     active ? 'border-indigo-600/30 bg-white dark:bg-slate-800/60 shadow-2xl' : 'border-slate-50 dark:border-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700'
   }`}>
@@ -865,17 +901,21 @@ const ChannelToggle = ({ label, desc, icon, active, onChange }: any) => (
         <p className="text-[10px] md:text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.3em] truncate mt-2">{desc}</p>
       </div>
     </div>
-    <button 
-      onClick={onChange} 
+    <button
+      onClick={onChange}
+      disabled={locked}
+      title={locked ? 'Available on Business and Enterprise plans' : undefined}
       className={`w-18 h-10 rounded-full transition-all duration-500 relative shadow-inner shrink-0 ${
-        active ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
+        locked ? 'bg-slate-200 dark:bg-slate-700 cursor-not-allowed opacity-70' : active ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
       }`}
     >
-       <motion.div 
+       <motion.div
         animate={{ x: active ? 40 : 4 }}
-        className="absolute top-1 w-8 h-8 bg-white rounded-full shadow-2xl"
+        className="absolute top-1 w-8 h-8 bg-white rounded-full shadow-2xl flex items-center justify-center"
         transition={{ type: "spring", stiffness: 400, damping: 25 }}
-       />
+       >
+        {locked && <Lock size={12} className="text-slate-400" />}
+       </motion.div>
     </button>
   </div>
 );
