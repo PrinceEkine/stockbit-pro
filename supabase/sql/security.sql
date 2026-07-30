@@ -41,57 +41,25 @@ create trigger trg_protect_billing_columns
   for each row execute function public.protect_billing_columns();
 
 -- -----------------------------------------------------------------------------
--- 2) Enforce the per-plan staff limit at the database level.
---    Beta = 3, Business (mega) = 8, Enterprise (mega_pro) = unlimited.
---    Trial / unsubscribed owners are treated as Beta (3).
---    This is the authoritative check; the client also pre-checks for a friendly
---    message, but this trigger cannot be bypassed by a modified client.
+-- 2) Per-plan staff limit (Beta = 3, Business = 8, Enterprise = unlimited).
+--
+--    IMPORTANT: This is enforced in the APPLICATION (store.ts `register()`),
+--    NOT with a database trigger. Many Supabase projects have a
+--    `handle_new_user` trigger that creates the profile row inside the auth
+--    signup transaction. A BEFORE INSERT trigger on `profiles` therefore runs
+--    *during* signup, and if it raises for any reason Supabase Auth aborts the
+--    whole signup with the opaque message "Database error saving new user".
+--
+--    If you previously ran an earlier version of this file that installed
+--    `trg_enforce_staff_limit`, REMOVE it (it will otherwise block sign-ups):
+--
+--        drop trigger if exists trg_enforce_staff_limit on public.profiles;
+--        drop function if exists public.enforce_staff_limit();
+--
+--    (The client-side check in `register()` remains the enforcement point and
+--    gives users a friendly "team limit reached, ask the owner to upgrade"
+--    message before any signup is attempted.)
 -- -----------------------------------------------------------------------------
-create or replace function public.enforce_staff_limit()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  owner_plan       text;
-  owner_subscribed boolean;
-  staff_limit      int;
-  current_staff    int;
-begin
-  if NEW.role = 'staff' and NEW.parent_id is not null then
-    select plan, is_subscribed
-      into owner_plan, owner_subscribed
-      from public.profiles
-     where id = NEW.parent_id;
-
-    if owner_subscribed and owner_plan = 'mega_pro' then
-      staff_limit := 2147483647;            -- effectively unlimited
-    elsif owner_subscribed and owner_plan = 'mega' then
-      staff_limit := 8;
-    else
-      staff_limit := 3;                     -- beta or trial
-    end if;
-
-    select count(*)
-      into current_staff
-      from public.profiles
-     where parent_id = NEW.parent_id
-       and role = 'staff';
-
-    if current_staff >= staff_limit then
-      raise exception 'Staff limit reached for this subscription plan (max %).', staff_limit
-        using errcode = 'check_violation';
-    end if;
-  end if;
-  return NEW;
-end;
-$$;
-
-drop trigger if exists trg_enforce_staff_limit on public.profiles;
-create trigger trg_enforce_staff_limit
-  before insert on public.profiles
-  for each row execute function public.enforce_staff_limit();
 
 -- -----------------------------------------------------------------------------
 -- 3) OPTIONAL — stricter RLS once every login flow uses a Supabase session.
