@@ -11,6 +11,16 @@
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
+-- 0) The `role` column must permit every role the app uses: 'admin', 'user',
+--    and 'staff'. If the check constraint omits 'staff', staff sign-ups fail
+--    with the opaque "Database error saving new user" (the profile insert
+--    violates profiles_role_check inside the auth signup transaction).
+-- -----------------------------------------------------------------------------
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles
+  add constraint profiles_role_check check (role in ('admin', 'user', 'staff'));
+
+-- -----------------------------------------------------------------------------
 -- 1) Billing columns can only be changed by the server (service role).
 --    This is what makes the `verify-payment` Edge Function the ONLY path to a
 --    paid subscription — a browser using the anon/authenticated key can no
