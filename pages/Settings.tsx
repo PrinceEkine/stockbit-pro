@@ -34,7 +34,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { Settings as SettingsType, User, SubscriptionPlan, AppLanguage } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
-import { getEntitlements, isUnlimited } from '../constants/plans';
+import { getEntitlements, isUnlimited, PLAN_ENTITLEMENTS } from '../constants/plans';
 
 interface SettingsProps {
   settings: SettingsType;
@@ -79,6 +79,10 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
     if (!entitlements.marketplaces) return; // gated to Business plan and above
     onUpdate({ marketplaces: { ...settings.marketplaces, [key]: !settings.marketplaces[key] } });
   };
+
+  // A plan is only "active" when the user is actually subscribed. A leftover `plan`
+  // value on an expired/trial account must NOT mark a card as active.
+  const activePlan = currentUser?.isSubscribed ? currentUser.plan : undefined;
 
   useEffect(() => {
     if (settings) {
@@ -159,38 +163,55 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
     const amount = cycle === 'monthly' ? prices[plan].monthly : prices[plan].annual;
 
     const PaystackPop = (window as any).PaystackPop;
-    if (!PaystackPop || typeof PaystackPop.setup !== 'function') {
+    if (typeof PaystackPop !== 'function') {
       alert("Payment gateway is still loading or was blocked by your browser. Please check your connection, disable any ad-blockers, and try again.");
       return;
     }
 
     setPaymentStatus(null);
 
+    // Verify the payment server-side before activating — never trust the browser.
+    const verify = (reference: string) => {
+      setPaymentStatus({ type: 'verifying', message: 'Confirming your payment securely...' });
+      onVerifyPayment(reference, plan, cycle)
+        .then((res) => {
+          if (res.success) {
+            setPaymentStatus({ type: 'success', message: 'Payment confirmed. Your subscription is now active!' });
+          } else {
+            setPaymentStatus({ type: 'error', message: res.error || 'We received your payment but could not verify it automatically. Please contact support with your reference.' });
+          }
+        })
+        .catch(() => {
+          setPaymentStatus({ type: 'error', message: 'Payment verification failed. Please contact support with your reference.' });
+        });
+    };
+
     try {
-      const handler = PaystackPop.setup({
+      // Paystack Popup v2 — a cleaner, single-page checkout UI.
+      const popup = new PaystackPop();
+      popup.newTransaction({
         key: publicKey,
         email: currentUser?.email || 'billing@stockbit.pro',
         amount: amount * 100,
         currency: "NGN",
-        // Do NOT trust the browser: send the reference to the server for verification
-        // against Paystack before the subscription is activated.
-        callback: (response: { reference: string }) => {
-          setPaymentStatus({ type: 'verifying', message: 'Confirming your payment securely...' });
-          onVerifyPayment(response.reference, plan, cycle)
-            .then((res) => {
-              if (res.success) {
-                setPaymentStatus({ type: 'success', message: 'Payment confirmed. Your subscription is now active!' });
-              } else {
-                setPaymentStatus({ type: 'error', message: res.error || 'We received your payment but could not verify it automatically. Please contact support with your reference.' });
-              }
-            })
-            .catch(() => {
-              setPaymentStatus({ type: 'error', message: 'Payment verification failed. Please contact support with your reference.' });
-            });
+        metadata: {
+          plan,
+          cycle,
+          custom_fields: [
+            {
+              display_name: 'Subscription',
+              variable_name: 'subscription',
+              value: `${PLAN_ENTITLEMENTS[plan].label} · ${cycle === 'monthly' ? 'Monthly' : 'Annual'}`,
+            },
+          ],
         },
-        onClose: () => console.log("Payment window closed.")
+        onSuccess: (transaction: { reference: string }) => verify(transaction.reference),
+        onCancel: () => setPaymentStatus(null),
+        onError: (error: any) => {
+          console.error("Paystack error:", error);
+          setPaymentStatus({ type: 'error', message: 'Payment could not be completed. Please try again.' });
+        },
       });
-      handler.openIframe();
     } catch (err) {
       console.error("Paystack initialization failed:", err);
       alert("Could not open the payment window. Please try again in a moment.");
@@ -853,7 +874,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
                      price={billingCycle === 'monthly' ? "₦5,000" : "₦50,000"}
                      cycle={billingCycle === 'monthly' ? "/mo" : "/yr"}
                      desc="Perfect for starting vendors and small retail kiosks."
-                     active={currentUser?.plan === 'beta'}
+                     active={activePlan === 'beta'}
                      features={['3 Team Members', 'Cloud-Sync Inventory', 'Sales Tracking', 'Basic Reporting']}
                      onSelect={() => handlePaystackActivation('beta', billingCycle)}
                      icon={<Layout size={24} />}
@@ -863,7 +884,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
                      price={billingCycle === 'monthly' ? "₦7,999" : "₦80,000"}
                      cycle={billingCycle === 'monthly' ? "/mo" : "/yr"}
                      desc="The professional choice for growing retail stores."
-                     active={currentUser?.plan === 'mega'}
+                     active={activePlan === 'mega'}
                      features={['8 Team Members', 'Advanced Analytics', 'Marketplace Sync', 'Inventory Forecasting']}
                      onSelect={() => handlePaystackActivation('mega', billingCycle)}
                      icon={<Rocket size={24} />}
@@ -874,7 +895,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
                      price={billingCycle === 'monthly' ? "₦12,999" : "₦128,000"}
                      cycle={billingCycle === 'monthly' ? "/mo" : "/yr"}
                      desc="Scalable solutions for chains and large distribution hubs."
-                     active={currentUser?.plan === 'mega_pro'}
+                     active={activePlan === 'mega_pro'}
                      features={['Unlimited Members', 'Multi-Store Control', 'API Access', 'Priority Support']}
                      onSelect={() => handlePaystackActivation('mega_pro', billingCycle)}
                      icon={<Star size={24} />}
