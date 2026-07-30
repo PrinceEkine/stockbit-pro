@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stockbit-pro-v2';
+const CACHE_NAME = 'stockbit-pro-v3';
 const ASSETS = [
   '/',
   '/index.html',
@@ -21,31 +21,46 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', (event) => {
+  const request = event.request;
+
+  // Network-first for page navigations (HTML). This guarantees the freshly
+  // deployed app shell — and the current JS bundle it references — is used,
+  // instead of an indefinitely cached old index.html.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          const copy = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', copy));
+          return networkResponse;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  // Cache-first for other assets. Build output is content-hashed, so a fresh
+  // index.html points at new filenames that miss the cache and are fetched.
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(request).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;
-      return fetch(event.request).then((networkResponse) => {
+      return fetch(request).then((networkResponse) => {
         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
           return networkResponse;
         }
         const responseToCache = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
-          // Only cache same-origin resources for now
-          if (event.request.url.startsWith(self.location.origin)) {
-            cache.put(event.request, responseToCache);
+          if (request.url.startsWith(self.location.origin)) {
+            cache.put(request, responseToCache);
           }
         });
         return networkResponse;
       });
-    }).catch(() => {
-      if (event.request.mode === 'navigate') {
-        return caches.match('/index.html');
-      }
     })
   );
 });
