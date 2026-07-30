@@ -28,18 +28,21 @@ const mapProfile = (dbProfile: any): User => {
   };
 };
 
+// 2-month (60-day) free trial, matching the advertised plan.
+export const TRIAL_DAYS = 60;
+
 export const getTrialStatus = (user: User | null) => {
   const expiredResult = { isSubscribed: false, daysLeft: 0, isExpired: true };
-  
+
   if (!user) return { isSubscribed: false, daysLeft: 0, isExpired: false };
   if (user.isSubscribed) return { isSubscribed: true, daysLeft: 0, isExpired: false };
-  
+
   const start = new Date(user.trialStartDate);
   const now = new Date();
-  
+
   if (isNaN(start.getTime())) return expiredResult;
 
-  const trialDays = 60; // 2-month (60-day) free trial, matching the advertised plan
+  const trialDays = TRIAL_DAYS;
   const diff = now.getTime() - start.getTime();
   const daysUsed = Math.floor(diff / (1000 * 60 * 60 * 24));
 
@@ -50,8 +53,23 @@ export const getTrialStatus = (user: User | null) => {
   
   // If daysLeft is 0, it's also expired.
   if (daysLeft <= 0) return expiredResult;
-  
+
   return { isSubscribed: false, daysLeft, isExpired: false };
+};
+
+/**
+ * Resolves the trial/subscription status that actually governs a user's access.
+ * Staff inherit their business owner's status — a staff member's own signup date
+ * must never grant a fresh trial when the owner's trial has ended.
+ */
+export const getEffectiveTrialStatus = (currentUser: User | null, users: User[]) => {
+  if (currentUser?.role === 'staff' && currentUser.parentId) {
+    const owner = users.find(u => u.id === currentUser.parentId);
+    if (owner) return getTrialStatus(owner);
+    // Owner not loaded/unknown — deny rather than granting a fresh trial.
+    return { isSubscribed: false, daysLeft: 0, isExpired: true };
+  }
+  return getTrialStatus(currentUser);
 };
 
 export const useStore = () => {
@@ -181,6 +199,11 @@ export const useStore = () => {
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sales', filter: `user_id=eq.${targetUserId}` }, (payload) => {
         setSales(prev => prev.some(s => s.id === payload.new.id) ? prev : [payload.new as Sale, ...prev]);
+      })
+      // Keep the workforce list live: any staff joining/leaving this owner refreshes it.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `parent_id=eq.${targetUserId}` }, async () => {
+        const { data } = await supabase.from('profiles').select('*').or(`id.eq.${targetUserId},parent_id.eq.${targetUserId}`);
+        if (data) setUsers(data.map(mapProfile));
       })
       .subscribe();
 
@@ -377,6 +400,19 @@ export const useStore = () => {
     };
   }, [loadData]);
 
+  // Manually re-pull the owner + staff list. Used as a fallback for environments
+  // where Supabase realtime replication on `profiles` is not enabled.
+  const refreshUsers = useCallback(async () => {
+    if (!currentUser) return;
+    const targetUserId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+    if (!targetUserId) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .or(`id.eq.${targetUserId},parent_id.eq.${targetUserId}`);
+    if (data) setUsers(data.map(mapProfile));
+  }, [currentUser]);
+
   const login = useCallback(async (email: string, pass: string) => {
     return await supabase.auth.signInWithPassword({ email, password: pass });
   }, []);
@@ -522,18 +558,21 @@ export const useStore = () => {
     }
 
     const { data, error: authError } = await supabase.auth.signUp({
-      email, 
-      password, 
-      options: { 
-        data: { 
+      email,
+      password,
+      options: {
+        // Send the confirmation link back to the app so clicking it lands the
+        // user on their dashboard instead of an external/blank page.
+        emailRedirectTo: window.location.origin,
+        data: {
           full_name: name,
           company_name: companyName,
           role: inviteId ? 'staff' : 'user',
           parent_id: inviteId || null
-        } 
-      } 
+        }
+      }
     });
-    
+
     if (authError) return { error: authError };
     return { data };
   }, []);
@@ -898,6 +937,6 @@ export const useStore = () => {
 
   return {
     loading, initialLoadComplete, currentUser, products, sales, returns, suppliers, notifications, users, settings, error, isLoggedIn, isOnline,
-    login, register, resetPassword, updatePassword, logout, updateSettings, addProduct, updateProduct, deleteProduct, recordSale, reconcileInventory, recordReturn, addSupplier, addStaffMember, removeStaffMember, activateSubscription, verifyAndActivateSubscription, loginWithGoogle
+    login, register, resetPassword, updatePassword, logout, updateSettings, addProduct, updateProduct, deleteProduct, recordSale, reconcileInventory, recordReturn, addSupplier, addStaffMember, removeStaffMember, activateSubscription, verifyAndActivateSubscription, refreshUsers, loginWithGoogle
   };
 };

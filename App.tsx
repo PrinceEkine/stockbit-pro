@@ -69,17 +69,32 @@ const App: React.FC = () => {
   const [isStaffSignup, setIsStaffSignup] = useState(false);
   
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
+    // Capture the entry URL once. Recovery links carry a type=recovery / update_password
+    // marker; everything else with an auth payload is a verification / sign-in link.
+    const initialHash = window.location.hash;
+    const isRecoveryLink = initialHash.includes('type=recovery') || initialHash.includes('update_password');
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || isRecoveryLink) {
         setAuthStep('update_password');
         setActiveView(View.Dashboard);
+        return;
+      }
+
+      // Email verification / magic-link sign-in: take the user straight to their
+      // dashboard instead of dropping them back on the sign-in screen.
+      if (event === 'SIGNED_IN' && session) {
+        setAuthStep('landing');
+        setActiveView(View.Dashboard);
+        // Strip the auth code/token from the URL so a refresh stays clean.
+        if (window.location.search.includes('code=') || window.location.hash.includes('access_token=')) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
       }
     });
 
-    // Handle recovery token in URL on initial mount
-    const hash = window.location.hash;
-    if (hash && (hash.includes('type=recovery') || hash.includes('access_token='))) {
-      // Give Supabase a moment to process the hash
+    // Fallback for the implicit recovery flow (hash tokens) if the event is missed.
+    if (isRecoveryLink) {
       setTimeout(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
           if (session) {
@@ -717,7 +732,7 @@ const App: React.FC = () => {
       case View.Returns: return <Returns returns={store.returns || []} products={store.products || []} onRecordReturn={store.recordReturn} settings={store.settings} />;
       case View.Reports: return <Reports state={store} />;
       case View.Suppliers: return <Suppliers suppliers={store.suppliers || []} onAdd={store.addSupplier} onUpdate={() => {}} onDelete={() => {}} settings={store.settings} />;
-      case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} staff={store.users || []} currentUser={store.currentUser} onAddStaff={store.addStaffMember} onRemoveStaff={store.removeStaffMember} onVerifyPayment={store.verifyAndActivateSubscription} onUpdatePassword={store.updatePassword} />;
+      case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} staff={store.users || []} currentUser={store.currentUser} onAddStaff={store.addStaffMember} onRemoveStaff={store.removeStaffMember} onVerifyPayment={store.verifyAndActivateSubscription} onUpdatePassword={store.updatePassword} onRefreshStaff={store.refreshUsers} />;
       case View.LaunchCenter: return <LaunchCenter state={store} onUpdateSettings={store.updateSettings} />;
       default: return <Dashboard state={store} onNavigate={setActiveView} />;
     }

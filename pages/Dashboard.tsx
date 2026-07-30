@@ -7,7 +7,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { AppState, View } from '../types';
-import { getTrialStatus } from '../store';
+import { getEffectiveTrialStatus, TRIAL_DAYS } from '../store';
 import { TRANSLATIONS } from '../constants/translations';
 
 interface DashboardProps {
@@ -24,7 +24,20 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
   const totalSalesRevenue = (state?.sales || []).reduce((acc, s) => acc + (s.total_price || 0), 0);
   const lowStockItems = (state?.products || []).filter(p => p.quantity <= (p.min_threshold || 5));
   
-  const trialStatus = useMemo(() => getTrialStatus(state?.currentUser || null), [state?.currentUser]);
+  // Staff inherit the owner's trial status (not their own signup date).
+  const trialStatus = useMemo(
+    () => getEffectiveTrialStatus(state?.currentUser || null, state?.users || []),
+    [state?.currentUser, state?.users]
+  );
+
+  // The account whose trial clock actually applies (owner for staff, else self).
+  const trialAnchorUser = useMemo(() => {
+    const cu = state?.currentUser;
+    if (cu?.role === 'staff' && cu.parentId) {
+      return (state?.users || []).find(u => u.id === cu.parentId) || cu;
+    }
+    return cu || null;
+  }, [state?.currentUser, state?.users]);
 
   const stats = useMemo(() => [
     { title: t.value_stock, value: totalStockValue, symbol: currency, icon: BarChart3, color: "text-brand-primary", bg: "bg-brand-primary/10", detail: "Total Inventory Value" },
@@ -280,13 +293,13 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
               </div>
               
               <div className="h-2 w-full bg-white/20 rounded-full overflow-hidden mb-4">
-                <div 
-                  className="h-full bg-white rounded-full transition-all duration-1000" 
-                  style={{ width: `${Math.max(5, ((trialStatus?.daysLeft || 0) / 30) * 100)}%` }} 
+                <div
+                  className="h-full bg-white rounded-full transition-all duration-1000"
+                  style={{ width: `${Math.max(5, ((trialStatus?.daysLeft || 0) / TRIAL_DAYS) * 100)}%` }}
                 />
               </div>
               <p className="text-[10px] opacity-70">
-                Your trial will end on {new Date(new Date(state?.currentUser?.trialStartDate || Date.now()).getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                Your trial will end on {new Date(new Date(trialAnchorUser?.trialStartDate || Date.now()).getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toLocaleDateString()}
               </p>
             </div>
             <ShieldCheck size={120} className="absolute -bottom-10 -right-10 text-white/10" />

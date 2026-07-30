@@ -45,9 +45,10 @@ interface SettingsProps {
   onRemoveStaff: (id: string) => Promise<void>;
   onVerifyPayment: (reference: string, plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => Promise<{ success: boolean; error?: string }>;
   onUpdatePassword?: (password: string) => Promise<any>;
+  onRefreshStaff?: () => Promise<void>;
 }
 
-const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentUser, onAddStaff, onRemoveStaff, onVerifyPayment, onUpdatePassword }) => {
+const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentUser, onAddStaff, onRemoveStaff, onVerifyPayment, onUpdatePassword, onRefreshStaff }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'market' | 'staff' | 'billing'>('profile');
   const [companyName, setCompanyName] = useState(settings.companyName);
   const [notificationEmail, setNotificationEmail] = useState(settings.notificationEmail);
@@ -91,6 +92,14 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
       setLowStockAlerts(settings.lowStockEmailAlerts);
     }
   }, [settings]);
+
+  // Pull the latest team list whenever the Workforce tab is opened, so newly
+  // joined staff appear even if realtime replication isn't enabled.
+  useEffect(() => {
+    if (activeTab === 'staff') {
+      onRefreshStaff?.();
+    }
+  }, [activeTab, onRefreshStaff]);
 
   const handlePasswordUpdateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
