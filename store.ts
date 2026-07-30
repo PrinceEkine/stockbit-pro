@@ -41,8 +41,8 @@ export const getTrialStatus = (user: User | null) => {
   const trialDays = 30; // Updated to 30 days for stricter trial enforcement
   const diff = now.getTime() - start.getTime();
   const daysUsed = Math.floor(diff / (1000 * 60 * 60 * 24));
-  
-  // CRITICAL: If daysUsed is 60 or more, it's expired.
+
+  // CRITICAL: If the full trial window has been used, it's expired.
   if (daysUsed >= trialDays) return expiredResult;
 
   const daysLeft = Math.max(0, trialDays - daysUsed);
@@ -264,7 +264,7 @@ export const useStore = () => {
             loadData(user.id, user.role === 'staff', user.parentId);
           } else if (profileError && profileError.code === 'PGRST116') {
             // Profile missing - create it from metadata
-            const metadata = session.user.user_metadata;
+            const metadata = session.user.user_metadata || {};
             const newProfile = {
               id: session.user.id,
               email: session.user.email,
@@ -339,7 +339,7 @@ export const useStore = () => {
             loadData(user.id, user.role === 'staff', user.parentId);
           } else if (profileError && profileError.code === 'PGRST116') {
              // Profile missing - create it from metadata
-             const metadata = session.user.user_metadata;
+             const metadata = session.user.user_metadata || {};
              const newProfile = {
                id: session.user.id,
                email: session.user.email,
@@ -656,6 +656,20 @@ export const useStore = () => {
       return false;
     }
 
+    if (!items || items.length === 0) {
+      console.warn("recordSale called with an empty cart.");
+      return false;
+    }
+
+    // Guard against overselling: never allow a sale that would drive stock negative.
+    for (const item of items) {
+      const stock = products.find(prod => prod.id === item.productId);
+      if (stock && item.quantity > stock.quantity) {
+        setError(`Not enough stock for "${stock.name}". Only ${stock.quantity} left.`);
+        return false;
+      }
+    }
+
     const totalPrice = items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
     const totalCost = items.reduce((sum, i) => sum + ((i.costPrice || 0) * i.quantity), 0);
     const taxAmount = totalPrice * (settings.taxRate / 100);
@@ -695,7 +709,7 @@ export const useStore = () => {
     for (const item of items) {
       const p = products.find(prod => prod.id === item.productId);
       if (p) {
-        const newQty = p.quantity - item.quantity;
+        const newQty = Math.max(0, p.quantity - item.quantity);
         // Optimistic UI for products
         setProducts(prev => prev.map(prod => prod.id === p.id ? { ...prod, quantity: newQty } : prod));
         // Update DB
