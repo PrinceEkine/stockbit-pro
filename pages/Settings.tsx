@@ -42,11 +42,11 @@ interface SettingsProps {
   currentUser: User | null;
   onAddStaff: (data: any) => Promise<void>;
   onRemoveStaff: (id: string) => Promise<void>;
-  onActivateSubscription: (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => Promise<void>;
+  onVerifyPayment: (reference: string, plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => Promise<{ success: boolean; error?: string }>;
   onUpdatePassword?: (password: string) => Promise<any>;
 }
 
-const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentUser, onAddStaff, onRemoveStaff, onActivateSubscription, onUpdatePassword }) => {
+const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentUser, onAddStaff, onRemoveStaff, onVerifyPayment, onUpdatePassword }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'market' | 'staff' | 'billing'>('profile');
   const [companyName, setCompanyName] = useState(settings.companyName);
   const [notificationEmail, setNotificationEmail] = useState(settings.notificationEmail);
@@ -57,6 +57,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
   const [staffFormData, setStaffFormData] = useState({ name: '', email: '', password: '' });
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [paymentStatus, setPaymentStatus] = useState<{ type: 'verifying' | 'success' | 'error'; message: string } | null>(null);
 
   // Password Security state
   const [newPassword, setNewPassword] = useState('');
@@ -151,13 +152,30 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
       return;
     }
 
+    setPaymentStatus(null);
+
     try {
       const handler = PaystackPop.setup({
         key: publicKey,
         email: currentUser?.email || 'billing@stockbit.pro',
         amount: amount * 100,
         currency: "NGN",
-        callback: () => onActivateSubscription(plan, cycle),
+        // Do NOT trust the browser: send the reference to the server for verification
+        // against Paystack before the subscription is activated.
+        callback: (response: { reference: string }) => {
+          setPaymentStatus({ type: 'verifying', message: 'Confirming your payment securely...' });
+          onVerifyPayment(response.reference, plan, cycle)
+            .then((res) => {
+              if (res.success) {
+                setPaymentStatus({ type: 'success', message: 'Payment confirmed. Your subscription is now active!' });
+              } else {
+                setPaymentStatus({ type: 'error', message: res.error || 'We received your payment but could not verify it automatically. Please contact support with your reference.' });
+              }
+            })
+            .catch(() => {
+              setPaymentStatus({ type: 'error', message: 'Payment verification failed. Please contact support with your reference.' });
+            });
+        },
         onClose: () => console.log("Payment window closed.")
       });
       handler.openIframe();
@@ -765,17 +783,32 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
                     >
                       Monthly
                     </button>
-                    <button 
-                      onClick={() => setBillingCycle('annual')} 
+                    <button
+                      onClick={() => setBillingCycle('annual')}
                       className={`flex-1 px-6 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                        billingCycle === 'annual' 
-                          ? 'bg-indigo-600 text-white shadow-md' 
+                        billingCycle === 'annual'
+                          ? 'bg-indigo-600 text-white shadow-md'
                           : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                       }`}
                     >
                       Annual <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] rounded-md">-15%</span>
                     </button>
                   </div>
+
+                  {paymentStatus && (
+                    <div className={`w-full max-w-xl mx-auto px-6 py-4 rounded-2xl border flex items-center gap-3 text-sm font-medium ${
+                      paymentStatus.type === 'success'
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/10 dark:border-emerald-800 dark:text-emerald-400'
+                        : paymentStatus.type === 'error'
+                        ? 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-900/10 dark:border-rose-800 dark:text-rose-400'
+                        : 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/10 dark:border-indigo-800 dark:text-indigo-400'
+                    }`}>
+                      {paymentStatus.type === 'success' ? <CheckCircle2 size={18} className="shrink-0" />
+                        : paymentStatus.type === 'error' ? <ShieldAlert size={18} className="shrink-0" />
+                        : <Loader2 size={18} className="shrink-0 animate-spin" />}
+                      <span className="text-left">{paymentStatus.message}</span>
+                    </div>
+                  )}
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 pb-32">

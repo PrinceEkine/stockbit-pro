@@ -38,7 +38,7 @@ export const getTrialStatus = (user: User | null) => {
   
   if (isNaN(start.getTime())) return expiredResult;
 
-  const trialDays = 30; // Updated to 30 days for stricter trial enforcement
+  const trialDays = 60; // 2-month (60-day) free trial, matching the advertised plan
   const diff = now.getTime() - start.getTime();
   const daysUsed = Math.floor(diff / (1000 * 60 * 60 * 24));
 
@@ -817,6 +817,48 @@ export const useStore = () => {
     }
   };
 
+  // Server-verified activation: called after a Paystack payment. The reference is
+  // verified against Paystack (secret key) inside the `verify-payment` Edge Function,
+  // which activates the subscription only if the payment is real and correctly priced.
+  const verifyAndActivateSubscription = useCallback(async (
+    reference: string,
+    plan: SubscriptionPlan,
+    cycle: 'monthly' | 'annual'
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-payment', {
+        body: { reference, plan, cycle }
+      });
+
+      if (error || !data?.success) {
+        const message = data?.error || error?.message || 'We could not verify your payment. Please contact support with your reference.';
+        return { success: false, error: message };
+      }
+
+      const expiry = data.subscription?.subscriptionExpiry;
+
+      // Reflect immediately for the current user if they own the billed account.
+      if (currentUser) {
+        const targetUserId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+        if (currentUser.id === targetUserId) {
+          setCurrentUser({ ...currentUser, isSubscribed: true, plan, subscriptionExpiry: expiry });
+        }
+        if (targetUserId) {
+          const { data: updatedProfiles } = await supabase
+            .from('profiles')
+            .select('*')
+            .or(`id.eq.${targetUserId},parent_id.eq.${targetUserId}`);
+          if (updatedProfiles) setUsers(updatedProfiles.map(mapProfile));
+        }
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Subscription verification failed:', err);
+      return { success: false, error: err?.message || 'Payment verification failed. Please try again.' };
+    }
+  }, [currentUser]);
+
   const activateSubscription = async (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => {
     if (!currentUser) return;
     const targetUserId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
@@ -841,6 +883,6 @@ export const useStore = () => {
 
   return {
     loading, initialLoadComplete, currentUser, products, sales, returns, suppliers, notifications, users, settings, error, isLoggedIn, isOnline,
-    login, register, resetPassword, updatePassword, logout, updateSettings, addProduct, updateProduct, deleteProduct, recordSale, reconcileInventory, recordReturn, addSupplier, addStaffMember, removeStaffMember, activateSubscription, loginWithGoogle
+    login, register, resetPassword, updatePassword, logout, updateSettings, addProduct, updateProduct, deleteProduct, recordSale, reconcileInventory, recordReturn, addSupplier, addStaffMember, removeStaffMember, activateSubscription, verifyAndActivateSubscription, loginWithGoogle
   };
 };

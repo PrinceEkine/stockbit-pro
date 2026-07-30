@@ -717,7 +717,7 @@ const App: React.FC = () => {
       case View.Returns: return <Returns returns={store.returns || []} products={store.products || []} onRecordReturn={store.recordReturn} settings={store.settings} />;
       case View.Reports: return <Reports state={store} />;
       case View.Suppliers: return <Suppliers suppliers={store.suppliers || []} onAdd={store.addSupplier} onUpdate={() => {}} onDelete={() => {}} settings={store.settings} />;
-      case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} staff={store.users || []} currentUser={store.currentUser} onAddStaff={store.addStaffMember} onRemoveStaff={store.removeStaffMember} onActivateSubscription={async (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => { await store.activateSubscription(plan, cycle); }} onUpdatePassword={store.updatePassword} />;
+      case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} staff={store.users || []} currentUser={store.currentUser} onAddStaff={store.addStaffMember} onRemoveStaff={store.removeStaffMember} onVerifyPayment={store.verifyAndActivateSubscription} onUpdatePassword={store.updatePassword} />;
       case View.LaunchCenter: return <LaunchCenter state={store} onUpdateSettings={store.updateSettings} />;
       default: return <Dashboard state={store} onNavigate={setActiveView} />;
     }
