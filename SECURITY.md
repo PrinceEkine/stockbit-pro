@@ -30,7 +30,9 @@ Other client-side controls (defence in depth, not a substitute for the server):
 
 ## 2. Database
 
-Run these in the Supabase SQL editor, in order (all idempotent):
+**Fastest path:** `npx supabase login` once, then `npm run deploy:supabase` — it applies
+the migrations below and deploys both Edge Functions. Manual alternative: run these
+in the Supabase SQL editor, in order (all idempotent):
 
 1. `supabase/sql/schema.sql` — tables, indexes, the `handle_new_user` auth trigger, realtime publication.
 2. `supabase/sql/security.sql` — RLS, protective triggers, `record_sale` RPC.

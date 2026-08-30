@@ -1,0 +1,7 @@
+project_id = "knrpqdehivlprvzjkcgx"
+
+[functions.ai-gateway]
+verify_jwt = false
+
+[functions.verify-payment]
+verify_jwt = false
