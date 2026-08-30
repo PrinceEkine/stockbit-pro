@@ -18,7 +18,7 @@ verifies it against Paystack with the **secret key** before activating the plan.
    parent/owner account).
 
 Because the account is derived from the verified Paystack email — not from client
-input — this is safe for both Supabase-auth and Google/Firebase-auth users, and a
+input — this is safe for every sign-in method, and a
 replayed reference can only ever re-activate the account that actually paid.
 
 ## Deploy

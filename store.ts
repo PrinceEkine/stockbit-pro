@@ -1,18 +1,16 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { doc, setDoc, deleteDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "./firebase";
-import { Product, Sale, Supplier, AppState, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod } from './types';
+import { Product, Sale, Supplier, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod, StaffInvite } from './types';
 import { DEFAULT_CATEGORIES } from './constants';
 import { getEntitlements, isUnlimited } from './constants/plans';
 
 const mapProfile = (dbProfile: any): User => {
   // For old users without a trial_start_date, we use created_at.
-  // If created_at is also missing, we use a very old date to ensure expiration 
+  // If created_at is also missing, we use a very old date to ensure expiration
   // rather than a fresh trial, as per user request for "old users".
   const fallbackDate = "2023-01-01T00:00:00Z";
-  
+
   return {
     id: dbProfile.id,
     email: dbProfile.email,
@@ -35,23 +33,23 @@ export const getTrialStatus = (user: User | null) => {
   const expiredResult = { isSubscribed: false, daysLeft: 0, isExpired: true };
 
   if (!user) return { isSubscribed: false, daysLeft: 0, isExpired: false };
-  if (user.isSubscribed) return { isSubscribed: true, daysLeft: 0, isExpired: false };
+  if (user.isSubscribed) {
+    // A paid plan that has lapsed is treated as expired server-side too.
+    if (user.subscriptionExpiry && new Date(user.subscriptionExpiry).getTime() < Date.now()) return expiredResult;
+    return { isSubscribed: true, daysLeft: 0, isExpired: false };
+  }
 
   const start = new Date(user.trialStartDate);
   const now = new Date();
 
   if (isNaN(start.getTime())) return expiredResult;
 
-  const trialDays = TRIAL_DAYS;
   const diff = now.getTime() - start.getTime();
   const daysUsed = Math.floor(diff / (1000 * 60 * 60 * 24));
 
-  // CRITICAL: If the full trial window has been used, it's expired.
-  if (daysUsed >= trialDays) return expiredResult;
+  if (daysUsed >= TRIAL_DAYS) return expiredResult;
 
-  const daysLeft = Math.max(0, trialDays - daysUsed);
-  
-  // If daysLeft is 0, it's also expired.
+  const daysLeft = Math.max(0, TRIAL_DAYS - daysUsed);
   if (daysLeft <= 0) return expiredResult;
 
   return { isSubscribed: false, daysLeft, isExpired: false };
@@ -66,7 +64,6 @@ export const getEffectiveTrialStatus = (currentUser: User | null, users: User[])
   if (currentUser?.role === 'staff' && currentUser.parentId) {
     const owner = users.find(u => u.id === currentUser.parentId);
     if (owner) return getTrialStatus(owner);
-    // Owner not loaded/unknown — deny rather than granting a fresh trial.
     return { isSubscribed: false, daysLeft: 0, isExpired: true };
   }
   return getTrialStatus(currentUser);
@@ -76,6 +73,9 @@ export const useStore = () => {
   const [loading, setLoading] = useState(true);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authProviders, setAuthProviders] = useState<string[]>([]);
+  const [staffInvites, setStaffInvites] = useState<StaffInvite[]>([]);
+  const [pendingInviteError, setPendingInviteError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [returns, setReturns] = useState<ProductReturn[]>([]);
@@ -95,25 +95,24 @@ export const useStore = () => {
     taxRate: 7.5,
     language: 'en',
     isDynamicPricingActive: false,
-    paystackPublicKey: process.env.VITE_PAYSTACK_PUBLIC_KEY || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
+    paystackPublicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
     marketplaces: { jumia: false, konga: false, whatsapp: false }
   });
   const [error, setError] = useState<string | null>(null);
   const lastLoadedUser = useRef<string | null>(null);
   const isDataLoading = useRef(false);
+  const hydratingUser = useRef<string | null>(null);
 
   const isLoggedIn = !!currentUser;
 
   const loadData = useCallback(async (userId: string, isStaff: boolean, parentId?: string) => {
     if (!userId || isDataLoading.current) return;
-    
-    // Prevent redundant loads for the same user
     if (lastLoadedUser.current === userId) return;
 
     isDataLoading.current = true;
     setLoading(true);
     const targetUserId = isStaff ? parentId : userId;
-    
+
     if (!targetUserId) {
       setLoading(false);
       setInitialLoadComplete(true);
@@ -128,7 +127,7 @@ export const useStore = () => {
         supabase.from('suppliers').select('*').eq('user_id', targetUserId).order('name'),
         supabase.from('returns').select('*').eq('user_id', targetUserId).order('date', { ascending: false }),
         supabase.from('notifications').select('*').eq('user_id', userId).order('date', { ascending: false }),
-        supabase.from('settings').select('*').eq('user_id', targetUserId).single(),
+        supabase.from('settings').select('*').eq('user_id', targetUserId).maybeSingle(),
         supabase.from('profiles').select('*').or(`id.eq.${targetUserId},parent_id.eq.${targetUserId}`)
       ]);
 
@@ -147,7 +146,6 @@ export const useStore = () => {
             categories: dbData.categories || prev.categories,
             lowStockEmailAlerts: dbData.low_stock_email_alerts ?? prev.lowStockEmailAlerts,
             notificationEmail: dbData.notification_email || prev.notificationEmail,
-            // Fallback for fields that might not be in their specific table yet
             language: dbData.language || prev.language,
             theme: dbData.theme || prev.theme,
             taxRate: dbData.tax_rate ?? prev.taxRate
@@ -161,13 +159,13 @@ export const useStore = () => {
           try {
             const parsed = JSON.parse(local);
             setSettings(prev => ({ ...prev, ...parsed }));
-          } catch(e) {
+          } catch (e) {
             console.error("Local settings parse failed", e);
           }
         }
       }
       if (profilesRes.data) setUsers(profilesRes.data.map(mapProfile));
-      
+
       lastLoadedUser.current = userId;
     } catch (err) {
       console.error("Data load failed", err);
@@ -177,15 +175,86 @@ export const useStore = () => {
       setInitialLoadComplete(true);
       isDataLoading.current = false;
     }
-  }, []); // Removed initialLoadComplete dependency to avoid loops
+  }, []);
 
+  /**
+   * Turns a Supabase session into an application user. Creates the profile row
+   * from the signup metadata when it does not exist yet (first login after
+   * email verification, or first Google sign-in). The database trigger
+   * `guard_profile_insert` validates everything the client sends here.
+   */
+  const hydrateFromSession = useCallback(async (session: Session) => {
+    const authUser = session.user;
+    // Supabase fires getSession + INITIAL_SESSION + SIGNED_IN for the same login; hydrate once.
+    if (hydratingUser.current === authUser.id) return;
+    hydratingUser.current = authUser.id;
+    setAuthProviders(((authUser.app_metadata?.providers as string[]) || [authUser.app_metadata?.provider || 'email']).filter(Boolean));
+
+    try {
+      let { data, error: profileError } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
+
+      const metadata = authUser.user_metadata || {};
+      if (!data && (!profileError || profileError.code === 'PGRST116')) {
+        const displayName = metadata.full_name || metadata.name || (authUser.email || '').split('@')[0];
+        const newProfile = {
+          id: authUser.id,
+          email: authUser.email,
+          name: displayName,
+          company_name: metadata.invite_code ? '' : (metadata.company_name || `${displayName} Shop`),
+          // Role/linkage are decided server-side (guard_profile_insert + accept_staff_invite).
+          role: 'user',
+          parent_id: null,
+          trial_start_date: new Date().toISOString()
+        };
+        const created = await supabase.from('profiles').insert([newProfile]).select().single();
+        data = created.data;
+        profileError = created.error;
+      }
+
+      // First login after a "Join as staff" sign-up: redeem the invite code server-side.
+      if (data && typeof metadata.invite_code === 'string' && metadata.invite_code && data.role !== 'staff') {
+        const { data: linked, error: acceptError } = await supabase.rpc('accept_staff_invite', { p_code: metadata.invite_code });
+        if (!acceptError && linked) {
+          data = linked;
+        } else {
+          setPendingInviteError(acceptError?.message?.replace(/^.*?:\s*/, '') || 'Your invite could not be applied.');
+        }
+        // Never retry a consumed/invalid code on the next login.
+        supabase.auth.updateUser({ data: { invite_code: null } }).catch(() => {});
+      }
+
+      if (!data) {
+        console.error("Profile could not be loaded/created", profileError);
+        hydratingUser.current = null;
+        setLoading(false);
+        setInitialLoadComplete(true);
+        return;
+      }
+
+      const user = mapProfile(data);
+      if (user.role === 'staff' && user.parentId) {
+        const { data: parentData } = await supabase.from('profiles').select('company_name').eq('id', user.parentId).maybeSingle();
+        if (parentData) user.companyName = parentData.company_name;
+      }
+
+      setCurrentUser(user);
+      loadData(user.id, user.role === 'staff', user.parentId);
+    } catch (err) {
+      console.error("Session hydration failed", err);
+      hydratingUser.current = null;
+      setLoading(false);
+      setInitialLoadComplete(true);
+    }
+  }, [loadData]);
+
+  // Realtime: keep products, sales and the team roster live for this business.
   useEffect(() => {
     if (!currentUser) return;
     const targetUserId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
     if (!targetUserId) return;
 
-    const productChannel = supabase
-      .channel('schema-db-changes')
+    const channel = supabase
+      .channel(`business-${targetUserId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `user_id=eq.${targetUserId}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setProducts(prev => prev.some(p => p.id === payload.new.id) ? prev : [...prev, payload.new as Product]);
@@ -194,13 +263,12 @@ export const useStore = () => {
           setProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new as Product : p));
         }
         if (payload.eventType === 'DELETE') {
-          setProducts(prev => prev.filter(p => p.id === payload.old.id));
+          setProducts(prev => prev.filter(p => p.id !== payload.old.id));
         }
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sales', filter: `user_id=eq.${targetUserId}` }, (payload) => {
         setSales(prev => prev.some(s => s.id === payload.new.id) ? prev : [payload.new as Sale, ...prev]);
       })
-      // Keep the workforce list live: any staff joining/leaving this owner refreshes it.
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `parent_id=eq.${targetUserId}` }, async () => {
         const { data } = await supabase.from('profiles').select('*').or(`id.eq.${targetUserId},parent_id.eq.${targetUserId}`);
         if (data) setUsers(data.map(mapProfile));
@@ -208,7 +276,7 @@ export const useStore = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(productChannel);
+      supabase.removeChannel(channel);
     };
   }, [currentUser]);
 
@@ -218,107 +286,21 @@ export const useStore = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    const savedFirebaseEmail = localStorage.getItem('stockbit_firebase_email');
-    if (savedFirebaseEmail) {
-      (async () => {
-        try {
-          const { data, error } = await supabase.from('profiles').select('*').eq('email', savedFirebaseEmail).single();
-          if (data && !error) {
-            let user = mapProfile(data);
-            
-            if (user.role === 'staff' && user.parentId) {
-              const { data: parentData } = await supabase.from('profiles').select('company_name').eq('id', user.parentId).single();
-              if (parentData) {
-                user.companyName = parentData.company_name;
-              }
-            }
-            
-            setCurrentUser(user);
-            await loadData(user.id, user.role === 'staff', user.parentId);
-          } else {
-            localStorage.removeItem('stockbit_firebase_email');
-          }
-        } catch (err) {
-          console.error("Failed to restore firebase email session:", err);
-        } finally {
-          setLoading(false);
-          setInitialLoadComplete(true);
-        }
-      })();
-      
-      return () => {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-      };
-    }
+    // Legacy marker from the removed Firebase flow — scrub it.
+    localStorage.removeItem('stockbit_firebase_email');
 
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.warn("Session retrieval error:", error.message);
-        if (error.message.includes('Refresh Token Not Found') || error.message.includes('invalid_grant')) {
+        if (error.message.includes('Refresh Token') || error.message.includes('invalid_grant')) {
           supabase.auth.signOut();
         }
         setLoading(false);
         setInitialLoadComplete(true);
         return;
       }
-
       if (session?.user) {
-        supabase.from('profiles').select('*').eq('id', session.user.id).single().then(async ({ data, error: profileError }) => {
-          if (data) {
-            let user = mapProfile(data);
-            
-            // If staff, fetch owner's company name for display
-            if (user.role === 'staff' && user.parentId) {
-              const { data: parentData } = await supabase.from('profiles').select('company_name').eq('id', user.parentId).single();
-              if (parentData) {
-                user.companyName = parentData.company_name;
-              }
-            }
-            
-            setCurrentUser(user);
-            try {
-              const { auth } = await import('./firebase');
-              if (auth.currentUser) {
-                await setDoc(doc(db, "profiles", data.id), data, { merge: true });
-              }
-            } catch (err) {
-              // Firestore sync optional
-            }
-            loadData(user.id, user.role === 'staff', user.parentId);
-          } else if (profileError && profileError.code === 'PGRST116') {
-            // Profile missing - create it from metadata
-            const metadata = session.user.user_metadata || {};
-            const newProfile = {
-              id: session.user.id,
-              email: session.user.email,
-              name: metadata.full_name || '',
-              company_name: metadata.company_name || '',
-              role: metadata.role || 'user',
-              parent_id: metadata.parent_id || null,
-              trial_start_date: new Date().toISOString()
-            };
-            
-            const { data: createdProfile, error: createError } = await supabase
-              .from('profiles')
-              .insert([newProfile])
-              .select()
-              .single();
-            
-            if (!createError && createdProfile) {
-              const user = mapProfile(createdProfile);
-              setCurrentUser(user);
-              loadData(user.id, user.role === 'staff', user.parentId);
-            } else {
-              console.error("Profile auto-creation failed", createError);
-              setLoading(false);
-              setInitialLoadComplete(true);
-            }
-          } else {
-            setLoading(false);
-            setInitialLoadComplete(true);
-          }
-        });
+        hydrateFromSession(session);
       } else {
         setLoading(false);
         setInitialLoadComplete(true);
@@ -330,65 +312,25 @@ export const useStore = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
+        hydratingUser.current = null;
+        lastLoadedUser.current = null;
         setCurrentUser(null);
+        setAuthProviders([]);
         setProducts([]);
         setSales([]);
+        setReturns([]);
         setSuppliers([]);
+        setNotifications([]);
+        setUsers([]);
         setInitialLoadComplete(true);
+        setLoading(false);
         return;
       }
-
+      if (event === 'TOKEN_REFRESHED') return;
       if (session?.user) {
-        supabase.from('profiles').select('*').eq('id', session.user.id).single().then(async ({ data, error: profileError }) => {
-          if (data) {
-            let user = mapProfile(data);
-            
-            // If staff, fetch owner's company name for display
-            if (user.role === 'staff' && user.parentId) {
-              const { data: parentData } = await supabase.from('profiles').select('company_name').eq('id', user.parentId).single();
-              if (parentData) {
-                user.companyName = parentData.company_name;
-              }
-            }
-            
-            setCurrentUser(user);
-            try {
-              const { auth } = await import('./firebase');
-              if (auth.currentUser) {
-                await setDoc(doc(db, "profiles", data.id), data, { merge: true });
-              }
-            } catch (err) {
-              // Firestore sync optional
-            }
-            loadData(user.id, user.role === 'staff', user.parentId);
-          } else if (profileError && profileError.code === 'PGRST116') {
-             // Profile missing - create it from metadata
-             const metadata = session.user.user_metadata || {};
-             const newProfile = {
-               id: session.user.id,
-               email: session.user.email,
-               name: metadata.full_name || '',
-               company_name: metadata.company_name || '',
-               role: metadata.role || 'user',
-               parent_id: metadata.parent_id || null,
-               trial_start_date: new Date().toISOString()
-             };
-             
-             const { data: createdProfile, error: createError } = await supabase
-               .from('profiles')
-               .insert([newProfile])
-               .select()
-               .single();
-             
-             if (!createError && createdProfile) {
-               const user = mapProfile(createdProfile);
-               setCurrentUser(user);
-               loadData(user.id, user.role === 'staff', user.parentId);
-             }
-          }
-        });
-      } else {
-        setCurrentUser(null);
+        hydrateFromSession(session);
+      } else if (event === 'INITIAL_SESSION') {
+        setLoading(false);
         setInitialLoadComplete(true);
       }
     });
@@ -398,10 +340,9 @@ export const useStore = () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Manually re-pull the owner + staff list. Used as a fallback for environments
-  // where Supabase realtime replication on `profiles` is not enabled.
   const refreshUsers = useCallback(async () => {
     if (!currentUser) return;
     const targetUserId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
@@ -414,226 +355,105 @@ export const useStore = () => {
   }, [currentUser]);
 
   const login = useCallback(async (email: string, pass: string) => {
-    return await supabase.auth.signInWithPassword({ email, password: pass });
+    return await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password: pass });
   }, []);
 
-  const loginWithGoogle = useCallback(async (customEmail?: string) => {
-    let email = '';
-    let name = '';
+  /**
+   * Google sign-in via Supabase's own OAuth (PKCE redirect). The browser is
+   * navigated to Google and back; onAuthStateChange hydrates the profile.
+   */
+  const loginWithGoogle = useCallback(async (): Promise<{ redirecting?: boolean }> => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin, queryParams: { prompt: 'select_account' } }
+    });
+    if (error) throw error;
+    return { redirecting: true };
+  }, []);
 
-    try {
-      const { signInWithGoogle } = await import('./firebase');
-      const firebaseUser = await signInWithGoogle();
-      if (firebaseUser && firebaseUser.email) {
-        email = firebaseUser.email;
-        name = firebaseUser.displayName || 'Google Merchant';
-      }
-    } catch (err: any) {
-      console.warn("Google Sign-In failed or cancelled:", err);
-      
-      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request' || err?.message?.includes('popup-closed-by-user')) {
-        throw new Error("Sign-in window was closed. Please try signing in again.");
-      }
-      if (err?.code === 'auth/popup-blocked' || err?.message?.includes('popup-blocked')) {
-        throw new Error("Sign-in pop-up was blocked by your browser. Please allow pop-ups for this site and try again.");
-      }
-      if (customEmail) {
-        email = customEmail;
-        name = customEmail.split('@')[0];
-      } else {
-        throw new Error(err?.message || "Failed to sign in with Google. Please try again.");
-      }
-    }
+  const previewInvite = useCallback(async (code: string): Promise<{ valid: boolean; companyName?: string; reason?: string }> => {
+    const { data, error } = await supabase.rpc('preview_staff_invite', { p_code: code.trim().toUpperCase() });
+    if (error) return { valid: false, reason: 'Could not check this code right now. Please try again.' };
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return { valid: false, reason: 'Invite code not found.' };
+    return { valid: !!row.valid, companyName: row.company_name || undefined, reason: row.reason || undefined };
+  }, []);
 
-    if (!email) {
-      throw new Error("No user email returned from Google authentication.");
-    }
-
-    // 1. Check if profile already exists in Supabase
-    const { data: existingProfile, error: fetchErr } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('email', email)
-      .maybeSingle();
-
-    if (existingProfile) {
-      // Profile exists! Log them in.
-      const user = mapProfile(existingProfile);
-      setCurrentUser(user);
-      localStorage.setItem('stockbit_firebase_email', email);
-      
-      try {
-        const { auth } = await import('./firebase');
-        if (auth.currentUser) {
-          await setDoc(doc(db, "profiles", existingProfile.id), existingProfile, { merge: true });
-        }
-      } catch (err) {
-        // Firestore sync optional
-      }
-      await loadData(user.id, user.role === 'staff', user.parentId);
-      return { user };
-    } else {
-      // 2. Profile missing - create it with deterministic UUID helper
-      const generateUUID = () => {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-          const r = Math.random() * 16 | 0;
-          const v = c === 'x' ? r : (r & 0x3 | 0x8);
-          return v.toString(16);
-        });
-      };
-      
-      const newId = generateUUID();
-      const newProfile = {
-        id: newId,
-        email: email,
-        name: name || 'Google Merchant',
-        company_name: (name || 'Google Merchant') + " Shop",
-        role: 'user',
-        parent_id: null,
-        trial_start_date: new Date().toISOString()
-      };
-
-      const { data: createdProfile, error: createError } = await supabase
-        .from('profiles')
-        .insert([newProfile])
-        .select()
-        .single();
-
-      if (createError) {
-        console.error("Firebase Sign-In Profile Creation failed", createError);
-        throw createError;
-      }
-
-      const user = mapProfile(createdProfile);
-      setCurrentUser(user);
-      localStorage.setItem('stockbit_firebase_email', email);
-      
-      try {
-        const { auth } = await import('./firebase');
-        if (auth.currentUser) {
-          await setDoc(doc(db, "profiles", createdProfile.id), createdProfile);
-        }
-      } catch (err) {
-        // Firestore sync optional
-      }
-      await loadData(user.id, user.role === 'staff', user.parentId);
-      return { user };
-    }
-  }, [loadData]);
-
-  const register = useCallback(async ({ email, password, name, companyName, inviteId }: any) => {
-    // If joining as staff, verify the owner's Invite ID exists before creating the account
-    // so team members are never orphaned under a non-existent business.
-    if (inviteId) {
-      const { data: owner, error: ownerError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', inviteId)
-        .maybeSingle();
-
-      if (ownerError) {
-        // A malformed (non-UUID) ID also lands here, so guide the user to re-check it.
-        return { error: { message: "Could not verify the Invite ID. Please paste the exact Link ID from your owner's Settings page and try again." } };
-      }
-      if (!owner) {
-        return { error: { message: "Invalid Invite ID. Please confirm the exact Link ID from your business owner's Settings page." } };
-      }
-      if (owner.role === 'staff') {
-        return { error: { message: "This Invite ID belongs to a staff member, not a business owner. Ask your owner for their Link ID." } };
-      }
-
-      // Enforce the owner's plan staff limit so a business cannot exceed its tier.
-      const entitlements = getEntitlements(mapProfile(owner));
-      if (!isUnlimited(entitlements.staffLimit)) {
-        const { count, error: countError } = await supabase
-          .from('profiles')
-          .select('id', { count: 'exact', head: true })
-          .eq('parent_id', inviteId)
-          .eq('role', 'staff');
-
-        if (!countError && typeof count === 'number' && count >= entitlements.staffLimit) {
-          return { error: { message: `This business has reached its team limit of ${entitlements.staffLimit} on the ${entitlements.label} plan. Ask the owner to upgrade to add more staff.` } };
-        }
+  const register = useCallback(async ({ email, password, name, companyName, inviteCode }: {
+    email: string; password: string; name: string; companyName?: string; inviteCode?: string | null;
+  }) => {
+    const code = inviteCode ? inviteCode.trim().toUpperCase() : null;
+    if (code) {
+      const preview = await previewInvite(code);
+      if (!preview.valid) {
+        return { error: { message: preview.reason || 'This invite code is not valid.' } };
       }
     }
 
     const { data, error: authError } = await supabase.auth.signUp({
-      email,
+      email: email.trim().toLowerCase(),
       password,
       options: {
-        // Send the confirmation link back to the app so clicking it lands the
-        // user on their dashboard instead of an external/blank page.
         emailRedirectTo: window.location.origin,
         data: {
-          full_name: name,
-          company_name: companyName,
-          role: inviteId ? 'staff' : 'user',
-          parent_id: inviteId || null
+          full_name: name.trim(),
+          company_name: code ? '' : (companyName || '').trim(),
+          invite_code: code
         }
       }
     });
 
     if (authError) return { error: authError };
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      return { error: { message: "If this email is new, a verification link has been sent. If you already have an account, please sign in instead." } };
+    }
     return { data };
-  }, []);
+  }, [previewInvite]);
 
+  /** Sets/changes the password for the signed-in user and signs out every OTHER device. */
   const updatePassword = useCallback(async (newPassword: string) => {
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData?.session) {
-        const res = await supabase.auth.updateUser({ password: newPassword });
-        if (!res.error) return res;
-      }
-      
-      if (currentUser?.email) {
-        const { data, error } = await supabase.auth.signUp({ 
-          email: currentUser.email, 
-          password: newPassword,
-          options: {
-            data: {
-              full_name: currentUser.name,
-              company_name: currentUser.companyName,
-              role: currentUser.role
-            }
-          }
-        });
-
-        if (error && (error.message.includes("already registered") || error.message.includes("already exist") || error.message.includes("User already registered"))) {
-          const updateRes = await supabase.auth.updateUser({ password: newPassword });
-          return updateRes;
-        } else if (!error) {
-          return { data };
-        }
-      }
-      
-      return await supabase.auth.updateUser({ password: newPassword });
+      const res = await supabase.auth.updateUser({ password: newPassword });
+      if (res.error) return res;
+      try { await supabase.auth.signOut({ scope: 'others' }); } catch { /* best effort */ }
+      return res;
     } catch (err: any) {
       console.error("updatePassword error:", err);
       return { error: err };
     }
-  }, [currentUser]);
+  }, []);
+
+  /** Re-verifies the current password (used by the idle lock screen). */
+  const reauthenticate = useCallback(async (password: string) => {
+    if (!currentUser?.email) return { error: { message: 'No signed-in user.' } };
+    return await supabase.auth.signInWithPassword({ email: currentUser.email, password });
+  }, [currentUser?.email]);
+
+  const signOutEverywhere = useCallback(async () => {
+    await supabase.auth.signOut({ scope: 'global' });
+  }, []);
 
   const logout = useCallback(async () => {
     try {
       await supabase.auth.signOut();
-      localStorage.removeItem('stockbit_firebase_email');
-      const { logoutFirebase } = await import('./firebase');
-      await logoutFirebase();
     } catch (err) {
       console.error("Logout error:", err);
     } finally {
+      hydratingUser.current = null;
+      lastLoadedUser.current = null;
       setCurrentUser(null);
+      setAuthProviders([]);
       setProducts([]);
       setSales([]);
+      setReturns([]);
       setSuppliers([]);
       setNotifications([]);
       setUsers([]);
-      localStorage.removeItem('stockbit_firebase_email');
     }
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {
-    return await supabase.auth.resetPasswordForEmail(email, {
+    return await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
       redirectTo: `${window.location.origin}/#update_password`
     });
   }, []);
@@ -641,16 +461,12 @@ export const useStore = () => {
   const updateSettings = useCallback(async (updates: Partial<Settings>) => {
     setSettings(prev => {
       const newSettings = { ...prev, ...updates };
-      
-      // Local fallback for immediate persistence and offline use
       localStorage.setItem('stockbit_settings_v1', JSON.stringify(newSettings));
-      
+
       if (currentUser) {
         const targetId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
         if (targetId) {
-          // Sync to the user's specific schema seen in screenshots
-          // We only sync columns that are confirmed to exist to avoid PGRST errors
-          supabase.from('settings').upsert({ 
+          supabase.from('settings').upsert({
             user_id: targetId,
             company_name: newSettings.companyName,
             currency: newSettings.currency,
@@ -663,20 +479,6 @@ export const useStore = () => {
             }
           });
 
-          // Sync with Firestore settings collection
-          setDoc(doc(db, "settings", targetId), {
-            user_id: targetId,
-            company_name: newSettings.companyName,
-            currency: newSettings.currency,
-            categories: newSettings.categories,
-            low_stock_email_alerts: newSettings.lowStockEmailAlerts,
-            notification_email: newSettings.notificationEmail,
-            tax_rate: newSettings.taxRate,
-            theme: newSettings.theme,
-            language: newSettings.language
-          }, { merge: true }).catch(err => {
-            console.error("Firestore settings sync failed:", err);
-          });
         }
       }
       return newSettings;
@@ -689,24 +491,16 @@ export const useStore = () => {
     if (!userId) return;
     const { data, error } = await supabase.from('products').insert([{ ...product, user_id: userId }]).select().single();
     if (!error && data) {
-      setProducts(prev => [...prev, data]);
-      try {
-        await setDoc(doc(db, "products", data.id), { ...data, user_id: userId });
-      } catch (err) {
-        console.error("Firestore persistence failed for products:", err);
-      }
+      setProducts(prev => prev.some(p => p.id === data.id) ? prev : [...prev, data]);
     }
   };
 
   const updateProduct = async (id: string, updates: Partial<Product>) => {
-    const { data, error } = await supabase.from('products').update(updates).eq('id', id).select().single();
+    // user_id is tenancy-critical and never editable from the client.
+    const { user_id: _ignored, ...safeUpdates } = updates as any;
+    const { data, error } = await supabase.from('products').update(safeUpdates).eq('id', id).select().single();
     if (!error && data) {
       setProducts(prev => prev.map(p => p.id === id ? data : p));
-      try {
-        await setDoc(doc(db, "products", id), data, { merge: true });
-      } catch (err) {
-        console.error("Firestore update failed for products:", err);
-      }
     }
   };
 
@@ -714,29 +508,19 @@ export const useStore = () => {
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (!error) {
       setProducts(prev => prev.filter(p => p.id !== id));
-      try {
-        await deleteDoc(doc(db, "products", id));
-      } catch (err) {
-        console.error("Firestore delete failed for products:", err);
-      }
     }
   };
 
   const recordSale = async (items: SaleItem[], customerName?: string, location?: string, paymentMethod: PaymentMethod = 'cash') => {
     if (!currentUser) return false;
     const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
-    
     if (!userId) {
-      console.error("Critical Failure: No target business owner ID found for transaction.");
+      console.error("No target business owner ID found for transaction.");
       return false;
     }
+    if (!items || items.length === 0) return false;
 
-    if (!items || items.length === 0) {
-      console.warn("recordSale called with an empty cart.");
-      return false;
-    }
-
-    // Guard against overselling: never allow a sale that would drive stock negative.
+    // Client-side pre-check for a friendly error; the server re-checks atomically.
     for (const item of items) {
       const stock = products.find(prod => prod.id === item.productId);
       if (stock && item.quantity > stock.quantity) {
@@ -745,57 +529,52 @@ export const useStore = () => {
       }
     }
 
-    const totalPrice = items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
-    const totalCost = items.reduce((sum, i) => sum + ((i.costPrice || 0) * i.quantity), 0);
-    const taxAmount = totalPrice * (settings.taxRate / 100);
+    // Preferred: atomic server-side RPC (locks rows, recomputes totals from DB prices).
+    const rpc = await supabase.rpc('record_sale', {
+      p_items: items.map(i => ({ productId: i.productId, quantity: i.quantity })),
+      p_customer_name: customerName || 'Walk-in',
+      p_location: location || 'Main Terminal',
+      p_payment_method: paymentMethod
+    });
 
-    const saleRecord = {
-      user_id: userId,
-      items,
-      total_price: totalPrice + taxAmount,
-      total_cost: totalCost,
-      tax_amount: taxAmount,
-      customer_name: customerName || 'Walk-in',
-      location: location || 'Main Terminal',
-      payment_method: paymentMethod,
-      is_checked: true,
-      is_archived: false,
-      date: new Date().toISOString()
-    };
-
-    const { data: newSale, error: insertError } = await supabase.from('sales').insert([saleRecord]).select().single();
-    
-    if (insertError) {
-      console.error("Sale Insert Error:", insertError.message, insertError.details);
+    let newSale: Sale | null = null;
+    if (!rpc.error && rpc.data) {
+      newSale = rpc.data as Sale;
+    } else if (rpc.error && (rpc.error.code === 'PGRST202' || rpc.error.code === '42883')) {
+      // RPC not installed yet (supabase/sql/security.sql not applied) — legacy path.
+      const totalPrice = items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+      const totalCost = items.reduce((sum, i) => sum + ((i.costPrice || 0) * i.quantity), 0);
+      const taxAmount = totalPrice * (settings.taxRate / 100);
+      const { data, error: insertError } = await supabase.from('sales').insert([{
+        user_id: userId, items, total_price: totalPrice + taxAmount, total_cost: totalCost, tax_amount: taxAmount,
+        customer_name: customerName || 'Walk-in', location: location || 'Main Terminal', payment_method: paymentMethod,
+        is_checked: true, is_archived: false, date: new Date().toISOString()
+      }]).select().single();
+      if (insertError) {
+        console.error("Sale Insert Error:", insertError.message);
+        return false;
+      }
+      newSale = data;
+      for (const item of items) {
+        const p = products.find(prod => prod.id === item.productId);
+        if (p) await supabase.from('products').update({ quantity: Math.max(0, p.quantity - item.quantity) }).eq('id', p.id);
+      }
+    } else {
+      console.error("Sale failed:", rpc.error?.message);
+      setError(rpc.error?.message?.replace(/^.*?:\s*/, '') || 'Sale could not be recorded.');
       return false;
     }
 
-    // Success - Update local sales state instantly
     if (newSale) {
-      setSales(prev => [newSale, ...prev]);
-      try {
-        await setDoc(doc(db, "sales", newSale.id), newSale);
-      } catch (err) {
-        console.error("Firestore persistence failed for sales:", err);
-      }
+      const sale = newSale;
+      setSales(prev => prev.some(s => s.id === sale.id) ? prev : [sale, ...prev]);
     }
 
-    // Success - Decrease inventory local state and DB
-    for (const item of items) {
-      const p = products.find(prod => prod.id === item.productId);
-      if (p) {
-        const newQty = Math.max(0, p.quantity - item.quantity);
-        // Optimistic UI for products
-        setProducts(prev => prev.map(prod => prod.id === p.id ? { ...prod, quantity: newQty } : prod));
-        // Update DB
-        await supabase.from('products').update({ quantity: newQty }).eq('id', p.id);
-        try {
-          await setDoc(doc(db, "products", p.id), { quantity: newQty }, { merge: true });
-        } catch (err) {
-          console.error("Firestore quantity update failed:", err);
-        }
-      }
-    }
+    // Optimistic local stock update (realtime will reconcile).
+    setProducts(prev => prev.map(prod => {
+      const sold = items.find(i => i.productId === prod.id);
+      return sold ? { ...prod, quantity: Math.max(0, prod.quantity - sold.quantity) } : prod;
+    }));
     return true;
   };
 
@@ -806,21 +585,11 @@ export const useStore = () => {
     const { data: ret, error } = await supabase.from('returns').insert([{ ...data, user_id: userId }]).select().single();
     if (!error && ret) {
       setReturns(prev => [ret, ...prev]);
-      try {
-        await setDoc(doc(db, "returns", ret.id), ret);
-      } catch (err) {
-        console.error("Firestore return persistence failed:", err);
-      }
       const p = products.find(prod => prod.id === data.product_id);
       if (p) {
         const newQty = p.quantity + data.quantity;
         setProducts(prev => prev.map(prod => prod.id === p.id ? { ...prod, quantity: newQty } : prod));
         await supabase.from('products').update({ quantity: newQty }).eq('id', p.id);
-        try {
-          await setDoc(doc(db, "products", p.id), { quantity: newQty }, { merge: true });
-        } catch (err) {
-          console.error("Firestore quantity update failed on return:", err);
-        }
       }
     }
   };
@@ -828,15 +597,8 @@ export const useStore = () => {
   const reconcileInventory = async (items: StocktakeItem[]) => {
     for (const item of items) {
       if (item.systemQty !== item.physicalQty) {
-        // Update local state first
         setProducts(prev => prev.map(p => p.id === item.productId ? { ...p, quantity: item.physicalQty } : p));
-        // Update DB
         await supabase.from('products').update({ quantity: item.physicalQty }).eq('id', item.productId);
-        try {
-          await setDoc(doc(db, "products", item.productId), { quantity: item.physicalQty }, { merge: true });
-        } catch (err) {
-          console.error("Firestore reconcile update failed:", err);
-        }
       }
     }
   };
@@ -848,32 +610,68 @@ export const useStore = () => {
     const { data, error } = await supabase.from('suppliers').insert([{ ...supplier, user_id: userId }]).select().single();
     if (!error && data) {
       setSuppliers(prev => [...prev, data]);
-      try {
-        await setDoc(doc(db, "suppliers", data.id), { ...data, user_id: userId });
-      } catch (err) {
-        console.error("Firestore supplier sync failed:", err);
-      }
     }
   };
 
-  const addStaffMember = async (staffData: any) => {
-    if (!currentUser) return;
-    // Note: In client-side Supabase, signUp logs out the current user.
-    // We recommend using the Invite ID flow instead.
-    const { error } = await register({ ...staffData, inviteId: currentUser.id });
-    if (error) throw error;
-  };
+  // ---------------- Staff invitations ----------------
+  const loadStaffInvites = useCallback(async () => {
+    if (!currentUser || currentUser.role === 'staff') return;
+    const { data } = await supabase
+      .from('staff_invites')
+      .select('*')
+      .eq('owner_id', currentUser.id)
+      .order('created_at', { ascending: false });
+    if (data) setStaffInvites(data as StaffInvite[]);
+  }, [currentUser]);
 
+  const createStaffInvite = useCallback(async (email?: string): Promise<StaffInvite> => {
+    const { data, error } = await supabase.rpc('create_staff_invite', { p_email: email?.trim() || null });
+    if (error) throw new Error(error.message.replace(/^.*?:\s*/, ''));
+    const invite = data as StaffInvite;
+    setStaffInvites(prev => [invite, ...prev.map(i => (i.status === 'pending' && invite.email && i.email === invite.email) ? { ...i, status: 'revoked' as const } : i)]);
+    return invite;
+  }, []);
+
+  const revokeStaffInvite = useCallback(async (id: string) => {
+    const { error } = await supabase.from('staff_invites').update({ status: 'revoked' }).eq('id', id);
+    if (error) throw new Error(error.message);
+    setStaffInvites(prev => prev.map(i => i.id === id ? { ...i, status: 'revoked' } : i));
+  }, []);
+
+  /** A signed-in account with no shop of its own redeems a code and becomes staff. */
+  const joinBusinessWithCode = useCallback(async (code: string) => {
+    const { data, error } = await supabase.rpc('accept_staff_invite', { p_code: code.trim().toUpperCase() });
+    if (error) throw new Error(error.message.replace(/^.*?:\s*/, ''));
+    const user = mapProfile(data);
+    if (user.parentId) {
+      const { data: parentData } = await supabase.from('profiles').select('company_name').eq('id', user.parentId).maybeSingle();
+      if (parentData) user.companyName = parentData.company_name;
+    }
+    lastLoadedUser.current = null;
+    setCurrentUser(user);
+    await loadData(user.id, true, user.parentId);
+  }, [loadData]);
+
+  const clearPendingInviteError = useCallback(() => setPendingInviteError(null), []);
+
+  /**
+   * Detaches a staff member from this business. The row is kept (so the person
+   * cannot silently re-join by re-creating a profile from stale signup metadata)
+   * but no longer points at the owner, so RLS immediately cuts their access.
+   */
   const removeStaffMember = async (id: string) => {
-    const { error } = await supabase.from('profiles').delete().eq('id', id);
-    if (!error) {
-      setUsers(prev => prev.filter(u => u.id !== id));
-    }
+    if (!currentUser) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ parent_id: null, role: 'user' })
+      .eq('id', id)
+      .eq('parent_id', currentUser.id);
+    if (error) throw new Error(error.message);
+    setUsers(prev => prev.filter(u => u.id !== id));
   };
 
-  // Server-verified activation: called after a Paystack payment. The reference is
-  // verified against Paystack (secret key) inside the `verify-payment` Edge Function,
-  // which activates the subscription only if the payment is real and correctly priced.
+  // Server-verified activation: the `verify-payment` Edge Function checks the
+  // Paystack reference with the secret key and updates billing with the service role.
   const verifyAndActivateSubscription = useCallback(async (
     reference: string,
     plan: SubscriptionPlan,
@@ -890,8 +688,6 @@ export const useStore = () => {
       }
 
       const expiry = data.subscription?.subscriptionExpiry;
-
-      // Reflect immediately for the current user if they own the billed account.
       if (currentUser) {
         const targetUserId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
         if (currentUser.id === targetUserId) {
@@ -905,7 +701,6 @@ export const useStore = () => {
           if (updatedProfiles) setUsers(updatedProfiles.map(mapProfile));
         }
       }
-
       return { success: true };
     } catch (err: any) {
       console.error('Subscription verification failed:', err);
@@ -913,30 +708,25 @@ export const useStore = () => {
     }
   }, [currentUser]);
 
-  const activateSubscription = async (plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => {
+  const clearError = useCallback(() => setError(null), []);
+
+  const markNotificationRead = useCallback(async (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    await supabase.from('notifications').update({ read: true }).eq('id', id);
+  }, []);
+
+  const clearNotifications = useCallback(async () => {
     if (!currentUser) return;
-    const targetUserId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
-    if (!targetUserId) return;
-
-    const expiry = new Date();
-    if (cycle === 'monthly') expiry.setMonth(expiry.getMonth() + 1);
-    else expiry.setFullYear(expiry.getFullYear() + 1);
-
-    const updates = { is_subscribed: true, plan, subscription_expiry: expiry.toISOString() };
-    const { error } = await supabase.from('profiles').update(updates).eq('id', targetUserId);
-    if (!error) {
-      // If the current user updated their own subscription, reflect it immediately
-      if (currentUser.id === targetUserId) {
-        setCurrentUser({ ...currentUser, isSubscribed: true, plan, subscriptionExpiry: expiry.toISOString() });
-      }
-      // Reload users to update owner status in the users array
-      const { data: updatedProfiles } = await supabase.from('profiles').select('*').or(`id.eq.${targetUserId},parent_id.eq.${targetUserId}`);
-      if (updatedProfiles) setUsers(updatedProfiles.map(mapProfile));
-    }
-  };
+    setNotifications([]);
+    await supabase.from('notifications').delete().eq('user_id', currentUser.id);
+  }, [currentUser]);
 
   return {
-    loading, initialLoadComplete, currentUser, products, sales, returns, suppliers, notifications, users, settings, error, isLoggedIn, isOnline,
-    login, register, resetPassword, updatePassword, logout, updateSettings, addProduct, updateProduct, deleteProduct, recordSale, reconcileInventory, recordReturn, addSupplier, addStaffMember, removeStaffMember, activateSubscription, verifyAndActivateSubscription, refreshUsers, loginWithGoogle
+    loading, initialLoadComplete, currentUser, authProviders, products, sales, returns, suppliers, notifications, users, settings, error, isLoggedIn, isOnline,
+    staffInvites, pendingInviteError, clearPendingInviteError,
+    login, loginWithGoogle, register, previewInvite, resetPassword, updatePassword, reauthenticate, signOutEverywhere, logout, updateSettings,
+    addProduct, updateProduct, deleteProduct, recordSale, reconcileInventory, recordReturn, addSupplier, removeStaffMember,
+    loadStaffInvites, createStaffInvite, revokeStaffInvite, joinBusinessWithCode,
+    verifyAndActivateSubscription, refreshUsers, clearError, markNotificationRead, clearNotifications
   };
 };

@@ -1,66 +1,64 @@
+// StockBit Pro service worker
+//  • Navigations (HTML): network-first, so every deploy reaches users; cached shell is the offline fallback.
+//  • Hashed build assets (/assets/*): cache-first (immutable by name).
+//  • Other same-origin GETs: stale-while-revalidate.
+//  • Never touches non-GET requests or cross-origin API calls (Supabase, Paystack, Google).
 const CACHE_NAME = 'stockbit-pro-v3';
-const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap'
-];
+const SHELL = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
-    })
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)).catch(() => {}));
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-      );
-    }).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  const request = event.request;
+  const { request } = event;
+  if (request.method !== 'GET') return;
 
-  // Network-first for page navigations (HTML). This guarantees the freshly
-  // deployed app shell — and the current JS bundle it references — is used,
-  // instead of an indefinitely cached old index.html.
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return; // let the browser handle APIs/CDNs
+
+  // HTML navigations: network first.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-        .then((networkResponse) => {
-          const copy = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', copy));
-          return networkResponse;
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put('/index.html', copy)).catch(() => {});
+          return res;
         })
         .catch(() => caches.match('/index.html'))
     );
     return;
   }
 
-  // Cache-first for other assets. Build output is content-hashed, so a fresh
-  // index.html points at new filenames that miss the cache and are fetched.
+  // Immutable hashed assets: cache first.
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(request).then((cached) => cached || fetch(request).then((res) => {
+        if (res.ok) caches.open(CACHE_NAME).then((c) => c.put(request, res.clone())).catch(() => {});
+        return res;
+      }))
+    );
+    return;
+  }
+
+  // Everything else same-origin: stale-while-revalidate.
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) return cachedResponse;
-      return fetch(request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-          return networkResponse;
-        }
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          if (request.url.startsWith(self.location.origin)) {
-            cache.put(request, responseToCache);
-          }
-        });
-        return networkResponse;
-      });
+    caches.match(request).then((cached) => {
+      const network = fetch(request).then((res) => {
+        if (res.ok && res.type === 'basic') caches.open(CACHE_NAME).then((c) => c.put(request, res.clone())).catch(() => {});
+        return res;
+      }).catch(() => cached);
+      return cached || network;
     })
   );
 });

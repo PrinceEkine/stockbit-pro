@@ -1,17 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import './src/index.css';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
+import { ToastProvider } from './components/ui/Toast';
 
-// Register Service Worker with improved resilience for origin mismatches
-if ('serviceWorker' in navigator) {
+// Register the service worker (production only — it would otherwise cache Vite's dev modules).
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    // Using relative path to current origin to avoid domain mismatch errors
-    navigator.serviceWorker.register('./sw.js', { scope: './' })
-      .then(reg => console.log('SW deployed:', reg.scope))
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
       .catch(err => {
-        // Silently handle development origin mismatches while logging others
-        if (!err.message.includes('origin')) {
+        if (!String(err?.message || '').includes('origin')) {
           console.warn('SW registration failed:', err);
         }
       });
@@ -23,11 +22,12 @@ if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
-const root = ReactDOM.createRoot(rootElement);
-root.render(
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <ToastProvider>
+        <App />
+      </ToastProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

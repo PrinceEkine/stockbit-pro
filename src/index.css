@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sat: env(safe-area-inset-top);
+  --sab: env(safe-area-inset-bottom);
+  color-scheme: light;
+}
+html.dark { color-scheme: dark; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+  background-color: #f8fafc;
+  padding-top: var(--sat);
+  padding-bottom: var(--sab);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+}
+html.dark body { background-color: #020617; }
+
+::selection { background: rgba(79, 70, 229, 0.25); }
+
+/* Accessible focus ring: visible for keyboard users only. */
+:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+@layer components {
+  .glass {
+    @apply backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border border-white/20 dark:border-white/5;
+  }
+  .transition-soft {
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  /* Premium surface used by the auth screen, lock screen and modals. */
+  .surface {
+    @apply bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-white/10 shadow-elevated;
+  }
+  .input-premium {
+    @apply w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950/60 px-4 py-3.5 text-[15px] font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15 outline-none;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2.5 rounded-2xl bg-indigo-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all duration-200 hover:bg-indigo-500 hover:shadow-indigo-600/40 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 px-6 py-3.5 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm transition-all duration-200 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-[0.98] disabled:opacity-60;
+  }
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgba(99, 102, 241, 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(99, 102, 241, 0.08) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .skeleton {
+    @apply relative overflow-hidden bg-slate-200/70 dark:bg-slate-800/70 rounded-xl;
+    background-image: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.5) 50%, transparent 100%);
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+}
+
+/* ---------- Professional POS printing ---------- */
+@media print {
+  body {
+    background: white !important;
+    margin: 0;
+    padding: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+
+  @page { size: auto; margin: 0mm; }
+
+  .receipt-container {
+    width: 72mm;
+    margin: 0 auto;
+    padding: 2mm;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .receipt-container.size-58mm { width: 48mm; padding: 1mm; }
+
+  .label-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 38.1mm);
+    gap: 2mm;
+    padding: 5mm;
+    justify-content: center;
+  }
+  .barcode-label {
+    width: 38.1mm;
+    height: 25.4mm;
+    border: 0.1mm solid #eee;
+    padding: 1.5mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    page-break-inside: avoid;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+}
+.print-only { display: none; }

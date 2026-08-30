@@ -17,5 +17,6 @@
     "jsx": "react-jsx",
     "types": ["vite/client"]
   },
-  "include": ["./src", "./App.tsx", "./store.ts", "./supabase.ts", "./types.ts", "./index.tsx"]
+  "include": ["./src", "./App.tsx", "./store.ts", "./supabase.ts", "./types.ts", "./index.tsx", "./components", "./pages", "./services", "./lib", "./constants", "./constants.tsx"],
+  "exclude": ["node_modules", "dist", "supabase/functions"]
 }

@@ -7,7 +7,7 @@
 //
 // The account activated is the one whose email matches the *verified* Paystack
 // transaction (tx.customer.email) — not a value supplied by the client — so it is
-// secure and works for both Supabase-auth and Google/Firebase-auth users.
+// secure and works for every sign-in method.
 //
 // Deploy:  supabase functions deploy verify-payment
 // Secrets: supabase secrets set PAYSTACK_SECRET_KEY=sk_live_xxx

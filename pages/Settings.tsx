@@ -32,32 +32,49 @@ import {
   Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings as SettingsType, User, SubscriptionPlan, AppLanguage } from '../types';
+import { Settings as SettingsType, User, SubscriptionPlan, AppLanguage, StaffInvite } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
 import { getEntitlements, isUnlimited, PLAN_ENTITLEMENTS } from '../constants/plans';
+import { checkPassword, PASSWORD_MIN_LENGTH } from '../lib/security';
+import { useToast } from '../components/ui/Toast';
 
 interface SettingsProps {
   settings: SettingsType;
   onUpdate: (updates: Partial<SettingsType>) => void;
   staff: User[];
   currentUser: User | null;
-  onAddStaff: (data: any) => Promise<void>;
   onRemoveStaff: (id: string) => Promise<void>;
+  invites?: StaffInvite[];
+  onLoadInvites?: () => Promise<void>;
+  onCreateInvite?: (email?: string) => Promise<StaffInvite>;
+  onRevokeInvite?: (id: string) => Promise<void>;
+  onJoinWithCode?: (code: string) => Promise<void>;
   onVerifyPayment: (reference: string, plan: SubscriptionPlan, cycle: 'monthly' | 'annual') => Promise<{ success: boolean; error?: string }>;
   onUpdatePassword?: (password: string) => Promise<any>;
   onRefreshStaff?: () => Promise<void>;
+  onSignOutEverywhere?: () => Promise<void>;
+  authProviders?: string[];
 }
 
-const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentUser, onAddStaff, onRemoveStaff, onVerifyPayment, onUpdatePassword, onRefreshStaff }) => {
+const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentUser, onRemoveStaff, invites = [], onLoadInvites, onCreateInvite, onRevokeInvite, onJoinWithCode, onVerifyPayment, onUpdatePassword, onRefreshStaff, onSignOutEverywhere, authProviders = [] }) => {
+  const toast = useToast();
+  const [signingOutAll, setSigningOutAll] = useState(false);
+  const [removingStaffId, setRemovingStaffId] = useState<string | null>(null);
+  const hasPasswordLogin = authProviders.includes('email');
   const [activeTab, setActiveTab] = useState<'profile' | 'market' | 'staff' | 'billing'>('profile');
   const [companyName, setCompanyName] = useState(settings.companyName);
   const [notificationEmail, setNotificationEmail] = useState(settings.notificationEmail);
   const [lowStockAlerts, setLowStockAlerts] = useState(settings.lowStockEmailAlerts);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [isAddingStaff, setIsAddingStaff] = useState(false);
-  const [staffFormData, setStaffFormData] = useState({ name: '', email: '', password: '' });
-  const [copyFeedback, setCopyFeedback] = useState(false);
+  const [isInviting, setIsInviting] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [creatingInvite, setCreatingInvite] = useState(false);
+  const [newInvite, setNewInvite] = useState<StaffInvite | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [joinCode, setJoinCode] = useState('');
+  const [joining, setJoining] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [paymentStatus, setPaymentStatus] = useState<{ type: 'verifying' | 'success' | 'error'; message: string } | null>(null);
 
@@ -98,16 +115,18 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
   useEffect(() => {
     if (activeTab === 'staff') {
       onRefreshStaff?.();
+      onLoadInvites?.();
     }
-  }, [activeTab, onRefreshStaff]);
+  }, [activeTab, onRefreshStaff, onLoadInvites]);
 
   const handlePasswordUpdateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
     setPasswordSuccess('');
 
-    if (!newPassword || newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters long.');
+    const strength = checkPassword(newPassword, [currentUser?.name || '', currentUser?.email || '']);
+    if (!strength.valid) {
+      setPasswordError(`Password needs: ${strength.unmet.join(', ').toLowerCase()}.`);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -126,7 +145,8 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
       if (res?.error) {
         setPasswordError(res.error.message || 'Failed to update password.');
       } else {
-        setPasswordSuccess('Account password configured successfully! You can now log in using your email and password.');
+        setPasswordSuccess('Password saved. Other devices have been signed out.');
+        toast.success('Password updated', 'Other devices have been signed out.');
         setNewPassword('');
         setConfirmPassword('');
         setTimeout(() => setPasswordSuccess(''), 5000);
@@ -159,7 +179,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
     const publicKey = settings.paystackPublicKey || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
     
     if (!publicKey) {
-      alert("CRITICAL: Payment gateway not configured. Please contact support.");
+      toast.error('Payment gateway not configured', 'Please contact support.');
       return;
     }
 
@@ -173,7 +193,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
 
     const PaystackPop = (window as any).PaystackPop;
     if (typeof PaystackPop !== 'function') {
-      alert("Payment gateway is still loading or was blocked by your browser. Please check your connection, disable any ad-blockers, and try again.");
+      toast.warning('Payment gateway still loading', 'Check your connection, disable ad-blockers, and try again.');
       return;
     }
 
@@ -223,23 +243,80 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
       });
     } catch (err) {
       console.error("Paystack initialization failed:", err);
-      alert("Could not open the payment window. Please try again in a moment.");
+      toast.error('Could not open the payment window', 'Please try again in a moment.');
     }
   };
 
-  const handleAddStaff = () => {
-    // We remove the manual addition as it triggers logout. 
-    // Instead, we show instructions.
-    copyInviteId();
-    alert("Protocol Initiated: Share your Link ID with team members. They should use 'Join with Link' during registration to connect to your terminal network.");
+  const copyText = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch {
+      toast.error('Could not copy', 'Please select and copy the text manually.');
+    }
   };
 
-  const copyInviteId = () => {
-    if (currentUser?.id) {
-      navigator.clipboard.writeText(currentUser.id);
-      setCopyFeedback(true);
-      setTimeout(() => setCopyFeedback(false), 2000);
+  const joinLinkFor = (code: string) => `${window.location.origin}/#join=${code}`;
+
+  const shareInvite = (invite: StaffInvite) => {
+    const text = `You're invited to join ${settings.companyName} on StockBit Pro.\n\nOpen ${joinLinkFor(invite.code)} or sign up and choose "Join as staff" with code ${invite.code}. The code expires ${new Date(invite.expires_at).toLocaleDateString()}.`;
+    if (navigator.share) {
+      navigator.share({ title: 'StockBit Pro invite', text }).catch(() => {});
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
     }
+  };
+
+  const handleCreateInvite = async () => {
+    if (!onCreateInvite) return;
+    setCreatingInvite(true);
+    try {
+      const invite = await onCreateInvite(inviteEmail || undefined);
+      setNewInvite(invite);
+      setInviteEmail('');
+      toast.success('Invite created', invite.email ? `Only ${invite.email} can use this code.` : 'Anyone with this code can join until it expires.');
+    } catch (err: any) {
+      toast.error('Could not create invite', err?.message);
+    } finally {
+      setCreatingInvite(false);
+    }
+  };
+
+  const handleRevoke = async (invite: StaffInvite) => {
+    if (!onRevokeInvite) return;
+    setRevokingId(invite.id);
+    try {
+      await onRevokeInvite(invite.id);
+      toast.info('Invite revoked', `${invite.code} can no longer be used.`);
+    } catch (err: any) {
+      toast.error('Could not revoke invite', err?.message);
+    } finally {
+      setRevokingId(null);
+    }
+  };
+
+  const handleJoin = async () => {
+    if (!onJoinWithCode || !joinCode.trim()) return;
+    setJoining(true);
+    try {
+      await onJoinWithCode(joinCode);
+      toast.success('Welcome aboard', 'You have joined the business as staff.');
+    } catch (err: any) {
+      toast.error('Could not join', err?.message);
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  const pendingInvites = invites.filter(i => i.status === 'pending' && new Date(i.expires_at).getTime() > Date.now());
+  const myStaff = staff.filter(u => u.role === 'staff' && u.parentId === currentUser?.id);
+  const timeLeft = (iso: string) => {
+    const ms = new Date(iso).getTime() - Date.now();
+    const days = Math.floor(ms / 86_400_000);
+    if (days >= 1) return `${days} day${days === 1 ? '' : 's'} left`;
+    const hours = Math.max(1, Math.floor(ms / 3_600_000));
+    return `${hours} hour${hours === 1 ? '' : 's'} left`;
   };
 
   const tabs = [
@@ -504,7 +581,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
                           <input 
                             type="password" 
                             required
-                            placeholder="At least 6 characters"
+                            placeholder={`At least ${PASSWORD_MIN_LENGTH} characters`}
                             className="w-full pl-12 pr-4 py-3.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs font-bold text-white placeholder:text-slate-600 outline-none focus:border-indigo-500 transition-all"
                             value={newPassword}
                             onChange={e => setNewPassword(e.target.value)}
@@ -550,10 +627,31 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
                     </form>
                   </div>
 
-                  <div className="relative z-10 pt-4 border-t border-slate-800">
-                    <p className="text-[9px] text-slate-500 font-medium leading-relaxed">
-                      💡 Google Users: Setting a password enables direct email & password sign-in for your account on any device.
-                    </p>
+                  <div className="relative z-10 pt-4 border-t border-slate-800 space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-semibold text-slate-200">Active sessions</p>
+                        <p className="text-[10px] text-slate-500 leading-relaxed">Signed in with {authProviders.length ? authProviders.join(' + ') : 'email'}. Lost a device? Sign out everywhere.</p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={signingOutAll || !onSignOutEverywhere}
+                        onClick={async () => {
+                          if (!onSignOutEverywhere) return;
+                          if (!window.confirm('Sign out of StockBit on every device, including this one?')) return;
+                          setSigningOutAll(true);
+                          try { await onSignOutEverywhere(); } finally { setSigningOutAll(false); }
+                        }}
+                        className="shrink-0 px-3 py-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 text-[10px] font-semibold transition-all disabled:opacity-50"
+                      >
+                        {signingOutAll ? 'Signing out…' : 'Sign out everywhere'}
+                      </button>
+                    </div>
+                    {!hasPasswordLogin && (
+                      <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                        You signed in with Google. Setting a password also enables email sign-in and unlocking the app after idle time.
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -642,185 +740,254 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
           )}
 
           {activeTab === 'staff' && (
-            <motion.div 
+            <motion.div
               key="staff"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-12"
+              className="space-y-8"
             >
-                  <div className="bg-gradient-to-br from-indigo-600 to-indigo-900 p-10 md:p-16 rounded-[4.5rem] text-white shadow-[0_50px_100px_-20px_rgba(79,70,229,0.3)] relative overflow-hidden group border border-white/10">
-                  <div className="relative z-10 grid grid-cols-1 xl:grid-cols-2 gap-8 items-center">
-                    <div>
-                       <div className="flex items-center gap-4 mb-8">
-                          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20">
-                             <Share2 size={32} className="text-white" />
-                          </div>
-                          <h3 className="text-3xl font-black uppercase tracking-tighter leading-tight">Terminal <br/><span className="text-indigo-300 italic">Provisioning</span></h3>
-                       </div>
-                       <p className="text-indigo-100 text-[11px] font-medium leading-relaxed mb-12 max-w-sm uppercase tracking-widest">
-                          Distributed workforce protocol. To link a new team member, ask them to select 'Join a Business' during sign-up and enter this identifier.
-                       </p>
-                       
-                       <div className="flex flex-col gap-3 w-full">
-                          <div className="w-full flex items-center gap-4 bg-black/20 backdrop-blur-md rounded-2xl px-6 py-4 font-mono text-sm font-bold border border-white/10 group-hover:border-white/30 transition-all shadow-inner">
-                             <Fingerprint size={18} className="text-indigo-300 shrink-0" />
-                             <span className="truncate tracking-tighter text-xs">{currentUser?.id || 'PROVISIONING...'}</span>
-                          </div>
-                          <button 
-                            onClick={copyInviteId} 
-                            className={`w-full py-4 px-6 rounded-2xl transition-all flex items-center justify-center gap-3 font-black uppercase text-[11px] tracking-widest ${
-                              copyFeedback 
-                                ? 'bg-emerald-400 text-white shadow-emerald-400/40' 
-                                : 'bg-white text-indigo-900 shadow-2xl active:scale-95 hover:bg-slate-50'
-                            }`}
-                          >
-                             {copyFeedback ? <CheckCircle2 size={18} /> : <Copy size={18} />}
-                             {copyFeedback ? 'LINK READY' : 'COPY PROTOCOL'}
+              {/* Hero */}
+              <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-950 text-white p-8 md:p-12 border border-white/10 shadow-elevated">
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-indigo-600/30 blur-[110px]" />
+                  <div className="absolute bottom-[-120px] right-[-80px] w-80 h-80 rounded-full bg-sky-500/20 blur-[110px]" />
+                  <div className="absolute inset-0 bg-grid opacity-30 [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_75%)]" />
+                </div>
+                <div className="relative z-10 grid lg:grid-cols-[1fr_auto] gap-8 items-center">
+                  <div className="max-w-xl space-y-4">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/10 px-3 py-1 text-[11px] font-semibold text-indigo-200">
+                      <ShieldCheck size={12} /> Server-verified invitations
+                    </div>
+                    <h2 className="font-display text-3xl md:text-4xl font-semibold tracking-tight">Your team</h2>
+                    <p className="text-sm text-slate-400 leading-relaxed">
+                      Invite teammates with a short code or link. Codes expire in 7 days, can be locked to one email, and can be revoked at any time. Staff see the sales terminal only — never your reports, pricing or billing.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3 pt-1">
+                      <button
+                        onClick={() => { setNewInvite(null); setIsInviting(true); }}
+                        disabled={staffLimitReached}
+                        title={staffLimitReached ? 'Staff limit reached for your plan — upgrade to add more.' : undefined}
+                        className="btn-primary disabled:opacity-40"
+                      >
+                        <Plus size={18} /> Invite teammate
+                      </button>
+                      <span className={`text-sm font-medium ${staffLimitReached ? 'text-rose-300' : 'text-slate-300'}`}>
+                        {staffCount} / {staffLimitLabel} seats used · {entitlements.label}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="hidden lg:grid grid-cols-2 gap-4 min-w-[300px]">
+                    <div className="rounded-3xl bg-white/5 border border-white/10 p-6">
+                      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Active staff</p>
+                      <p className="font-display text-4xl font-semibold mt-2">{myStaff.length}</p>
+                    </div>
+                    <div className="rounded-3xl bg-white/5 border border-white/10 p-6">
+                      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Pending invites</p>
+                      <p className="font-display text-4xl font-semibold mt-2">{pendingInvites.length}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {staffLimitReached && (
+                <div className="px-5 py-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-300 flex items-center gap-3 text-sm">
+                  <ShieldAlert size={18} className="shrink-0" />
+                  <span>You've reached the {staffLimitLabel}-member limit on the {entitlements.label} plan. <button onClick={() => setActiveTab('billing')} className="font-semibold underline">Upgrade</button> to invite more team members.</span>
+                </div>
+              )}
+
+              {/* Pending invites */}
+              {pendingInvites.length > 0 && (
+                <section className="space-y-4">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-white">Pending invites</h3>
+                    <span className="text-xs text-slate-500">{pendingInvites.length} open</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {pendingInvites.map(invite => (
+                      <div key={invite.id} className="surface rounded-3xl p-5 flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="font-mono text-base font-semibold tracking-[0.12em] text-slate-900 dark:text-white">{invite.code}</p>
+                          <p className="text-xs text-slate-500 mt-1 truncate">
+                            {invite.email ? <>Locked to <span className="font-medium text-slate-700 dark:text-slate-300">{invite.email}</span> · </> : 'Open invite · '}
+                            {timeLeft(invite.expires_at)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button onClick={() => copyText(joinLinkFor(invite.code), invite.id)} title="Copy join link" className="p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
+                            {copiedKey === invite.id ? <CheckCircle2 size={18} className="text-emerald-500" /> : <Copy size={18} />}
                           </button>
-                       </div>
-                    </div>
-                    
-                    <div className="hidden xl:grid grid-cols-2 gap-6">
-                      <div className="space-y-6">
-                        <div className="bg-white/10 backdrop-blur-md rounded-[2.5rem] p-10 border border-white/5 shadow-xl">
-                          <h5 className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50 mb-3">Active Squad</h5>
-                          <p className="text-5xl font-black tracking-tighter">{staff.filter(u => u.role === 'staff' && u.parentId === currentUser?.id).length}</p>
-                        </div>
-                        <div className="bg-white/10 backdrop-blur-md rounded-[2.5rem] p-10 border border-white/5 shadow-xl">
-                          <h5 className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50 mb-3">Sync Node</h5>
-                          <div className="text-[11px] font-black uppercase tracking-[0.3em] text-emerald-400 flex items-center gap-2">
-                             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" /> Operational
-                          </div>
+                          <button onClick={() => shareInvite(invite)} title="Share" className="p-2.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
+                            <Share2 size={18} />
+                          </button>
+                          <button onClick={() => handleRevoke(invite)} disabled={revokingId === invite.id} title="Revoke" className="p-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors disabled:opacity-50">
+                            {revokingId === invite.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                          </button>
                         </div>
                       </div>
-                      <div className="pt-12">
-                        <div className="bg-white/10 backdrop-blur-md rounded-[2.5rem] p-10 border border-white/5 h-full flex flex-col justify-between shadow-xl">
-                          <div className="w-14 h-14 bg-indigo-500 rounded-2xl flex items-center justify-center shadow-lg">
-                            <ShieldCheck size={28} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Team list */}
+              <section className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-white">Team members</h3>
+                  <span className="text-xs text-slate-500">{myStaff.length} active</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {myStaff.map(member => (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.97 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      key={member.id}
+                      className="surface rounded-3xl p-5 flex items-center justify-between gap-4 group hover:border-indigo-300/60 dark:hover:border-indigo-500/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="relative shrink-0">
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-semibold text-lg">
+                            {member.name.charAt(0).toUpperCase()}
                           </div>
-                          <p className="text-[10px] font-black uppercase tracking-[0.2em] leading-relaxed text-indigo-100">Encrypted Personnel Channels Active</p>
+                          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{member.name}</p>
+                          <p className="text-xs text-slate-500 truncate">{member.email}</p>
+                          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">Sales terminal access</p>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                  <Users className="absolute -bottom-20 -right-20 text-white/5 w-[500px] h-[500px] group-hover:scale-110 transition-transform duration-[4000ms]" />
-               </div>
+                      <button
+                        disabled={removingStaffId === member.id}
+                        aria-label={`Remove ${member.name}`}
+                        onClick={async () => {
+                          if (!window.confirm(`Remove ${member.name} from your business? They will lose access immediately.`)) return;
+                          setRemovingStaffId(member.id);
+                          try {
+                            await onRemoveStaff(member.id);
+                            toast.success('Staff removed', `${member.name} no longer has access.`);
+                          } catch (err: any) {
+                            toast.error('Could not remove staff', err?.message);
+                          } finally {
+                            setRemovingStaffId(null);
+                          }
+                        }}
+                        className="p-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors disabled:opacity-50 shrink-0"
+                      >
+                        {removingStaffId === member.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                      </button>
+                    </motion.div>
+                  ))}
 
-               {/* Staff List Section */}
-               <div className="space-y-10">
-                  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-6">
-                     <div>
-                        <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">Terminal <span className="text-indigo-600">Squad</span></h2>
-                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.3em] mt-4">Authorized personnel with system permissions</p>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.3em] mt-3">
-                           <span className="text-slate-400">Team usage: </span>
-                           <span className={staffLimitReached ? 'text-rose-500' : 'text-emerald-500'}>{staffCount} / {staffLimitLabel}</span>
-                           <span className="text-slate-400"> · {entitlements.label}</span>
-                        </p>
-                     </div>
-                     <button
-                       onClick={() => setIsAddingStaff(true)}
-                       disabled={staffLimitReached}
-                       title={staffLimitReached ? 'Staff limit reached for your plan — upgrade to add more.' : undefined}
-                       className="group px-10 py-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[2.5rem] flex items-center justify-center gap-4 font-black text-[12px] uppercase tracking-[0.3em] shadow-2xl active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
-                     >
-                       <Plus size={22} className="group-hover:rotate-90 transition-transform" /> Add Crew Member
-                     </button>
-                  </div>
-
-                  {staffLimitReached && (
-                    <div className="mx-6 px-6 py-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 dark:bg-amber-900/10 dark:border-amber-800 dark:text-amber-400 flex items-center gap-3 text-sm font-medium">
-                      <ShieldAlert size={18} className="shrink-0" />
-                      <span>You've reached the {staffLimitLabel}-member limit on the {entitlements.label} plan. Upgrade your subscription to add more team members.</span>
+                  {myStaff.length === 0 && (
+                    <div className="col-span-full py-16 rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-white/10 text-center flex flex-col items-center gap-4">
+                      <div className="w-16 h-16 rounded-3xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                        <Users size={28} className="text-slate-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">No team members yet</p>
+                        <p className="text-xs text-slate-500 mt-1">Invite a cashier or sales assistant to work from their own device.</p>
+                      </div>
+                      <button onClick={() => { setNewInvite(null); setIsInviting(true); }} disabled={staffLimitReached} className="btn-secondary !py-2.5 text-xs"><Plus size={14} /> Invite teammate</button>
                     </div>
                   )}
+                </div>
+              </section>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                     {staff.filter(u => u.role === 'staff' && u.parentId === currentUser?.id).map(member => (
-                        <motion.div 
-                         initial={{ opacity: 0, scale: 0.95 }}
-                         animate={{ opacity: 1, scale: 1 }}
-                         key={member.id} 
-                         className="bg-white/70 dark:bg-slate-900/40 backdrop-blur-2xl p-8 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-2xl flex items-center justify-between group hover:border-indigo-500/30 transition-all hover:translate-y-[-8px]"
-                        >
-                           <div className="flex items-center gap-6 min-w-0">
-                              <div className="relative">
-                                <div className="w-16 h-16 rounded-[1.5rem] bg-indigo-600 text-white flex items-center justify-center font-black text-xl shadow-xl">
-                                 {member.name.charAt(0)}
-                                </div>
-                                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-4 border-white dark:border-slate-950 rounded-full" />
-                              </div>
-                              <div className="min-w-0">
-                                 <p className="text-base font-black text-slate-900 dark:text-white uppercase truncate tracking-tight">{member.name}</p>
-                                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase truncate tracking-widest mt-1">Terminal Active</p>
-                              </div>
-                           </div>
-                           <button 
-                             onClick={() => onRemoveStaff(member.id)} 
-                             className="p-4 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950 rounded-2xl transition-all"
-                           >
-                             <Trash2 size={20} />
-                           </button>
-                        </motion.div>
-                     ))}
-                     
-                     {staff.filter(u => u.role === 'staff' && u.parentId === currentUser?.id).length === 0 && (
-                        <div className="col-span-full py-24 bg-slate-50/50 dark:bg-slate-900/20 rounded-[4rem] border-2 border-dashed border-slate-200 dark:border-slate-800 text-center flex flex-col items-center">
-                           <div className="w-24 h-24 bg-white dark:bg-slate-800 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-xl">
-                             <Users size={48} className="text-slate-200 dark:text-slate-600" />
-                           </div>
-                           <h4 className="text-[13px] font-black uppercase text-slate-400 tracking-[0.4em]">Grid Empty</h4>
-                           <p className="text-[10px] text-slate-300 font-bold uppercase mt-3 tracking-widest">Awaiting personnel deployment invitations</p>
-                        </div>
-                     )}
+              {/* Join a business (for accounts that signed up without a code, or whose code failed) */}
+              {myStaff.length === 0 && onJoinWithCode && (
+                <section className="surface rounded-3xl p-6 md:p-7">
+                  <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">Were you invited to someone else's shop?</p>
+                      <p className="text-xs text-slate-500 mt-1">Enter the invite code from your business owner to join their team. This only works for accounts with no products or sales of their own.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={joinCode}
+                        onChange={e => setJoinCode(e.target.value.toUpperCase())}
+                        placeholder="SB-XXXX-XXXX"
+                        maxLength={12}
+                        className="input-premium !w-48 font-mono tracking-[0.15em] uppercase"
+                        spellCheck={false}
+                      />
+                      <button onClick={handleJoin} disabled={joining || joinCode.length < 12} className="btn-secondary !py-3.5">
+                        {joining ? <Loader2 size={16} className="animate-spin" /> : <Key size={16} />} Join
+                      </button>
+                    </div>
                   </div>
-               </div>
+                </section>
+              )}
 
-               {/* Add Staff Info Modal */}
-               <AnimatePresence>
-                {isAddingStaff && (
-                  <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-                    <motion.div 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      onClick={() => setIsAddingStaff(false)}
-                      className="absolute inset-0 bg-slate-950/90 backdrop-blur-3xl" 
-                    />
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.9, y: 40 }}
+              {/* Invite modal */}
+              <AnimatePresence>
+                {isInviting && (
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsInviting(false)} className="absolute inset-0 bg-slate-950/70 backdrop-blur-md" />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: 16 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.9, y: 40 }}
-                      className="bg-white dark:bg-slate-900 rounded-[2rem] sm:rounded-[4.5rem] w-full max-w-2xl p-6 sm:p-12 md:p-16 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] relative z-10 border border-white/5 max-h-[90vh] overflow-y-auto"
+                      exit={{ opacity: 0, scale: 0.95, y: 16 }}
+                      transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                      className="relative z-10 w-full max-w-lg surface rounded-[2rem] p-7 sm:p-9 max-h-[90vh] overflow-y-auto"
+                      role="dialog" aria-modal="true"
                     >
-                        <header className="mb-6 sm:mb-12">
-                          <h3 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-4 sm:mb-6 leading-none animate-in fade-in">Adding <span className="text-indigo-600">Personnel</span></h3>
-                          <div className="p-6 sm:p-10 bg-indigo-50 dark:bg-indigo-950/30 rounded-[2rem] sm:rounded-[3rem] border border-indigo-100 dark:border-indigo-900 focus-within:border-indigo-500 transition-all text-center">
-                            <div className="w-20 h-20 bg-indigo-600 text-white rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-2xl">
-                              <Plus size={40} />
+                      {!newInvite ? (
+                        <>
+                          <div className="mb-6">
+                            <div className="w-12 h-12 rounded-2xl bg-indigo-600/10 text-indigo-600 dark:text-indigo-300 flex items-center justify-center mb-4"><Users size={22} /></div>
+                            <h3 className="font-display text-xl font-semibold text-slate-900 dark:text-white">Invite a teammate</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">They'll create their own account and join <span className="font-medium text-slate-700 dark:text-slate-200">{settings.companyName}</span> as staff.</p>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">Teammate's email <span className="font-normal text-slate-400">(optional)</span></label>
+                            <div className="relative">
+                              <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                              <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="input-premium pl-11" placeholder="cashier@example.com" />
                             </div>
-                            <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-4 uppercase">Invitation Recommended</h4>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest leading-relaxed mb-10">
-                              For data security, team members should create their own accounts. Share your <span className="text-indigo-600 font-black">Link ID</span> with them. They must select <span className="text-indigo-600 font-black">'Join a Business'</span> during registration.
-                            </p>
-                            
-                            <div className="bg-slate-100 dark:bg-slate-800 p-6 rounded-2xl font-mono text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-8 border border-indigo-500/20">
-                              {currentUser?.id}
-                            </div>
-                            
-                            <button 
-                              onClick={handleAddStaff}
-                              className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black uppercase text-xs tracking-widest active:scale-95 transition-all shadow-xl"
-                            >
-                              Copy ID & Close
+                            <p className="text-xs text-slate-500">If set, only that email can use the code. Leave blank for a code anyone can use once.</p>
+                          </div>
+                          <ul className="mt-5 space-y-2 text-xs text-slate-500 dark:text-slate-400">
+                            <li className="flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Expires automatically in 7 days</li>
+                            <li className="flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Single use, revocable any time</li>
+                            <li className="flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /> Plan seat limit enforced on the server</li>
+                          </ul>
+                          <div className="mt-7 flex gap-3">
+                            <button onClick={() => setIsInviting(false)} className="btn-secondary flex-1">Cancel</button>
+                            <button onClick={handleCreateInvite} disabled={creatingInvite} className="btn-primary flex-1">
+                              {creatingInvite ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />} Create invite
                             </button>
                           </div>
-                        </header>
+                        </>
+                      ) : (
+                        <>
+                          <div className="mb-6 text-center">
+                            <div className="mx-auto w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-4"><CheckCircle2 size={26} /></div>
+                            <h3 className="font-display text-xl font-semibold text-slate-900 dark:text-white">Invite ready</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{newInvite.email ? `Only ${newInvite.email} can use it.` : 'Share it with your teammate.'} Expires {new Date(newInvite.expires_at).toLocaleDateString()}.</p>
+                          </div>
+                          <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-white/10 p-5 text-center">
+                            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Invite code</p>
+                            <p className="font-mono text-3xl font-semibold tracking-[0.2em] text-slate-900 dark:text-white mt-2 select-all">{newInvite.code}</p>
+                          </div>
+                          <div className="mt-4 grid grid-cols-2 gap-3">
+                            <button onClick={() => copyText(newInvite.code, 'code')} className="btn-secondary">
+                              {copiedKey === 'code' ? <CheckCircle2 size={16} className="text-emerald-500" /> : <Copy size={16} />} Copy code
+                            </button>
+                            <button onClick={() => copyText(joinLinkFor(newInvite.code), 'link')} className="btn-secondary">
+                              {copiedKey === 'link' ? <CheckCircle2 size={16} className="text-emerald-500" /> : <ArrowUpRight size={16} />} Copy link
+                            </button>
+                          </div>
+                          <button onClick={() => shareInvite(newInvite)} className="btn-primary w-full mt-3"><Share2 size={16} /> Share via WhatsApp / apps</button>
+                          <p className="text-xs text-slate-500 text-center mt-4 leading-relaxed">Your teammate opens the link (or signs up and picks <span className="font-medium">Join as staff</span>), verifies their email, and appears here automatically.</p>
+                          <button onClick={() => setIsInviting(false)} className="mt-4 w-full text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white">Done</button>
+                        </>
+                      )}
                     </motion.div>
                   </div>
                 )}
-               </AnimatePresence>
+              </AnimatePresence>
             </motion.div>
           )}
 

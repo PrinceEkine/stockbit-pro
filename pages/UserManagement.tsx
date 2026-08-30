@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { User } from '../types';
 import { getTrialStatus } from '../store';
+import { useToast } from '../components/ui/Toast';
 
 interface UserManagementProps {
   users: User[];
@@ -38,6 +39,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdatePlan, on
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [targetParentId, setTargetParentId] = useState('');
+  const toast = useToast();
 
   const filteredUsers = users.filter(u => 
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -54,7 +56,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdatePlan, on
       setLinkingId(null);
       setTargetParentId('');
     } catch (err: any) {
-      alert(err.message);
+      toast.error('Could not link account', err.message);
     }
   };
 

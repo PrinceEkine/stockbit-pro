@@ -21,7 +21,7 @@ import {
   AlertTriangle,
   Lock
 } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+import { invokeAi } from "../services/aiClient";
 import { AppState } from '../types';
 
 interface LaunchCenterProps {
@@ -47,27 +47,17 @@ const LaunchCenter: React.FC<LaunchCenterProps> = ({ state, onUpdateSettings }) 
     setIsTesting(true);
     setTestResult(null);
     try {
-      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-      if (!apiKey) throw new Error("API key not found. Please check your environment variables.");
-      const ai = new GoogleGenAI({ 
-        apiKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          }
-        }
-      });
-      
-      const response = await ai.models.generateContent({
+      // Round-trip through the server-side gateway (no API key in the browser).
+      const response = await invokeAi({
+        provider: 'gemini',
         model: 'gemini-2.5-flash',
-        contents: "Respond with: 'SYSTEM_ONLINE'",
+        contents: [{ role: 'user', parts: [{ text: "Respond with: 'SYSTEM_ONLINE'" }] }],
       });
-      
       const text = response.text;
       if (text?.includes('SYSTEM_ONLINE')) {
         setTestResult({
           status: 'success',
-          message: "Gemini API Connection successful. Your API key is correctly configured and authenticated."
+          message: "AI gateway connection successful. The server-side Gemini key is configured and authenticated."
         });
       } else {
         throw new Error("Unexpected response from AI service.");
@@ -75,7 +65,7 @@ const LaunchCenter: React.FC<LaunchCenterProps> = ({ state, onUpdateSettings }) 
     } catch (err: any) {
       setTestResult({
         status: 'error',
-        message: err.message || "Connection failed. Please ensure your API key is correctly entered in the settings."
+        message: err.message || "Connection failed. Deploy the ai-gateway Edge Function and set GEMINI_API_KEY with `supabase secrets set`."
       });
     } finally {
       setIsTesting(false);
@@ -89,15 +79,13 @@ netlify init
 npm run build
 netlify deploy --prod --dir=dist`;
 
-  const firebaseCmd = `npm install -g firebase-tools
-firebase login
-firebase init
-# Select Hosting, public: dist, SPA: Yes
+  const vercelCmd = `npm install -g vercel
+vercel login
+# vercel.json already carries the SPA rewrite + security headers
 npm run build
-firebase deploy`;
+vercel --prod`;
 
   const envVariables = `VITE_PAYSTACK_PUBLIC_KEY=pk_live_...
-VITE_GEMINI_API_KEY=...
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...`;
 

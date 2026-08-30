@@ -89,7 +89,7 @@ const Sustainability: React.FC<SustainabilityProps> = ({ state }) => {
                 <div key={p.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
                   <div>
                     <p className="text-sm font-bold text-slate-900 dark:text-white uppercase">{p.name}</p>
-                    <p className="text-[10px] text-slate-400 font-bold">EXPIRES: {new Date(p.expiry_date).toLocaleDateString()}</p>
+                    <p className="text-[10px] text-slate-400 font-bold">EXPIRES: {p.expiry_date ? new Date(p.expiry_date).toLocaleDateString() : '—'}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs font-bold text-rose-500">{p.quantity} Units</p>

@@ -17,6 +17,18 @@ export interface User {
   plan?: SubscriptionPlan;
 }
 
+export interface StaffInvite {
+  id: string;
+  owner_id: string;
+  code: string;
+  email: string | null;
+  status: 'pending' | 'accepted' | 'revoked';
+  created_at: string;
+  expires_at: string;
+  accepted_by: string | null;
+  accepted_at: string | null;
+}
+
 export interface Settings {
   companyName: string;
   currency: string;

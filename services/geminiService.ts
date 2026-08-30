@@ -1,37 +1,33 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import { Product, Sale } from "../types";
 import { DEFAULT_CATEGORIES } from "../constants";
 import { sanitizeAiText } from "./qwenService";
+import { invokeAi } from "./aiClient";
 
-const cleanBase64 = (base64: string) => {
-  return base64.replace(/^data:image\/(png|jpeg|jpg);base64,/, '').replace(/\s/g, '');
-};
+// All calls go through the `ai-gateway` Edge Function — no API key in the browser.
+
+const cleanBase64 = (base64: string) =>
+  base64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, '').replace(/\s/g, '');
+
+const imagePart = (base64Image: string) => ({
+  inlineData: { mimeType: 'image/jpeg', data: cleanBase64(base64Image) },
+});
 
 export const identifyProductFromImage = async (base64Image: string): Promise<string | null> => {
   try {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-    if (!apiKey) throw new Error("Gemini API key not found in environment.");
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
+    const { text } = await invokeAi({
+      provider: 'gemini',
       model: 'gemini-2.5-flash',
-      contents: {
+      contents: [{
+        role: 'user',
         parts: [
-          {
-            inlineData: {
-              mimeType: 'image/jpeg',
-              data: cleanBase64(base64Image),
-            },
-          },
-          {
-            text: "Identify SKU, Barcode, or Serial Number. ONLY output the raw code. If nothing found, output: NULL.",
-          },
+          imagePart(base64Image),
+          { text: "Identify SKU, Barcode, or Serial Number. ONLY output the raw code. If nothing found, output: NULL." },
         ],
-      }
+      }],
     });
-
-    const text = response.text?.trim();
-    if (text === 'NULL' || !text || text.length < 3) return null;
-    return text;
+    const code = text.trim();
+    if (!code || code === 'NULL' || code.length < 3) return null;
+    return code;
   } catch (error) {
     console.error("SKU Identification Error:", error);
     return null;
@@ -40,43 +36,34 @@ export const identifyProductFromImage = async (base64Image: string): Promise<str
 
 export const extractProductDetailsFromImage = async (base64Image: string) => {
   try {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-    if (!apiKey) throw new Error("Gemini API key not found in environment.");
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
+    const { text } = await invokeAi({
+      provider: 'gemini',
       model: 'gemini-2.5-flash',
-      contents: {
+      contents: [{
+        role: 'user',
         parts: [
-          {
-            inlineData: {
-              mimeType: 'image/jpeg',
-              data: cleanBase64(base64Image),
-            },
-          },
-          {
-            text: `Extract inventory metadata from this product image. VALID CATEGORIES: ${DEFAULT_CATEGORIES.join(', ')}. Return name, sku, price, and category.`,
-          },
+          imagePart(base64Image),
+          { text: `Extract inventory metadata from this product image. VALID CATEGORIES: ${DEFAULT_CATEGORIES.join(', ')}. Return name, sku, price, and category.` },
         ],
-      },
-      config: {
+      }],
+      generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: "OBJECT",
           properties: {
-            name: { type: Type.STRING },
-            sku: { type: Type.STRING },
-            batchNumber: { type: Type.STRING },
-            expiryDate: { type: Type.STRING },
-            price: { type: Type.NUMBER },
-            cost_price: { type: Type.NUMBER },
-            category: { type: Type.STRING }
+            name: { type: "STRING" },
+            sku: { type: "STRING" },
+            batchNumber: { type: "STRING" },
+            expiryDate: { type: "STRING" },
+            price: { type: "NUMBER" },
+            cost_price: { type: "NUMBER" },
+            category: { type: "STRING" },
           },
-          required: ["name", "sku"]
-        }
-      }
+          required: ["name", "sku"],
+        },
+      },
     });
-
-    return response.text ? JSON.parse(response.text) : null;
+    return text ? JSON.parse(text) : null;
   } catch (error) {
     console.error("Pro Extraction Error:", error);
     return null;
@@ -94,48 +81,29 @@ export const getInventoryInsights = async (products: Product[], sales: Sale[]): 
     items: s.items.map(i => ({ n: i.productName, q: i.quantity, p: i.price }))
   }));
 
-  const inventoryState = products.map(p => ({ 
-    n: p.name, 
-    q: p.quantity, 
-    m: p.min_threshold, 
-    p: p.price,
-    c: p.category
+  const inventoryState = products.map(p => ({
+    n: p.name, q: p.quantity, m: p.min_threshold, p: p.price, c: p.category
   }));
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-    if (!apiKey) throw new Error("Gemini API key not found in environment.");
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
+    const { text, sources } = await invokeAi({
+      provider: 'gemini',
       model: 'gemini-2.5-flash',
-      contents: `
+      contents: [{
+        role: 'user',
+        parts: [{ text: `
       SHOP INVENTORY: ${JSON.stringify(inventoryState)}
       HISTORICAL SALES (Last 50): ${JSON.stringify(itemSalesHistory)}
-      
+
       You are an elite retail logistics analyst for Nigerian businesses.
       Based on this data and your research of current market trends in Nigeria, provide a detailed predictive audit.
       Suggest high priority restocks, risk warnings for expiry, and market opportunities.
-      Reply in plain text only. Do NOT use markdown, asterisks (*), underscores, hashes (#), or backticks. For lists, start each item on a new line with a simple dot (•).`,
-      config: {
-        tools: [{ googleSearch: {} }]
-      }
+      Reply in plain text only. Do NOT use markdown, asterisks (*), underscores, hashes (#), or backticks. For lists, start each item on a new line with a simple dot (•).` }],
+      }],
+      tools: [{ googleSearch: {} }],
     });
 
-    const sources: { title: string; uri: string }[] = [];
-    const groundingMetadata = (response as any).candidates?.[0]?.groundingMetadata;
-    
-    if (groundingMetadata?.groundingChunks) {
-      groundingMetadata.groundingChunks.forEach((chunk: any) => {
-        if (chunk.web) {
-          sources.push({ title: chunk.web.title, uri: chunk.web.uri });
-        }
-      });
-    }
-
-    return {
-      text: sanitizeAiText(response.text || "Analysis complete."),
-      sources: sources
-    };
+    return { text: sanitizeAiText(text || "Analysis complete."), sources };
   } catch (error) {
     console.error("Insight Error:", error);
     return { text: "Error connecting to logic server. Please check your network connection.", sources: [] };

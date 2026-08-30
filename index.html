@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
     <!-- Google Search Console Verification -->
     <meta name="google-site-verification" content="jalkq3TdiuQwIuahQgUrnetYrH3hA-zFemsvoq1SNdY" />
 
@@ -31,165 +30,31 @@
 
     <!-- PWA & Mobile Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="StockBit Pro">
-    <meta name="theme-color" content="#4f46e5">
-    
-    <link rel="manifest" href="manifest.json">
-    
+    <meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)">
+    <meta name="color-scheme" content="light dark">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+
+    <link rel="manifest" href="/manifest.json">
+
     <!-- App Logo Icon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Cpath d='M50 28L28 40V60L50 72L72 60V40L50 28Z' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M28 40L50 52L72 40' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M50 52V72' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Cpath d='M50 28L28 40V60L50 72L72 60V40L50 28Z' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M28 40L50 52L72 40' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M50 52V72' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
 
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-    <script src="https://js.paystack.co/v2/inline.js"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            screens: { 'xs': '400px' },
-            fontFamily: { 
-              sans: ['Inter', 'sans-serif'],
-              display: ['Space Grotesk', 'sans-serif'],
-              mono: ['JetBrains Mono', 'monospace'],
-            },
-            borderRadius: {
-              'xl': '1rem',
-              '2xl': '1.25rem',
-              '3xl': '1.5rem',
-              '4xl': '2rem',
-              '5xl': '2.5rem',
-            },
-            colors: {
-              brand: {
-                primary: '#4f46e5',
-                secondary: '#0ea5e9',
-              }
-            },
-            animation: {
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'bounce-gentle': 'bounce-gentle 2s infinite',
-              'float': 'float 6s ease-in-out infinite',
-            },
-            keyframes: {
-              'bounce-gentle': {
-                '0%, 100%': { transform: 'translateY(-5%)' },
-                '50%': { transform: 'translateY(0)' },
-              },
-              'float': {
-                '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-10px)' },
-              }
-            }
-          },
-        },
-      }
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-          --sat: env(safe-area-inset-top);
-          --sab: env(safe-area-inset-bottom);
-        }
-        body {
-            font-family: 'Inter', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-            overscroll-behavior-y: contain;
-            background-color: #f8fafc;
-            padding-top: var(--sat);
-            padding-bottom: var(--sab);
-        }
-        html.dark body { background-color: #020617; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
-        .glass {
-            @apply backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border border-white/20 dark:border-white/5;
-        }
-        
-        .transition-soft {
-            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        /* Professional POS Printing Styles */
-        @media print {
-            body { 
-                background: white !important; 
-                margin: 0; 
-                padding: 0; 
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            
-            @page {
-                margin: 0;
-            }
-
-            /* Receipt Sizing */
-            .receipt-container {
-                width: 72mm; /* Standard printable width for 80mm roll */
-                margin: 0 auto;
-                padding: 2mm;
-                box-sizing: border-box;
-                overflow: hidden;
-            }
-
-            .receipt-container.size-58mm {
-                width: 48mm; /* Standard printable width for 58mm roll */
-                padding: 1mm;
-            }
-
-            /* Barcode Label Sizing (1.5" x 1" = 38.1mm x 25.4mm) */
-            .label-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, 38.1mm);
-                gap: 2mm;
-                padding: 5mm;
-                justify-content: center;
-            }
-
-            .barcode-label {
-                width: 38.1mm;
-                height: 25.4mm;
-                border: 0.1mm solid #eee;
-                padding: 1.5mm;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: space-between;
-                page-break-inside: avoid;
-                overflow: hidden;
-                box-sizing: border-box;
-            }
-            
-            /* Remove standard browser headers/footers */
-            @page { size: auto;  margin: 0mm; }
-        }
-        .print-only { display: none; }
-    </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom": "https://esm.sh/react-dom@^19.2.3",
-    "react-dom/client": "https://esm.sh/react-dom@^19.2.3/client",
-    "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "recharts": "https://esm.sh/recharts@^3.6.0",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.90.1",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
-  }
-}
-</script>
+    <!-- Payments (Paystack Popup v2). Loaded deferred; Settings checks for window.PaystackPop before use. -->
+    <script src="https://js.paystack.co/v2/inline.js" defer></script>
 </head>
 <body class="antialiased">
+    <noscript>StockBit Pro needs JavaScript enabled to run.</noscript>
     <div id="root"></div>
-    <script type="module" src="index.tsx"></script>
+    <script type="module" src="/index.tsx"></script>
 </body>
 </html>
