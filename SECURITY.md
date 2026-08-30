@@ -28,10 +28,15 @@ Other client-side controls (defence in depth, not a substitute for the server):
 - Neutral messages on sign-in / reset / duplicate sign-up so accounts cannot be
   enumerated.
 
-## 2. Database: `supabase/sql/security.sql` (run once, idempotent)
+## 2. Database
 
-Open the Supabase SQL editor for the StockBit project and run the whole file.
-It installs:
+Run these in the Supabase SQL editor, in order (all idempotent):
+
+1. `supabase/sql/schema.sql` — tables, indexes, the `handle_new_user` auth trigger, realtime publication.
+2. `supabase/sql/security.sql` — RLS, protective triggers, `record_sale` RPC.
+3. `supabase/sql/staff_invites.sql` — staff invitations.
+
+`security.sql` installs:
 
 - RLS on `profiles`, `products`, `sales`, `returns`, `suppliers`, `settings`,
   `notifications` — members (owner + staff) see only their business; only the
