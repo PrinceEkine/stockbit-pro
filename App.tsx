@@ -14,6 +14,7 @@ import Reports from './pages/Reports';
 import Suppliers from './pages/Suppliers';
 import SettingsView from './pages/Settings';
 import LaunchCenter from './pages/LaunchCenter';
+import UserManagement from './pages/UserManagement';
 import LandingPage from './pages/LandingPage';
 import NotificationPanel from './components/NotificationPanel';
 import PasswordResetModal from './components/PasswordResetModal';
@@ -405,6 +406,9 @@ const App: React.FC = () => {
       case View.Suppliers: return <Suppliers suppliers={store.suppliers || []} onAdd={store.addSupplier} onUpdate={() => {}} onDelete={() => {}} settings={store.settings} />;
       case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} staff={store.users || []} currentUser={store.currentUser} onRemoveStaff={store.removeStaffMember} invites={store.staffInvites} onLoadInvites={store.loadStaffInvites} onCreateInvite={store.createStaffInvite} onRevokeInvite={store.revokeStaffInvite} onJoinWithCode={store.joinBusinessWithCode} onVerifyPayment={store.verifyAndActivateSubscription} onUpdatePassword={store.updatePassword} onRefreshStaff={store.refreshUsers} onSignOutEverywhere={store.signOutEverywhere} authProviders={store.authProviders} />;
       case View.LaunchCenter: return <LaunchCenter state={store} onUpdateSettings={store.updateSettings} />;
+      case View.UserManagement:
+        if (store.currentUser?.role !== 'admin') return <Dashboard state={store} onNavigate={setActiveView} />;
+        return <UserManagement users={store.adminUsers} currentUserId={store.currentUser.id} onLoad={store.adminLoadUsers} onUpdatePlan={store.adminUpdatePlan} onAssignParent={store.adminAssignParent} onSetRole={store.adminSetRole} />;
       default: return <Dashboard state={store} onNavigate={setActiveView} />;
     }
   };

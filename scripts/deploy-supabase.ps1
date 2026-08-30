@@ -23,6 +23,8 @@ npx supabase functions deploy ai-gateway --no-verify-jwt
 if ($LASTEXITCODE -ne 0) { throw "ai-gateway deploy failed" }
 npx supabase functions deploy verify-payment --no-verify-jwt
 if ($LASTEXITCODE -ne 0) { throw "verify-payment deploy failed" }
+npx supabase functions deploy admin-users --no-verify-jwt
+if ($LASTEXITCODE -ne 0) { throw "admin-users deploy failed" }
 
 $secrets = @()
 if ($env:GEMINI_API_KEY)      { $secrets += "GEMINI_API_KEY=$env:GEMINI_API_KEY" }

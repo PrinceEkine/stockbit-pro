@@ -14,6 +14,7 @@ npx supabase db push --include-all
 echo "==> Deploying Edge Functions"
 npx supabase functions deploy ai-gateway --no-verify-jwt
 npx supabase functions deploy verify-payment --no-verify-jwt
+npx supabase functions deploy admin-users --no-verify-jwt
 
 SECRETS=()
 [ -n "${GEMINI_API_KEY:-}" ]      && SECRETS+=("GEMINI_API_KEY=$GEMINI_API_KEY")

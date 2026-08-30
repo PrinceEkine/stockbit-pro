@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   ShieldCheck, 
   Users, 
@@ -30,16 +30,53 @@ import { useToast } from '../components/ui/Toast';
 
 interface UserManagementProps {
   users: User[];
+  currentUserId: string;
+  onLoad: () => Promise<void>;
   onUpdatePlan: (userId: string, type: 'monthly' | 'annual' | 'revoke') => Promise<boolean>;
-  onAssignParent: (userId: string, parentId: string) => Promise<void>;
+  onAssignParent: (userId: string, parentId: string | null) => Promise<void>;
+  onSetRole: (userId: string, role: 'admin' | 'user') => Promise<void>;
 }
 
-const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdatePlan, onAssignParent }) => {
+const UserManagement: React.FC<UserManagementProps> = ({ users, currentUserId, onLoad, onUpdatePlan, onAssignParent, onSetRole }) => {
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [targetParentId, setTargetParentId] = useState('');
   const toast = useToast();
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    onLoad()
+      .catch((err: any) => toast.error('Could not load accounts', err?.message))
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const runPlan = async (user: User) => {
+    setUpdatingId(user.id);
+    try {
+      await onUpdatePlan(user.id, user.isSubscribed ? 'revoke' : 'monthly');
+      toast.success(user.isSubscribed ? 'Subscription revoked' : 'Pro activated (1 month)', user.companyName || user.email);
+    } catch (err: any) {
+      toast.error('Update failed', err?.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const toggleAdmin = async (user: User) => {
+    const makeAdmin = user.role !== 'admin';
+    if (!window.confirm(makeAdmin ? `Make ${user.email} a platform administrator?` : `Remove administrator access from ${user.email}?`)) return;
+    try {
+      await onSetRole(user.id, makeAdmin ? 'admin' : 'user');
+      toast.success(makeAdmin ? 'Administrator added' : 'Administrator removed', user.email);
+    } catch (err: any) {
+      toast.error('Role change failed', err?.message);
+    }
+  };
 
   const filteredUsers = users.filter(u => 
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -47,12 +84,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdatePlan, on
     u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const admins = users.filter(u => u.role === 'admin' || u.role === 'user');
+  const owners = users.filter(u => u.role === 'admin' || u.role === 'user');
 
   const handleLink = async (userId: string) => {
     if (!targetParentId) return;
     try {
       await onAssignParent(userId, targetParentId);
+      toast.success('Account linked as staff');
       setLinkingId(null);
       setTargetParentId('');
     } catch (err: any) {
@@ -181,7 +219,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdatePlan, on
               {filteredUsers.length === 0 && (
                  <tr>
                     <td colSpan={4} className="py-20 text-center">
-                       <p className="text-sm text-slate-400">No accounts found matching your search</p>
+                       <p className="text-sm text-slate-400">{loading ? 'Loading accounts…' : 'No accounts found matching your search'}</p>
                     </td>
                  </tr>
               )}
@@ -220,7 +258,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUpdatePlan, on
                   onChange={e => setTargetParentId(e.target.value)}
                 >
                   <option value="">Select a host account...</option>
-                  {admins.filter(a => a.id !== linkingId).map(a => (
+                  {owners.filter(a => a.id !== linkingId).map(a => (
                     <option key={a.id} value={a.id}>{a.companyName} ({a.name})</option>
                   ))}
                 </select>

@@ -37,6 +37,11 @@ in the Supabase SQL editor, in order (all idempotent):
 1. `supabase/sql/schema.sql` — tables, indexes, the `handle_new_user` auth trigger, realtime publication.
 2. `supabase/sql/security.sql` — RLS, protective triggers, `record_sale` RPC.
 3. `supabase/sql/staff_invites.sql` — staff invitations.
+4. `supabase/sql/admin.sql` — admin audit table, trigger fix for SQL-editor edits, and promotes the platform owner.
+
+Platform admins manage every account (grant/revoke plans, link staff, add admins) from the
+"Admin · Accounts" page, which calls the `admin-users` Edge Function; it verifies the caller's
+role server-side and writes with the service role, so nothing privileged happens in the browser.
 
 `security.sql` installs:
 
@@ -69,6 +74,7 @@ in the Supabase SQL editor, in order (all idempotent):
 ```bash
 supabase functions deploy verify-payment
 supabase functions deploy ai-gateway
+supabase functions deploy admin-users
 supabase secrets set PAYSTACK_SECRET_KEY=sk_live_... GEMINI_API_KEY=... QWEN_API_KEY=...
 ```
 

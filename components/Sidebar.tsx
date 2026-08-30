@@ -88,6 +88,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       hidden: isStaff,
       items: [
         { id: View.Settings, icon: Settings, label: t.settings, hidden: isStaff },
+        { id: View.UserManagement, icon: ShieldAlert, label: 'Admin · Accounts', hidden: user?.role !== 'admin' },
         { id: View.LaunchCenter, icon: Rocket, label: t.launch_center, hidden: user?.role !== 'admin' },
       ]
     }

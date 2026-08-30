@@ -654,6 +654,49 @@ export const useStore = () => {
 
   const clearPendingInviteError = useCallback(() => setPendingInviteError(null), []);
 
+  // ---------------- Platform admin (admin-users Edge Function) ----------------
+  const [adminUsers, setAdminUsers] = useState<User[]>([]);
+  const adminCall = useCallback(async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke('admin-users', { body });
+    if (error) {
+      let message = error.message || 'Admin request failed';
+      try {
+        const ctx = (error as any).context;
+        if (ctx && typeof ctx.json === 'function') {
+          const parsed = await ctx.json();
+          if (parsed?.error) message = parsed.error;
+        }
+      } catch { /* ignore */ }
+      throw new Error(message);
+    }
+    if (data?.error) throw new Error(data.error);
+    return data;
+  }, []);
+
+  const adminLoadUsers = useCallback(async () => {
+    if (currentUser?.role !== 'admin') return;
+    const data = await adminCall({ action: 'list' });
+    setAdminUsers((data?.users || []).map(mapProfile));
+  }, [adminCall, currentUser?.role]);
+
+  const adminUpdatePlan = useCallback(async (userId: string, type: 'monthly' | 'annual' | 'revoke') => {
+    if (type === 'revoke') await adminCall({ action: 'revoke_plan', userId });
+    else await adminCall({ action: 'set_plan', userId, plan: 'mega', cycle: type });
+    await adminLoadUsers();
+    return true;
+  }, [adminCall, adminLoadUsers]);
+
+  const adminAssignParent = useCallback(async (userId: string, parentId: string | null) => {
+    await adminCall({ action: 'link_parent', userId, parentId });
+    await adminLoadUsers();
+  }, [adminCall, adminLoadUsers]);
+
+  const adminSetRole = useCallback(async (userId: string, role: 'admin' | 'user') => {
+    await adminCall({ action: 'set_role', userId, role });
+    await adminLoadUsers();
+  }, [adminCall, adminLoadUsers]);
+
+
   /**
    * Detaches a staff member from this business. The row is kept (so the person
    * cannot silently re-join by re-creating a profile from stale signup metadata)
@@ -727,6 +770,7 @@ export const useStore = () => {
     login, loginWithGoogle, register, previewInvite, resetPassword, updatePassword, reauthenticate, signOutEverywhere, logout, updateSettings,
     addProduct, updateProduct, deleteProduct, recordSale, reconcileInventory, recordReturn, addSupplier, removeStaffMember,
     loadStaffInvites, createStaffInvite, revokeStaffInvite, joinBusinessWithCode,
+    adminUsers, adminLoadUsers, adminUpdatePlan, adminAssignParent, adminSetRole,
     verifyAndActivateSubscription, refreshUsers, clearError, markNotificationRead, clearNotifications
   };
 };
