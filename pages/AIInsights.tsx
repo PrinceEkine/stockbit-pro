@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, RefreshCw, Zap, TrendingUp, AlertTriangle, ShieldCheck, PieChart, Activity, ExternalLink, Globe, BookOpen, Leaf, Lock } from 'lucide-react';
 import { AppState } from '../types';
-import { getInventoryInsightsQwen, InsightResult } from '../services/qwenService';
+import { getInventoryInsightsMuse, InsightResult } from '../services/museService';
 import { getEntitlements } from '../constants/plans';
 
 interface AIInsightsProps {
@@ -17,7 +17,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
   const fetchInsights = async () => {
     setLoading(true);
     // Passing sustainability score context into the AI engine
-    const result = await getInventoryInsightsQwen(state?.products || [], state?.sales || []);
+    const result = await getInventoryInsightsMuse(state?.products || [], state?.sales || []);
     setInsightData(result);
     setLoading(false);
   };
@@ -52,7 +52,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">AI Intelligence</h2>
           <p className="text-sm text-slate-500">
-            Powered by Alibaba Qwen Plus, providing predictive insights and strategic recommendations.
+            Powered by Meta Muse, providing predictive insights and strategic recommendations.
           </p>
         </div>
         <button 

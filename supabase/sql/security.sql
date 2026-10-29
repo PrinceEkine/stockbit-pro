@@ -197,7 +197,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['products', 'sales', 'returns', 'suppliers', 'settings'] loop
+  foreach t in array array['products', 'sales', 'returns', 'suppliers', 'settings', 'customers'] loop
     execute format('alter table public.%I enable row level security', t);
 
     execute format('drop policy if exists "%s_select_member" on public.%I', t, t);
@@ -228,13 +228,42 @@ create policy "notifications_own" on public.notifications
 
 -- Nothing is readable anonymously.
 revoke all on public.profiles, public.products, public.sales, public.returns,
-           public.suppliers, public.settings, public.notifications from anon;
+           public.suppliers, public.settings, public.notifications,
+           public.customers from anon;
 
 -- -----------------------------------------------------------------------------
 -- 5) Sales integrity: stock is decremented atomically on the server so two
 --    terminals cannot oversell the same unit, and clients cannot fabricate
 --    prices — the sale total is recomputed from the products table.
 -- -----------------------------------------------------------------------------
+create or replace function public.notify_low_stock(p_product_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_product public.products%rowtype;
+  v_alerts_on boolean;
+begin
+  select * into v_product from public.products where id = p_product_id;
+  if not found then return; end if;
+  -- The owner's setting gates the alert; missing settings row means default ON.
+  select s.low_stock_email_alerts into v_alerts_on
+    from public.settings s where s.user_id = v_product.user_id;
+  if coalesce(v_alerts_on, true) is false then return; end if;
+  insert into public.notifications (user_id, title, message, type)
+  values (v_product.user_id,
+          'Low stock: ' || v_product.name,
+          v_product.name || ' is down to ' || v_product.quantity
+            || ' units (threshold ' || coalesce(v_product.min_threshold, 0) || ').',
+          'low_stock');
+end;
+$$;
+
+revoke all on function public.notify_low_stock(uuid) from public, anon;
+grant execute on function public.notify_low_stock(uuid) to authenticated;
+
 create or replace function public.record_sale(
   p_items jsonb,
   p_customer_name text default 'Walk-in',
@@ -285,6 +314,14 @@ begin
     update public.products
       set quantity = quantity - v_qty, last_updated = now()
       where id = v_product.id;
+
+    -- Fire a low-stock alert the moment this sale crosses the threshold
+    -- (v_product still holds the pre-update quantity). Crossing-only, so a
+    -- product sitting below threshold does not alert on every sale.
+    if v_product.quantity > coalesce(v_product.min_threshold, 0)
+       and (v_product.quantity - v_qty) <= coalesce(v_product.min_threshold, 0) then
+      perform public.notify_low_stock(v_product.id);
+    end if;
 
     v_total := v_total + v_product.price * v_qty;
     v_cost  := v_cost + coalesce(v_product.cost_price, 0) * v_qty;

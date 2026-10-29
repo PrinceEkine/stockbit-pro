@@ -30,7 +30,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onClose }) => {
     },
     {
       title: "1. Setup Your Catalog",
-      description: "Navigate to the Inventory tab to add products. Pro Tip: Use the 'AI Scanner' to snap a photo of a label; Gemini AI will automatically extract the SKU, Name, and Category for you.",
+      description: "Navigate to the Inventory tab to add products. Pro Tip: Use the 'AI Scanner' to snap a photo of a label; Muse AI will automatically extract the SKU, Name, and Category for you.",
       icon: <Box className="text-blue-600" size={48} />,
       color: "bg-blue-50",
       tip: "Set 'Min. Alert Levels' to receive low stock warnings."
@@ -51,7 +51,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ onClose }) => {
     },
     {
       title: "4. AI Strategy Insights",
-      description: "Visit the AI Insights tab. Gemini analyzes your sales trends to suggest which products to restock and identifies slow-moving items eating your capital.",
+      description: "Visit the AI Insights tab. Muse analyzes your sales trends to suggest which products to restock and identifies slow-moving items eating your capital.",
       icon: <Sparkles className="text-purple-600" size={48} />,
       color: "bg-purple-50",
       tip: "Refresh insights every Monday for weekly planning."

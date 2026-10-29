@@ -114,6 +114,16 @@ export interface ProductReturn {
   location: string;
 }
 
+export interface Customer {
+  id: string;
+  user_id: string;
+  name: string;
+  phone: string;
+  email: string;
+  notes: string;
+  created_at: string;
+}
+
 export interface Supplier {
   id: string;
   user_id: string;
@@ -135,6 +145,7 @@ export type AppState = {
   sales: Sale[];
   returns: ProductReturn[];
   suppliers: Supplier[];
+  customers: Customer[];
   notifications: AppNotification[];
   users: User[]; 
   currentUser: User | null;
@@ -150,6 +161,7 @@ export enum View {
   Sales = 'sales',
   Returns = 'returns',
   Suppliers = 'suppliers',
+  Customers = 'customers',
   AIInsights = 'ai-insights',
   Sustainability = 'sustainability',
   Stocktake = 'stocktake',

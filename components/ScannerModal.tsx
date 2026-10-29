@@ -11,7 +11,7 @@ import {
   Flashlight,
   Check
 } from 'lucide-react';
-import { identifyProductFromImage, extractProductDetailsFromImage } from '../services/geminiService';
+import { identifyProductFromImage, extractProductDetailsFromImage } from '../services/museService';
 
 interface ScannerModalProps {
   onScan: (result: string | any, stayOpen?: boolean) => void;
@@ -111,7 +111,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
         if (result) {
           playBeep('success');
           if (mode === 'details') {
-            setLastScannedName(result.name || result.sku);
+            setLastScannedName(typeof result === 'string' ? result : (result.name || result.sku));
             setStatus('success_feedback');
             // Longer delay for full detail extraction
             setTimeout(() => { 

@@ -35,7 +35,7 @@ const PasswordResetModal: React.FC<PasswordResetModalProps> = ({ onUpdate, onClo
     try {
       const { error: updateError } = await onUpdate(password);
       if (updateError) {
-        setError(updateError.message);
+        setError(updateError.message || 'Could not update the password. Please try again.');
       } else {
         toast.success('Password updated', 'Other devices have been signed out.');
         onClose();

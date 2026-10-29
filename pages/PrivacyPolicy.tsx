@@ -20,7 +20,7 @@ const PrivacyPolicy: React.FC = () => {
         <section>
           <h3 className="text-xl font-black uppercase tracking-tight">AI Audit Logs</h3>
           <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-            When using the Gemini Vision Flash Scanner, image data is processed momentarily for SKU identification and is not stored in persistent logs unless specifically flagged for inventory training by the admin.
+            When using the Muse Vision Scanner, image data is processed momentarily for SKU identification and is not stored in persistent logs unless specifically flagged for inventory training by the admin.
           </p>
         </section>
 

@@ -5,13 +5,14 @@ import {
   Trash2, ReceiptText, Banknote, CreditCard, History, Package, ChevronUp, ChevronDown, ShieldCheck,
   CheckCircle2, AlertCircle, Monitor, Tablet, ArrowUpRight
 } from 'lucide-react';
-import { Sale, Product, Settings, SaleItem, User as UserType, PaymentMethod } from '../types';
+import { Sale, Product, Customer, Settings, SaleItem, User as UserType, PaymentMethod } from '../types';
 import ScannerModal from '../components/ScannerModal';
 import { TRANSLATIONS } from '../constants/translations';
 
 interface SalesProps {
   sales: Sale[];
   products: Product[];
+  customers: Customer[];
   onRecordSale: (items: SaleItem[], customerName?: string, location?: string, paymentMethod?: PaymentMethod) => Promise<boolean>;
   settings: Settings;
   currentUser: UserType | null;
@@ -26,7 +27,7 @@ interface CartTab {
   ref?: string;
 }
 
-const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, settings, currentUser }) => {
+const Sales: React.FC<SalesProps> = ({ sales = [], products = [], customers = [], onRecordSale, settings, currentUser }) => {
   const t = TRANSLATIONS[settings.language || 'en'] || TRANSLATIONS.en;
   const [searchTerm, setSearchTerm] = useState('');
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
@@ -49,6 +50,14 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
     label: 'SALE 1'
   }]);
   const [activeCartIndex, setActiveCartIndex] = useState(0);
+
+  const [customerFocused, setCustomerFocused] = useState(false);
+
+  const customerMatches = useMemo(() => {
+    const q = (carts[activeCartIndex]?.customerName || '').trim().toLowerCase();
+    if (q.length < 1) return [];
+    return customers.filter(c => c.name.toLowerCase().includes(q) || (c.phone || '').includes(q)).slice(0, 6);
+  }, [carts, activeCartIndex, customers]);
 
   const currentCart = carts[activeCartIndex];
 
@@ -469,16 +478,33 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], onRecordSale, 
 
              <div className="hidden lg:flex w-96 flex-col bg-white dark:bg-slate-900 overflow-hidden border-l border-slate-200 dark:border-slate-800 transition-colors">
                 <div className="p-8 space-y-4 bg-slate-50/50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-                   <div className="flex items-center gap-3">
+                   <div className="flex items-center gap-3 relative">
                       <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 shadow-sm border border-slate-200 dark:border-slate-800">
                          <User size={18} />
                       </div>
                       <input 
                         placeholder="CUSTOMER NAME..." 
                         className="flex-1 bg-white dark:bg-slate-800 border-none focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-4 py-3 text-[10px] font-bold uppercase tracking-wider outline-none shadow-sm text-slate-900 dark:text-white transition-all placeholder:text-slate-300 font-sans" 
-                        value={currentCart.customerName} 
-                        onChange={e => updateActiveCart({ customerName: e.target.value })} 
+                        value={currentCart.customerName}
+                        onChange={e => updateActiveCart({ customerName: e.target.value })}
+                        onFocus={() => setCustomerFocused(true)}
+                        onBlur={() => setCustomerFocused(false)}
+                        autoComplete="off"
                       />
+                      {customerFocused && customerMatches.length > 0 && (
+                        <div className="absolute top-full left-[52px] right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl z-30 max-h-56 overflow-y-auto">
+                          {customerMatches.map((c) => (
+                            <button
+                              key={c.id}
+                              onMouseDown={() => { updateActiveCart({ customerName: c.name }); setCustomerFocused(false); }}
+                              className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border-b border-slate-100 dark:border-slate-700/50 last:border-0"
+                            >
+                              <p className="text-xs font-bold text-slate-900 dark:text-white">{c.name}</p>
+                              {c.phone ? <p className="text-[11px] text-slate-400">{c.phone}</p> : null}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                    </div>
                 </div>
 

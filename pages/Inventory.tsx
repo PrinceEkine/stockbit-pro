@@ -22,12 +22,16 @@ import {
   MoreVertical,
   ChevronRight,
   AlertTriangle,
-  Grid
+  Grid,
+  Download,
+  Upload
 } from 'lucide-react';
 import { Product, Supplier, Settings, User as UserType } from '../types';
 import { DEFAULT_CATEGORIES as CATEGORIES } from '../constants';
 import { TRANSLATIONS } from '../constants/translations';
 import ScannerModal from '../components/ScannerModal';
+import CsvImportModal, { ImportColumn } from '../components/CsvImportModal';
+import { downloadCsv, parseCsvNumber, parseCsvDate } from '../lib/csv';
 
 // HELPER: Improved Barcode SVG Generator (High Contrast Code 128 Approximation)
 const BarcodeSVG = ({ value }: { value: string }) => {
@@ -56,12 +60,38 @@ const BarcodeSVG = ({ value }: { value: string }) => {
   );
 };
 
+// CSV import spec: only name is required (matches DB defaults); numbers and
+// dates are validated per row and bad rows are reported, never half-imported.
+const parseNonNegative = (raw: string, fallback: number, integer: boolean): { value?: number; error?: string } => {
+  const r = parseCsvNumber(raw, fallback);
+  if (r.error) return r;
+  const v = r.value ?? fallback;
+  if (v < 0) return { error: `"${raw}" must not be negative` };
+  if (integer && !Number.isInteger(v)) return { error: `"${raw}" must be a whole number` };
+  return { value: v };
+};
+
+const PRODUCT_COLUMNS: ImportColumn[] = [
+  { key: 'name', label: 'name', required: true },
+  { key: 'sku', label: 'sku' },
+  { key: 'category', label: 'category' },
+  { key: 'price', label: 'price', parse: (raw) => parseNonNegative(raw, 0, false) },
+  { key: 'cost_price', label: 'cost_price', parse: (raw) => parseNonNegative(raw, 0, false) },
+  { key: 'quantity', label: 'quantity', parse: (raw) => parseNonNegative(raw, 0, true) },
+  { key: 'min_threshold', label: 'min_threshold', parse: (raw) => parseNonNegative(raw, 5, true) },
+  { key: 'supplier', label: 'supplier' },
+  { key: 'batch_number', label: 'batch_number' },
+  { key: 'expiry_date', label: 'expiry_date', parse: parseCsvDate },
+  { key: 'location', label: 'location' },
+];
+
 interface InventoryProps {
   products: Product[];
   suppliers: Supplier[];
   onAdd: (product: Omit<Product, 'id' | 'last_updated' | 'created_at' | 'user_id'>) => void;
   onUpdate: (id: string, updates: Partial<Product>) => void;
   onDelete: (id: string) => void;
+  onImport: (rows: Omit<Product, 'id' | 'last_updated' | 'created_at' | 'user_id'>[]) => Promise<number>;
   settings: Settings;
   currentUser: UserType | null;
   loading?: boolean;
@@ -69,7 +99,7 @@ interface InventoryProps {
 
 const BRANCHES = ['Main Branch', 'Jumia Mall Warehouse', 'Lagos Warehouse', 'Abuja Showroom', 'Port Harcourt Hub'];
 
-const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], onAdd, onDelete, settings, currentUser, loading = false }) => {
+const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], onAdd, onDelete, onImport, settings, currentUser, loading = false }) => {
   const t = TRANSLATIONS[settings.language || 'en'] || TRANSLATIONS.en;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -77,6 +107,43 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [scannerMode, setScannerMode] = useState<'id' | 'details'>('id');
+  const [isImportOpen, setIsImportOpen] = useState(false);
+
+  const skipExistingSku = (row: Record<string, unknown>): string | null => {
+    const sku = String(row.sku || '').trim().toLowerCase();
+    if (!sku) return null;
+    return products.some((p) => (p.sku || '').trim().toLowerCase() === sku) ? `SKU ${row.sku} already exists` : null;
+  };
+
+  const handleImportProducts = async (rows: Record<string, unknown>[]): Promise<number> => {
+    const mapped = rows.map((r) => {
+      const supplierName = String(r.supplier || '').trim().toLowerCase();
+      const match = supplierName ? suppliers.find((s) => s.name.trim().toLowerCase() === supplierName) : undefined;
+      const expiry = String(r.expiry_date || '');
+      return {
+        name: String(r.name || ''),
+        sku: String(r.sku || ''),
+        category: String(r.category || ''),
+        price: Number(r.price ?? 0),
+        cost_price: Number(r.cost_price ?? 0),
+        quantity: Math.floor(Number(r.quantity ?? 0)),
+        min_threshold: Math.floor(Number(r.min_threshold ?? 5)),
+        supplier_id: match ? match.id : null,
+        batch_number: String(r.batch_number || ''),
+        expiry_date: expiry || null,
+        location: String(r.location || '') || 'Main Store',
+        sustainability_score: 0,
+      };
+    });
+    return onImport(mapped);
+  };
+
+  const handleExportProducts = () => {
+    downloadCsv(`stockbit_products_${new Date().toISOString().split('T')[0]}.csv`, [
+      ['name', 'sku', 'category', 'price', 'cost_price', 'quantity', 'min_threshold', 'supplier', 'batch_number', 'expiry_date', 'location'],
+      ...products.map((p) => [p.name, p.sku, p.category, p.price, p.cost_price, p.quantity, p.min_threshold, suppliers.find((s) => s.id === p.supplier_id)?.name || '', p.batch_number, p.expiry_date || '', p.location]),
+    ]);
+  };
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -410,6 +477,18 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
           >
             <Sparkles size={18} />
           </button>
+          <button
+            onClick={() => setIsImportOpen(true)}
+            className="h-10 px-4 bg-white dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center gap-2 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95"
+          >
+            <Upload size={16} /> Import
+          </button>
+          <button
+            onClick={handleExportProducts}
+            className="h-10 px-4 bg-white dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center gap-2 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95"
+          >
+            <Download size={16} /> Export
+          </button>
         </div>
       </header>
 
@@ -716,6 +795,17 @@ const Inventory: React.FC<InventoryProps> = ({ products = [], suppliers = [], on
         </div>
       )}
 
+      {isImportOpen && (
+        <CsvImportModal
+          title="Import Products"
+          description="Upload a CSV product catalog. Rows with an existing SKU are skipped."
+          templateFilename="stockbit_products_template.csv"
+          columns={PRODUCT_COLUMNS}
+          skipCheck={skipExistingSku}
+          onImport={handleImportProducts}
+          onClose={() => setIsImportOpen(false)}
+        />
+      )}
       {isScannerOpen && (
         <ScannerModal 
           mode={scannerMode}

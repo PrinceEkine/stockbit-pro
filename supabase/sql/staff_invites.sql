@@ -121,6 +121,8 @@ as $$
 declare
   v_inv public.staff_invites;
   v_company text;
+  v_staff int;
+  v_limit int;
 begin
   select * into v_inv from public.staff_invites where code = upper(trim(p_code));
   if not found then
@@ -135,6 +137,11 @@ begin
   end if;
   if v_inv.expires_at < now() then
     return query select false, v_company, 'This invite has expired. Ask the owner for a new one.'::text; return;
+  end if;
+  select count(*) into v_staff from public.profiles where parent_id = v_inv.owner_id and role = 'staff';
+  v_limit := public.staff_limit_for(v_inv.owner_id);
+  if v_staff >= v_limit then
+    return query select false, v_company, 'This business has reached its team limit. Ask the owner to upgrade.'::text; return;
   end if;
   return query select true, v_company, null::text;
 end;

@@ -5,15 +5,32 @@ import {
   Lock, ShieldCheck, Fingerprint, Sparkles, Check, Users, Building2, Ticket, Info, Loader2 as Spinner, XCircle
 } from 'lucide-react';
 import { checkPassword, PASSWORD_MIN_LENGTH, isValidEmail, isInviteCode, normalizeInviteCode, loginLockSeconds, recordLoginFailure, clearLoginFailures } from '../../lib/security';
+import { friendlyAuthError, isSixDigitCode } from '../../lib/authErrors';
 
 export type AuthStep = 'login' | 'register' | 'forgot' | 'verify_otp' | 'update_password';
+
+export interface AuthNotice {
+  kind: 'error' | 'info';
+  message: string;
+  /** Bumped on every new notice so the same message can be shown twice. */
+  id: number;
+}
+
+/** Seconds a user must wait between "Resend code" requests (Supabase enforces its own limit too). */
+const RESEND_COOLDOWN_S = 60;
 
 interface AuthScreenProps {
   step: AuthStep;
   onStepChange: (step: AuthStep) => void;
   onBackToSite: () => void;
   onLogin: (email: string, password: string) => Promise<{ error?: any }>;
-  onRegister: (data: { email: string; password: string; name: string; companyName?: string; inviteCode?: string | null }) => Promise<{ error?: any }>;
+  onRegister: (data: { email: string; password: string; name: string; companyName?: string; inviteCode?: string | null }) => Promise<{ error?: any; signedIn?: boolean }>;
+  onVerifyCode: (email: string, code: string) => Promise<{ error?: any }>;
+  onResendCode: (email: string) => Promise<{ error?: any }>;
+  /** Verifies the 6-digit code from the password-reset email; success yields a session for update_password. */
+  onVerifyRecoveryCode: (email: string, code: string) => Promise<{ error?: any }>;
+  /** A message produced outside this screen (e.g. an expired link in the URL). */
+  notice?: AuthNotice | null;
   onPreviewInvite: (code: string) => Promise<{ valid: boolean; companyName?: string; reason?: string }>;
   /** Pre-filled from a /#join=CODE link. */
   initialInviteCode?: string;
@@ -131,11 +148,14 @@ const BrandPanel: React.FC = () => (
 );
 
 const AuthScreen: React.FC<AuthScreenProps> = ({
-  step, onStepChange, onBackToSite, onLogin, onRegister, onGoogle, onForgot, onUpdatePassword, onPreviewInvite, initialInviteCode, pendingEmail, setPendingEmail
+  step, onStepChange, onBackToSite, onLogin, onRegister, onVerifyCode, onResendCode, onVerifyRecoveryCode, notice, onGoogle, onForgot, onUpdatePassword, onPreviewInvite, initialInviteCode, pendingEmail, setPendingEmail
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [formInfo, setFormInfo] = useState('');
+  const [code, setCode] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [lockSeconds, setLockSeconds] = useState(loginLockSeconds());
   const [isStaffSignup, setIsStaffSignup] = useState(!!initialInviteCode);
@@ -152,18 +172,33 @@ const AuthScreen: React.FC<AuthScreenProps> = ({
 
   useEffect(() => {
     setFormError('');
+    setFormInfo('');
     setFieldErrors({});
     setShowPassword(false);
     setPassword('');
     setConfirm('');
+    setCode('');
     setForgotSent(false);
   }, [step]);
+
+  // Messages that arrive from outside (expired link, cross-device link, etc.).
+  useEffect(() => {
+    if (!notice) return;
+    if (notice.kind === 'error') { setFormError(notice.message); setFormInfo(''); }
+    else { setFormInfo(notice.message); setFormError(''); }
+  }, [notice]);
 
   useEffect(() => {
     if (lockSeconds <= 0) return;
     const id = window.setInterval(() => setLockSeconds(loginLockSeconds()), 1000);
     return () => window.clearInterval(id);
   }, [lockSeconds]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const id = window.setTimeout(() => setResendCooldown(s => s - 1), 1000);
+    return () => window.clearTimeout(id);
+  }, [resendCooldown]);
 
   // Live check of the invite code so the joiner sees which business they're joining.
   useEffect(() => {
@@ -187,7 +222,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({
     login: { title: 'Welcome back', subtitle: 'Sign in to your shop terminal.' },
     register: { title: 'Create your account', subtitle: 'Start your 60-day free trial. No card required.' },
     forgot: { title: 'Reset your password', subtitle: 'We will email you a secure, single-use link.' },
-    verify_otp: { title: 'Check your inbox', subtitle: 'One more step to activate your account.' },
+    verify_otp: { title: 'Check your inbox', subtitle: 'Enter the 6-digit code we emailed you, or tap the link in the email.' },
     update_password: { title: 'Choose a new password', subtitle: 'Your previous sessions on other devices will be signed out.' },
   };
 
@@ -200,11 +235,16 @@ const AuthScreen: React.FC<AuthScreenProps> = ({
     try {
       const { error } = await onLogin(email, password);
       if (error) {
+        const unconfirmed = error.code === 'email_not_confirmed' || /not confirmed/i.test(error.message || '');
+        if (unconfirmed) {
+          // Not a wrong password: send them to the verify step instead of counting a failure.
+          setPendingEmail(email);
+          onStepChange('verify_otp');
+          return;
+        }
         const left = recordLoginFailure();
         setLockSeconds(loginLockSeconds());
-        const msg = /confirm/i.test(error.message || '')
-          ? 'Please verify your email first — check your inbox for the activation link.'
-          : 'Email or password is incorrect.';
+        const msg = friendlyAuthError(error, 'Email or password is incorrect.');
         setFormError(left > 0 && left < 3 ? `${msg} ${left} attempt${left === 1 ? '' : 's'} left before a cooldown.` : msg);
       } else {
         clearLoginFailures();
@@ -242,12 +282,52 @@ const AuthScreen: React.FC<AuthScreenProps> = ({
       });
       if (res.error) {
         setFormError(res.error.message || 'Account creation failed.');
+      } else if (res.signedIn) {
+        // Email confirmation is disabled server-side; SIGNED_IN already routed us to the dashboard.
+        clearLoginFailures();
       } else {
         setPendingEmail(email);
+        setResendCooldown(RESEND_COOLDOWN_S);
         onStepChange('verify_otp');
       }
     } catch {
       setFormError('Account creation failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+    setFormInfo('');
+    if (!isValidEmail(pendingEmail)) { setFormError('We lost track of your email address. Please start over.'); return; }
+    if (!isSixDigitCode(code)) { setFieldErrors({ code: 'Enter the 6-digit code from the email.' }); return; }
+    setFieldErrors({});
+    setSubmitting(true);
+    try {
+      const { error } = await onVerifyCode(pendingEmail, code);
+      if (error) setFormError(error.message || 'That code is not valid.');
+      // Success: Supabase emits SIGNED_IN and the app moves to the dashboard.
+    } catch {
+      setFormError('Could not verify the code. Check your connection and try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resendCooldown > 0 || submitting) return;
+    setFormError('');
+    setFormInfo('');
+    if (!isValidEmail(pendingEmail)) { setFormError('We lost track of your email address. Please start over.'); return; }
+    setSubmitting(true);
+    try {
+      const { error } = await onResendCode(pendingEmail);
+      if (error) setFormError(error.message || 'Could not resend the email.');
+      else { setFormInfo('A new code and link are on their way. Older codes no longer work.'); setResendCooldown(RESEND_COOLDOWN_S); }
+    } catch {
+      setFormError('Could not resend the email. Check your connection and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -265,15 +345,70 @@ const AuthScreen: React.FC<AuthScreenProps> = ({
     }
   };
 
+  const RATE_LIMIT_CODES = ['over_email_send_rate_limit', 'over_request_rate_limit'];
+
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
+    setFormInfo('');
     if (!isValidEmail(email)) { setFieldErrors({ email: 'Enter a valid email address.' }); return; }
+    setFieldErrors({});
     setSubmitting(true);
     try {
-      await onForgot(email);
-    } finally {
-      // Always show the same message so accounts cannot be enumerated.
+      const res = await onForgot(email);
+      // Only rate-limit errors are shown; everything else gets the same neutral
+      // "sent" screen so accounts cannot be enumerated.
+      if (res?.error && RATE_LIMIT_CODES.includes(res.error.code)) {
+        setFormError(res.error.message);
+        return;
+      }
+      setPendingEmail(email);
+      setCode('');
+      setResendCooldown(RESEND_COOLDOWN_S);
       setForgotSent(true);
+    } catch {
+      setPendingEmail(email);
+      setForgotSent(true);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResendReset = async () => {
+    if (resendCooldown > 0 || submitting) return;
+    setFormError('');
+    setFormInfo('');
+    const target = pendingEmail || email;
+    if (!isValidEmail(target)) { setForgotSent(false); return; }
+    setSubmitting(true);
+    try {
+      const res = await onForgot(target);
+      if (res?.error && RATE_LIMIT_CODES.includes(res.error.code)) setFormError(res.error.message);
+      else { setFormInfo('If an account exists, a new code and link are on their way. Older codes no longer work.'); setResendCooldown(RESEND_COOLDOWN_S); }
+    } catch {
+      setFormError('Could not resend the email. Check your connection and try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleVerifyRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+    setFormInfo('');
+    const target = pendingEmail || email;
+    if (!isValidEmail(target)) { setFormError('We lost track of your email address. Please start over.'); return; }
+    if (!isSixDigitCode(code)) { setFieldErrors({ code: 'Enter the 6-digit code from the email.' }); return; }
+    setFieldErrors({});
+    setSubmitting(true);
+    try {
+      const { error } = await onVerifyRecoveryCode(target, code);
+      if (error) { setFormError(error.message || 'That code is not valid.'); return; }
+      // A recovery session now exists; let the user choose the new password.
+      onStepChange('update_password');
+    } catch {
+      setFormError('Could not verify the code. Check your connection and try again.');
+    } finally {
       setSubmitting(false);
     }
   };
@@ -353,6 +488,12 @@ const AuthScreen: React.FC<AuthScreenProps> = ({
                   <div role="alert" className="flex items-start gap-3 rounded-2xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-4 py-3 text-rose-700 dark:text-rose-300">
                     <ShieldAlert size={18} className="shrink-0 mt-0.5" />
                     <p className="text-sm font-medium leading-snug">{formError}</p>
+                  </div>
+                )}
+                {formInfo && !formError && (
+                  <div role="status" className="flex items-start gap-3 rounded-2xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-emerald-800 dark:text-emerald-300">
+                    <MailCheck size={18} className="shrink-0 mt-0.5" />
+                    <p className="text-sm font-medium leading-snug">{formInfo}</p>
                   </div>
                 )}
 
@@ -471,13 +612,35 @@ const AuthScreen: React.FC<AuthScreenProps> = ({
                 {/* ---------------- FORGOT ---------------- */}
                 {step === 'forgot' && (
                   forgotSent ? (
-                    <div className="space-y-6 text-center py-2">
-                      <div className="mx-auto w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 flex items-center justify-center"><MailCheck size={30} /></div>
-                      <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                        If an account exists for <span className="font-semibold text-slate-900 dark:text-white">{email}</span>, a reset link is on its way. It expires in 60 minutes.
-                      </p>
-                      <button type="button" onClick={() => onStepChange('login')} className="btn-primary w-full">Back to sign in</button>
-                    </div>
+                    <form onSubmit={handleVerifyRecovery} className="space-y-6" noValidate>
+                      <div className="text-center space-y-3">
+                        <div className="mx-auto w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 flex items-center justify-center"><MailCheck size={30} /></div>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                          If an account exists for <span className="font-semibold text-slate-900 dark:text-white break-all">{pendingEmail || email}</span>, we emailed a 6-digit code and a link. Either works on any device.
+                        </p>
+                      </div>
+
+                      <Field label="Reset code" error={fieldErrors.code} hint="Enter the code here, or tap the link in the email.">
+                        <input
+                          name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={6} required
+                          value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          className="input-premium text-center font-mono text-2xl tracking-[0.5em]" placeholder="••••••" autoFocus
+                        />
+                      </Field>
+
+                      <button type="submit" disabled={submitting || !isSixDigitCode(code)} className="btn-primary w-full">
+                        {submitting ? <Loader2 size={18} className="animate-spin" /> : <KeyRound size={18} />}
+                        {submitting ? 'Checking…' : 'Continue'}
+                      </button>
+
+                      <div className="flex items-center justify-between text-sm">
+                        <button type="button" onClick={handleResendReset} disabled={resendCooldown > 0 || submitting} className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed">
+                          {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
+                        </button>
+                        <button type="button" onClick={() => onStepChange('login')} className="font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">Back to sign in</button>
+                      </div>
+                      <button type="button" onClick={() => { setForgotSent(false); setCode(''); }} className="w-full text-xs font-medium text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors">Entered the wrong email? Try another</button>
+                    </form>
                   ) : (
                     <form onSubmit={handleForgot} className="space-y-5" noValidate>
                       <Field label="Registered email" error={fieldErrors.email}>
@@ -514,22 +677,44 @@ const AuthScreen: React.FC<AuthScreenProps> = ({
 
                 {/* ---------------- VERIFY ---------------- */}
                 {step === 'verify_otp' && (
-                  <div className="space-y-6 text-center py-2">
-                    <div className="relative mx-auto w-20 h-20">
-                      <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping [animation-duration:2.5s]" />
-                      <div className="relative w-full h-full rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 flex items-center justify-center border-4 border-white dark:border-slate-900 shadow-sm"><MailCheck size={34} /></div>
+                  <form onSubmit={handleVerifyCode} className="space-y-6" noValidate>
+                    <div className="text-center space-y-4">
+                      <div className="relative mx-auto w-16 h-16">
+                        <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping [animation-duration:2.5s]" />
+                        <div className="relative w-full h-full rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 flex items-center justify-center border-4 border-white dark:border-slate-900 shadow-sm"><MailCheck size={28} /></div>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-slate-600 dark:text-slate-300">We emailed a 6-digit code to</p>
+                        <p className="font-semibold text-slate-900 dark:text-white break-all">{pendingEmail || 'your email address'}</p>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <p className="text-sm text-slate-600 dark:text-slate-300">We sent a secure activation link to</p>
-                      <p className="font-semibold text-slate-900 dark:text-white break-all">{pendingEmail}</p>
-                    </div>
+
+                    <Field label="Verification code" error={fieldErrors.code} hint="Codes expire after a short while. The link in the same email also works on any device.">
+                      <input
+                        name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={6} required
+                        value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        className="input-premium text-center font-mono text-2xl tracking-[0.5em]" placeholder="••••••" autoFocus
+                      />
+                    </Field>
+
+                    <button type="submit" disabled={submitting || !isSixDigitCode(code)} className="btn-primary w-full">
+                      {submitting ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
+                      {submitting ? 'Verifying…' : 'Verify and continue'}
+                    </button>
+
                     <div className="flex items-start gap-3 text-left rounded-2xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 px-4 py-3">
                       <Info size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                      <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">Click the link in the email to verify your account. Can’t find it? Check your spam or promotions folder.</p>
+                      <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">Can’t find it? Check your spam or promotions folder. Only the most recent code works.</p>
                     </div>
-                    <button type="button" onClick={() => onStepChange('login')} className="btn-primary w-full">Back to sign in</button>
-                    <button type="button" onClick={() => onStepChange('register')} className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">Entered the wrong email? Start over</button>
-                  </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <button type="button" onClick={handleResend} disabled={resendCooldown > 0 || submitting} className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed">
+                        {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
+                      </button>
+                      <button type="button" onClick={() => onStepChange('login')} className="font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">Back to sign in</button>
+                    </div>
+                    <button type="button" onClick={() => onStepChange('register')} className="w-full text-xs font-medium text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors">Entered the wrong email? Start over</button>
+                  </form>
                 )}
               </motion.div>
             </AnimatePresence>

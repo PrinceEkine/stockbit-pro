@@ -12,6 +12,7 @@ import Sales from './pages/Sales';
 import Returns from './pages/Returns';
 import Reports from './pages/Reports';
 import Suppliers from './pages/Suppliers';
+import Customers from './pages/Customers';
 import SettingsView from './pages/Settings';
 import LaunchCenter from './pages/LaunchCenter';
 import UserManagement from './pages/UserManagement';
@@ -24,10 +25,11 @@ import HelpCenter from './pages/HelpCenter';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Governance from './pages/Governance';
-import AuthScreen, { AuthStep as ScreenStep } from './components/auth/AuthScreen';
+import AuthScreen, { AuthStep as ScreenStep, AuthNotice } from './components/auth/AuthScreen';
 import LockScreen, { useIdleLock } from './components/auth/LockScreen';
 import { useToast } from './components/ui/Toast';
 import { TRANSLATIONS } from './constants/translations';
+import { readAuthErrorFromUrl, readTokenHashFromUrl } from './lib/authErrors';
 import {
   Menu, Bell, Box, ShieldAlert, Moon, Sun, Clock, ArrowLeft, CreditCard, WifiOff
 } from 'lucide-react';
@@ -41,8 +43,13 @@ const App: React.FC = () => {
   const [authStep, setAuthStep] = useState<AuthStep>('landing');
   const [pendingEmail, setPendingEmail] = useState('');
   const [joinCode, setJoinCode] = useState('');
+  const [authNotice, setAuthNotice] = useState<AuthNotice | null>(null);
   const toast = useToast();
   const store = useStore();
+
+  const showAuthNotice = useCallback((kind: AuthNotice['kind'], message: string) => {
+    setAuthNotice({ kind, message, id: Date.now() });
+  }, []);
 
   useEffect(() => {
     // Recovery links carry a type=recovery / update_password marker; everything
@@ -59,13 +66,48 @@ const App: React.FC = () => {
       if (event === 'SIGNED_IN' && session) {
         setAuthStep('landing');
         setActiveView(View.Dashboard);
-        if (window.location.search.includes('code=') || window.location.hash.includes('access_token=')) {
+        const url = window.location.search + window.location.hash;
+        if (/code=|access_token=|token_hash=/.test(url)) {
           window.history.replaceState({}, document.title, window.location.pathname);
         }
       }
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Device-independent email links (`/?token_hash=...&type=email`) and failed
+  // auth redirects (`#error=...&error_code=otp_expired`) are handled here. The
+  // old flow ignored both, so an expired or cross-device link showed nothing.
+  useEffect(() => {
+    const cleanUrl = () => window.history.replaceState({}, document.title, window.location.pathname);
+
+    const urlError = readAuthErrorFromUrl();
+    if (urlError) {
+      cleanUrl();
+      showAuthNotice('error', urlError.message);
+      setActiveView(View.Landing);
+      setAuthStep('login');
+      return;
+    }
+
+    const link = readTokenHashFromUrl();
+    if (!link) return;
+    cleanUrl();
+    setActiveView(View.Landing);
+    setAuthStep('login');
+    store.verifyEmailLink(link.tokenHash, link.type).then(res => {
+      if (res.error) {
+        showAuthNotice('error', res.error.message);
+        return;
+      }
+      if (res.type === 'recovery') {
+        setAuthStep('update_password');
+        setActiveView(View.Dashboard);
+      }
+      // Otherwise SIGNED_IN has already routed to the dashboard.
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // A staff invite that failed on first login (expired / wrong email / limit).
@@ -358,6 +400,10 @@ const App: React.FC = () => {
           onBackToSite={() => { setAuthStep('landing'); setActiveView(View.Landing); }}
           onLogin={handleLogin}
           onRegister={store.register}
+          onVerifyCode={store.verifySignupCode}
+          onResendCode={store.resendSignupEmail}
+          onVerifyRecoveryCode={store.verifyRecoveryCode}
+          notice={authNotice}
           onGoogle={handleGoogle}
           onForgot={handleForgot}
           onUpdatePassword={handleUpdatePassword}
@@ -397,13 +443,14 @@ const App: React.FC = () => {
 
     switch (activeView) {
       case View.Dashboard: return <Dashboard state={store} onNavigate={setActiveView} />;
-      case View.Inventory: return <Inventory products={store.products || []} suppliers={store.suppliers || []} onAdd={store.addProduct} onUpdate={store.updateProduct} onDelete={store.deleteProduct} settings={store.settings} currentUser={store.currentUser} loading={store.loading} />;
-      case View.Sales: return <Sales sales={store.sales || []} products={store.products || []} onRecordSale={store.recordSale} settings={store.settings} currentUser={store.currentUser} />;
+      case View.Inventory: return <Inventory products={store.products || []} suppliers={store.suppliers || []} onAdd={store.addProduct} onUpdate={store.updateProduct} onDelete={store.deleteProduct} onImport={store.importProducts} settings={store.settings} currentUser={store.currentUser} loading={store.loading} />;
+      case View.Sales: return <Sales sales={store.sales || []} products={store.products || []} customers={store.customers || []} onRecordSale={store.recordSale} settings={store.settings} currentUser={store.currentUser} />;
       case View.AIInsights: return <AIInsights state={store} />;
       case View.Stocktake: return <Stocktake products={store.products || []} onReconcile={store.reconcileInventory} settings={store.settings} />;
       case View.Returns: return <Returns returns={store.returns || []} products={store.products || []} onRecordReturn={store.recordReturn} settings={store.settings} />;
       case View.Reports: return <Reports state={store} />;
-      case View.Suppliers: return <Suppliers suppliers={store.suppliers || []} onAdd={store.addSupplier} onUpdate={() => {}} onDelete={() => {}} settings={store.settings} />;
+      case View.Suppliers: return <Suppliers suppliers={store.suppliers || []} onAdd={store.addSupplier} onUpdate={store.updateSupplier} onDelete={store.deleteSupplier} settings={store.settings} />;
+      case View.Customers: return <Customers customers={store.customers || []} sales={store.sales || []} onAdd={store.addCustomer} onUpdate={store.updateCustomer} onDelete={store.deleteCustomer} onImport={store.importCustomers} settings={store.settings} />;
       case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} staff={store.users || []} currentUser={store.currentUser} onRemoveStaff={store.removeStaffMember} invites={store.staffInvites} onLoadInvites={store.loadStaffInvites} onCreateInvite={store.createStaffInvite} onRevokeInvite={store.revokeStaffInvite} onJoinWithCode={store.joinBusinessWithCode} onVerifyPayment={store.verifyAndActivateSubscription} onUpdatePassword={store.updatePassword} onRefreshStaff={store.refreshUsers} onSignOutEverywhere={store.signOutEverywhere} authProviders={store.authProviders} />;
       case View.LaunchCenter: return <LaunchCenter state={store} onUpdateSettings={store.updateSettings} />;
       case View.UserManagement:

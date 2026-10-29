@@ -31,6 +31,7 @@ import {
 } from 'recharts';
 import { AppState } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
+import { downloadCsv } from '../lib/csv';
 
 interface ReportsProps {
   state: AppState;
@@ -118,26 +119,20 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
     ];
   }, [sales]);
 
+  // Central CSV writer: proper quoting (commas/quotes in names no longer
+  // corrupt the file), Excel-friendly BOM, and no leaked object URLs.
   const exportSalesCSV = () => {
-    const headers = ['Date', 'Sale ID', 'Customer', 'Items', 'Total Price', 'Payment Method'];
-    const csvData = sales.map(s => [
-      new Date(s.date).toLocaleString(),
-      s.id,
-      s.customer_name || 'Walk-in',
-      s.items.map(i => `${i.productName}(x${i.quantity})`).join('; '),
-      s.total_price,
-      s.payment_method
+    downloadCsv(`stockbit_sales_${new Date().toISOString().split('T')[0]}.csv`, [
+      ['Date', 'Sale ID', 'Customer', 'Items', 'Total Price', 'Payment Method'],
+      ...sales.map(s => [
+        new Date(s.date).toLocaleString(),
+        s.id,
+        s.customer_name || 'Walk-in',
+        s.items.map(i => `${i.productName}(x${i.quantity})`).join('; '),
+        s.total_price,
+        s.payment_method
+      ]),
     ]);
-
-    const csvContent = [headers, ...csvData].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `stockbit_sales_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   const formatCurrency = (val: number) => `${settings?.currency || '₦'}${(val || 0).toLocaleString()}`;

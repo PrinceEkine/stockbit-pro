@@ -91,6 +91,18 @@ create table if not exists public.suppliers (
 );
 create index if not exists suppliers_user_idx on public.suppliers(user_id);
 
+create table if not exists public.customers (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  name       text not null,
+  phone      text default '',
+  email      text default '',
+  notes      text default '',
+  created_at timestamptz not null default now()
+);
+create index if not exists customers_user_idx on public.customers(user_id);
+create index if not exists customers_name_idx on public.customers(user_id, name);
+
 -- -----------------------------------------------------------------------------
 -- products
 -- -----------------------------------------------------------------------------
@@ -174,6 +186,19 @@ begin
     create publication supabase_realtime;
   end if;
 end $$;
-alter publication supabase_realtime add table public.products;
-alter publication supabase_realtime add table public.sales;
-alter publication supabase_realtime add table public.profiles;
+-- Idempotent: a plain ALTER PUBLICATION ... ADD TABLE fails when the table is
+-- already a member, which aborts the whole `db push` and leaves the later
+-- migrations (RLS, staff invites, admin) unapplied.
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['products', 'sales', 'profiles'] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;

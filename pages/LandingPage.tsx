@@ -29,7 +29,7 @@ import {
   Layout,
   LogIn
 } from 'lucide-react';
-import { callQwenPlus } from '../services/qwenService';
+import { chatWithMuse } from '../services/museService';
 import { View, AppLanguage } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
 
@@ -143,12 +143,12 @@ const LandingPage: React.FC<LandingPageProps> = ({
     setIsTyping(true);
 
     try {
-      const systemInstruction = `You are StockBot, the official industrial-grade retail consultant for StockBit Pro, powered by Alibaba Qwen Plus. 
+      const systemInstruction = `You are StockBot, the official industrial-grade retail consultant for StockBit Pro, powered by Meta Muse.
       Technical Context for you:
       1. APP REGISTRATION: Users sign up with Name, Business Name, Email, and Password. We do NOT ask for a Phone Number on the signup form. Staff join via an "Invite ID" from their boss.
       2. CORE TOOLS: 
          - "Strict Sensor": Advanced mobile barcode scanning.
-         - "Smart Extractor": Gemini-powered metadata capture from product photos.
+         - "Smart Extractor": Muse-powered metadata capture from product photos.
          - "Multi-Channel Bridge": Syncing inventory with Jumia Mall and Konga.
          - "Sustainability Audit": Only on Mega Pro, gives Eco-scores to inventory.
       3. BUSINESS MODEL: 2 Months (60 days) free trial. Plans: Beta (₦5k), Mega (₦8k), Mega Pro (₦13k). Payments via Paystack.
@@ -157,7 +157,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
       
       Always be professional, concise, and accurate to these specific app features. Do not hallucinate non-existent features or requirements. Currently responding in ${language} mode.`;
 
-      const botText = await callQwenPlus([
+      const botText = await chatWithMuse([
         { role: 'system', content: systemInstruction },
         { role: 'user', content: userMsg }
       ], "I'm having trouble connecting. Please call our support line directly at 07010698264.");

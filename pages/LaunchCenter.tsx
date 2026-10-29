@@ -49,15 +49,15 @@ const LaunchCenter: React.FC<LaunchCenterProps> = ({ state, onUpdateSettings }) 
     try {
       // Round-trip through the server-side gateway (no API key in the browser).
       const response = await invokeAi({
-        provider: 'gemini',
-        model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts: [{ text: "Respond with: 'SYSTEM_ONLINE'" }] }],
+        provider: 'muse',
+        purpose: 'support',
+        messages: [{ role: 'user', content: "Respond with: 'SYSTEM_ONLINE'" }],
       });
       const text = response.text;
       if (text?.includes('SYSTEM_ONLINE')) {
         setTestResult({
           status: 'success',
-          message: "AI gateway connection successful. The server-side Gemini key is configured and authenticated."
+          message: "AI gateway connection successful. The server-side Meta API key is configured and authenticated."
         });
       } else {
         throw new Error("Unexpected response from AI service.");
@@ -65,7 +65,7 @@ const LaunchCenter: React.FC<LaunchCenterProps> = ({ state, onUpdateSettings }) 
     } catch (err: any) {
       setTestResult({
         status: 'error',
-        message: err.message || "Connection failed. Deploy the ai-gateway Edge Function and set GEMINI_API_KEY with `supabase secrets set`."
+        message: err.message || "Connection failed. Deploy the ai-gateway Edge Function and set MODEL_API_KEY with `supabase secrets set`."
       });
     } finally {
       setIsTesting(false);
@@ -122,7 +122,7 @@ VITE_SUPABASE_ANON_KEY=...`;
               <div className="space-y-2">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">AI Diagnostics</h3>
                 <p className="text-sm text-slate-500 leading-relaxed">
-                  Verify your Gemini API integration. This check ensures the intelligent inventory modules can communicate with Google's services.
+                  Verify your Meta Muse API integration. This check ensures the intelligent inventory modules can communicate with Meta's services.
                 </p>
               </div>
 

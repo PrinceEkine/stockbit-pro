@@ -27,15 +27,15 @@ npx supabase functions deploy admin-users --no-verify-jwt
 if ($LASTEXITCODE -ne 0) { throw "admin-users deploy failed" }
 
 $secrets = @()
-if ($env:GEMINI_API_KEY)      { $secrets += "GEMINI_API_KEY=$env:GEMINI_API_KEY" }
-if ($env:QWEN_API_KEY)        { $secrets += "QWEN_API_KEY=$env:QWEN_API_KEY" }
+if ($env:MODEL_API_KEY)        { $secrets += "MODEL_API_KEY=$env:MODEL_API_KEY" }
+# NOTE: set MODEL_API_KEY in this shell before running to push the Meta key too.
 if ($env:PAYSTACK_SECRET_KEY) { $secrets += "PAYSTACK_SECRET_KEY=$env:PAYSTACK_SECRET_KEY" }
 if ($secrets.Count -gt 0) {
   Write-Host "==> Setting function secrets: $($secrets -replace '=.*','=***')"
   npx supabase secrets set @secrets
 } else {
   Write-Host "==> No secrets in this shell. Set them once with:"
-  Write-Host '    npx supabase secrets set GEMINI_API_KEY=... QWEN_API_KEY=... PAYSTACK_SECRET_KEY=sk_live_...'
+  Write-Host '    npx supabase secrets set MODEL_API_KEY=MO... PAYSTACK_SECRET_KEY=sk_live_...'
 }
 
 Write-Host ""

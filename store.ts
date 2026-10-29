@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Session } from '@supabase/supabase-js';
+import type { EmailOtpType, Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { Product, Sale, Supplier, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod, StaffInvite } from './types';
+import { friendlyAuthError, NEUTRAL_SIGNUP_MESSAGE } from './lib/authErrors';
+import { Product, Sale, Supplier, Customer, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod, StaffInvite } from './types';
 import { DEFAULT_CATEGORIES } from './constants';
 import { getEntitlements, isUnlimited } from './constants/plans';
 
@@ -80,6 +81,7 @@ export const useStore = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [returns, setReturns] = useState<ProductReturn[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -121,10 +123,11 @@ export const useStore = () => {
     }
 
     try {
-      const [prodRes, saleRes, suppRes, retRes, noteRes, settingsRes, profilesRes] = await Promise.all([
+      const [prodRes, saleRes, suppRes, custRes, retRes, noteRes, settingsRes, profilesRes] = await Promise.all([
         supabase.from('products').select('*').eq('user_id', targetUserId).order('name'),
         supabase.from('sales').select('*').eq('user_id', targetUserId).order('date', { ascending: false }),
         supabase.from('suppliers').select('*').eq('user_id', targetUserId).order('name'),
+        supabase.from('customers').select('*').eq('user_id', targetUserId).order('name'),
         supabase.from('returns').select('*').eq('user_id', targetUserId).order('date', { ascending: false }),
         supabase.from('notifications').select('*').eq('user_id', userId).order('date', { ascending: false }),
         supabase.from('settings').select('*').eq('user_id', targetUserId).maybeSingle(),
@@ -134,6 +137,7 @@ export const useStore = () => {
       if (prodRes.data) setProducts(prodRes.data);
       if (saleRes.data) setSales(saleRes.data);
       if (suppRes.data) setSuppliers(suppRes.data);
+    if (custRes.data) setCustomers(custRes.data);
       if (retRes.data) setReturns(retRes.data);
       if (noteRes.data) setNotifications(noteRes.data);
       if (settingsRes.data) {
@@ -320,7 +324,8 @@ export const useStore = () => {
         setSales([]);
         setReturns([]);
         setSuppliers([]);
-        setNotifications([]);
+        setCustomers([]);
+        setNotifications([])
         setUsers([]);
         setInitialLoadComplete(true);
         setLoading(false);
@@ -394,7 +399,8 @@ export const useStore = () => {
       email: email.trim().toLowerCase(),
       password,
       options: {
-        emailRedirectTo: window.location.origin,
+        // Trailing slash so the token-hash email template can append `?token_hash=...` cleanly.
+        emailRedirectTo: `${window.location.origin}/`,
         data: {
           full_name: name.trim(),
           company_name: code ? '' : (companyName || '').trim(),
@@ -403,18 +409,74 @@ export const useStore = () => {
       }
     });
 
-    if (authError) return { error: authError };
+    if (authError) {
+      console.warn('signUp failed:', authError.code || authError.status, authError.message);
+      return { error: { ...authError, message: friendlyAuthError(authError, 'Account creation failed. Please try again.') } };
+    }
+    // Email confirmation is OFF in the dashboard: the user is already signed in.
+    if (data.session) return { data, signedIn: true };
+    // Existing account (confirmations ON): Supabase returns a user with no identities.
     if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-      return { error: { message: "If this email is new, a verification link has been sent. If you already have an account, please sign in instead." } };
+      return { error: { message: NEUTRAL_SIGNUP_MESSAGE } };
     }
     return { data };
   }, [previewInvite]);
+
+  /**
+   * Verifies the 6-digit code printed in the confirmation email. Unlike the
+   * PKCE link, this works on any device because it needs no stored verifier.
+   * On success Supabase emits SIGNED_IN and hydrateFromSession takes over.
+   */
+  const verifySignupCode = useCallback(async (email: string, code: string) => {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token: code.trim(),
+      type: 'email'
+    });
+    if (error) {
+      console.warn('verifyOtp failed:', error.code || error.status, error.message);
+      return { error: { ...error, message: friendlyAuthError(error, 'That code is not valid. Check the digits and try again.') } };
+    }
+    return { data };
+  }, []);
+
+  /** Sends a fresh confirmation email (new code + new link). Supabase rate-limits this per address. */
+  const resendSignupEmail = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim().toLowerCase(),
+      options: { emailRedirectTo: `${window.location.origin}/` }
+    });
+    if (error) {
+      console.warn('resend failed:', error.code || error.status, error.message);
+      return { error: { ...error, message: friendlyAuthError(error, 'Could not resend the email right now. Please try again shortly.') } };
+    }
+    return {};
+  }, []);
+
+  /**
+   * Handles `/?token_hash=...&type=email` links from the email templates. These
+   * are device-independent: the hash is exchanged directly, no PKCE verifier needed.
+   */
+  const verifyEmailLink = useCallback(async (tokenHash: string, type: string) => {
+    const allowed: EmailOtpType[] = ['email', 'signup', 'recovery', 'magiclink', 'invite', 'email_change'];
+    const otpType = (allowed.includes(type as EmailOtpType) ? type : 'email') as EmailOtpType;
+    const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: otpType });
+    if (error) {
+      console.warn('token_hash verification failed:', error.code || error.status, error.message);
+      return { error: { ...error, message: friendlyAuthError(error, 'That link could not be used. Request a new one and try again.') }, type: otpType };
+    }
+    return { data, type: otpType };
+  }, []);
 
   /** Sets/changes the password for the signed-in user and signs out every OTHER device. */
   const updatePassword = useCallback(async (newPassword: string) => {
     try {
       const res = await supabase.auth.updateUser({ password: newPassword });
-      if (res.error) return res;
+      if (res.error) {
+        console.warn('updateUser(password) failed:', res.error.code || res.error.status, res.error.message);
+        return { error: { ...res.error, message: friendlyAuthError(res.error, 'Could not update the password.') } };
+      }
       try { await supabase.auth.signOut({ scope: 'others' }); } catch { /* best effort */ }
       return res;
     } catch (err: any) {
@@ -447,15 +509,39 @@ export const useStore = () => {
       setSales([]);
       setReturns([]);
       setSuppliers([]);
-      setNotifications([]);
+      setCustomers([]);
+      setNotifications([])
       setUsers([]);
     }
   }, []);
 
+  /**
+   * Sends the reset email. The template links to `<origin>/?token_hash=...&type=recovery`
+   * (device-independent) and prints a 6-digit code for verifyRecoveryCode().
+   */
   const resetPassword = useCallback(async (email: string) => {
-    return await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: `${window.location.origin}/#update_password`
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: `${window.location.origin}/`
     });
+    if (error) {
+      console.warn('resetPasswordForEmail failed:', error.code || error.status, error.message);
+      return { error: { ...error, message: friendlyAuthError(error, 'Could not send the reset email right now.') } };
+    }
+    return {};
+  }, []);
+
+  /** Verifies the 6-digit code from the reset email; yields a session so the user can set a new password. */
+  const verifyRecoveryCode = useCallback(async (email: string, code: string) => {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token: code.trim(),
+      type: 'recovery'
+    });
+    if (error) {
+      console.warn('recovery verifyOtp failed:', error.code || error.status, error.message);
+      return { error: { ...error, message: friendlyAuthError(error, 'That code is not valid. Check the digits and try again.') } };
+    }
+    return { data };
   }, []);
 
   const updateSettings = useCallback(async (updates: Partial<Settings>) => {
@@ -575,6 +661,12 @@ export const useStore = () => {
       const sold = items.find(i => i.productId === prod.id);
       return sold ? { ...prod, quantity: Math.max(0, prod.quantity - sold.quantity) } : prod;
     }));
+    // Low-stock alerts land server-side (record_sale -> notify_low_stock);
+    // pull them so the bell lights up without a reload. (Alerts target the
+    // owner, so staff skip this refresh.)
+    if (currentUser.role !== 'staff') {
+      supabase.from('notifications').select('*').eq('user_id', userId).order('date', { ascending: false }).then(({ data }) => { if (data) setNotifications(data); });
+    }
     return true;
   };
 
@@ -611,6 +703,67 @@ export const useStore = () => {
     if (!error && data) {
       setSuppliers(prev => [...prev, data]);
     }
+  };
+
+  const addCustomer = async (customer: Omit<Customer, 'id' | 'user_id' | 'created_at'>) => {
+    if (!currentUser) return;
+    const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+    if (!userId) return;
+    const { data, error } = await supabase.from('customers').insert([{ ...customer, user_id: userId }]).select().single();
+    if (!error && data) {
+      setCustomers(prev => prev.some(c => c.id === data.id) ? prev : [...prev, data]);
+    }
+  };
+
+  const updateCustomer = async (id: string, updates: Partial<Customer>) => {
+    const { user_id: _ignored, ...safeUpdates } = updates as any;
+    const { data, error } = await supabase.from('customers').update(safeUpdates).eq('id', id).select().single();
+    if (!error && data) {
+      setCustomers(prev => prev.map(c => c.id === id ? data : c));
+    }
+  };
+
+  const deleteCustomer = async (id: string) => {
+    const { error } = await supabase.from('customers').delete().eq('id', id);
+    if (!error) {
+      setCustomers(prev => prev.filter(c => c.id !== id));
+    }
+  };
+
+  const updateSupplier = async (id: string, updates: Partial<Supplier>) => {
+    const { user_id: _ignored, ...safeUpdates } = updates as any;
+    const { data, error } = await supabase.from('suppliers').update(safeUpdates).eq('id', id).select().single();
+    if (!error && data) {
+      setSuppliers(prev => prev.map(s => s.id === id ? data : s));
+    }
+  };
+
+  const deleteSupplier = async (id: string) => {
+    const { error } = await supabase.from('suppliers').delete().eq('id', id);
+    if (!error) {
+      setSuppliers(prev => prev.filter(s => s.id !== id));
+    }
+  };
+
+  /** Bulk insert for CSV import. Returns the number of rows that landed. */
+  const importProducts = async (rows: Omit<Product, 'id' | 'last_updated' | 'created_at' | 'user_id'>[]) => {
+    if (!currentUser || rows.length === 0) return 0;
+    const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+    if (!userId) return 0;
+    const { data, error } = await supabase.from('products').insert(rows.map(r => ({ ...r, user_id: userId }))).select();
+    if (error || !data) return 0;
+    setProducts(prev => [...prev, ...data.filter(d => !prev.some(p => p.id === d.id))]);
+    return data.length;
+  };
+
+  const importCustomers = async (rows: Omit<Customer, 'id' | 'user_id' | 'created_at'>[]) => {
+    if (!currentUser || rows.length === 0) return 0;
+    const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+    if (!userId) return 0;
+    const { data, error } = await supabase.from('customers').insert(rows.map(r => ({ ...r, user_id: userId }))).select();
+    if (error || !data) return 0;
+    setCustomers(prev => [...prev, ...data.filter(d => !prev.some(c => c.id === d.id))]);
+    return data.length;
   };
 
   // ---------------- Staff invitations ----------------
@@ -704,12 +857,16 @@ export const useStore = () => {
    */
   const removeStaffMember = async (id: string) => {
     if (!currentUser) return;
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .update({ parent_id: null, role: 'user' })
       .eq('id', id)
-      .eq('parent_id', currentUser.id);
+      .eq('parent_id', currentUser.id)
+      .select('id');
     if (error) throw new Error(error.message);
+    // Without this check a no-op update (stale id, RLS drift) would look like
+    // a success and desync the roster until the next refresh.
+    if (!data || data.length === 0) throw new Error('Staff member not found or already removed.');
     setUsers(prev => prev.filter(u => u.id !== id));
   };
 
@@ -765,10 +922,10 @@ export const useStore = () => {
   }, [currentUser]);
 
   return {
-    loading, initialLoadComplete, currentUser, authProviders, products, sales, returns, suppliers, notifications, users, settings, error, isLoggedIn, isOnline,
+    loading, initialLoadComplete, currentUser, authProviders, products, sales, returns, suppliers, customers, notifications, users, settings, error, isLoggedIn, isOnline,
     staffInvites, pendingInviteError, clearPendingInviteError,
-    login, loginWithGoogle, register, previewInvite, resetPassword, updatePassword, reauthenticate, signOutEverywhere, logout, updateSettings,
-    addProduct, updateProduct, deleteProduct, recordSale, reconcileInventory, recordReturn, addSupplier, removeStaffMember,
+    login, loginWithGoogle, register, verifySignupCode, resendSignupEmail, verifyEmailLink, previewInvite, resetPassword, verifyRecoveryCode, updatePassword, reauthenticate, signOutEverywhere, logout, updateSettings,
+    addProduct, updateProduct, deleteProduct, recordSale, reconcileInventory, recordReturn, addSupplier, updateSupplier, deleteSupplier, addCustomer, updateCustomer, deleteCustomer, importProducts, importCustomers, removeStaffMember,
     loadStaffInvites, createStaffInvite, revokeStaffInvite, joinBusinessWithCode,
     adminUsers, adminLoadUsers, adminUpdatePlan, adminAssignParent, adminSetRole,
     verifyAndActivateSubscription, refreshUsers, clearError, markNotificationRead, clearNotifications

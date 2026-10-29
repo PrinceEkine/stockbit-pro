@@ -1,4 +1,5 @@
 import { Product, Sale } from "../types";
+import { DEFAULT_CATEGORIES } from "../constants";
 import { invokeAi, ChatMessage } from "./aiClient";
 
 export interface InsightResult {
@@ -6,8 +7,11 @@ export interface InsightResult {
   sources: { title: string; uri: string }[];
 }
 
+// All calls go through the `ai-gateway` Edge Function, which forwards them to
+// Meta Muse (MODEL_API_KEY lives server-side — no key in the browser).
+
 /**
- * Converts raw markdown from the AI models into clean, readable plain text.
+ * Converts raw markdown from the AI model into clean, readable plain text.
  * Removes asterisk emphasis (**bold**, *italic*), heading hashes and stray
  * backticks so the customer-care chat and analytics never show raw "*" markers.
  */
@@ -38,7 +42,7 @@ const PLAIN_TEXT_DIRECTIVE =
  * Chat completion through the server-side gateway. `purpose: 'support'` is the
  * only mode available to signed-out visitors (landing-page StockBot).
  */
-export const callQwenPlus = async (
+export const chatWithMuse = async (
   messages: ChatMessage[],
   fallbackText: string = "",
   purpose: 'support' | 'insights' = 'support'
@@ -48,7 +52,7 @@ export const callQwenPlus = async (
     : [{ role: 'system' as const, content: PLAIN_TEXT_DIRECTIVE }, ...messages];
 
   try {
-    const { text } = await invokeAi({ provider: 'qwen', purpose, messages: directedMessages });
+    const { text } = await invokeAi({ provider: 'muse', purpose, messages: directedMessages });
     return text ? sanitizeAiText(text) : fallbackText;
   } catch (error) {
     console.error("AI gateway call failed:", error);
@@ -56,7 +60,7 @@ export const callQwenPlus = async (
   }
 };
 
-export const getInventoryInsightsQwen = async (products: Product[], sales: Sale[]): Promise<InsightResult> => {
+export const getInventoryInsightsMuse = async (products: Product[], sales: Sale[]): Promise<InsightResult> => {
   const itemSalesHistory = sales.slice(0, 50).map(s => ({
     d: s.date,
     items: s.items.map(i => ({ n: i.productName, q: i.quantity, p: i.price }))
@@ -77,7 +81,7 @@ export const getInventoryInsightsQwen = async (products: Product[], sales: Sale[
   `;
 
   try {
-    const textResult = await callQwenPlus([
+    const textResult = await chatWithMuse([
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ], "", 'insights');
@@ -86,5 +90,64 @@ export const getInventoryInsightsQwen = async (products: Product[], sales: Sale[
   } catch (error) {
     console.error("Insights Error:", error);
     return { text: "Error generating predictive audit. Please try again in a moment.", sources: [] };
+  }
+};
+
+/**
+ * Reads a barcode / SKU / serial number from a camera frame.
+ * The scanner passes raw base64 JPEG bytes (no data: prefix).
+ */
+export const identifyProductFromImage = async (base64Image: string): Promise<string | null> => {
+  try {
+    const { text } = await invokeAi({
+      provider: 'muse',
+      purpose: 'scan',
+      image: base64Image,
+      mimeType: 'image/jpeg',
+      prompt: "Identify SKU, Barcode, or Serial Number. ONLY output the raw code. If nothing found, output: NULL.",
+    });
+    const code = text.trim();
+    if (!code || code === 'NULL' || code.length < 3) return null;
+    return code;
+  } catch (error) {
+    console.error("SKU Identification Error:", error);
+    return null;
+  }
+};
+
+export interface ProductExtraction {
+  name: string;
+  sku: string;
+  batchNumber?: string;
+  expiryDate?: string;
+  price?: number;
+  cost_price?: number;
+  category?: string;
+}
+
+/** Extracts inventory metadata (name, SKU, price, category…) from a product photo. */
+export const extractProductDetailsFromImage = async (base64Image: string): Promise<ProductExtraction | null> => {
+  try {
+    const { text } = await invokeAi({
+      provider: 'muse',
+      purpose: 'scan',
+      image: base64Image,
+      mimeType: 'image/jpeg',
+      prompt: `Extract inventory metadata from this product image. VALID CATEGORIES: ${DEFAULT_CATEGORIES.join(', ')}. ` +
+        `Return name, sku, batchNumber, expiryDate, price, cost_price, and category. ` +
+        `Reply with ONLY a single JSON object, no other text, no markdown fences.`,
+    });
+    if (!text) return null;
+    try {
+      return JSON.parse(text) as ProductExtraction;
+    } catch {
+      // Tolerate a little surrounding prose: parse the first {...} block.
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) return null;
+      return JSON.parse(match[0]) as ProductExtraction;
+    }
+  } catch (error) {
+    console.error("Pro Extraction Error:", error);
+    return null;
   }
 };

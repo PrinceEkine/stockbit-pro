@@ -38,6 +38,13 @@ in the Supabase SQL editor, in order (all idempotent):
 2. `supabase/sql/security.sql` — RLS, protective triggers, `record_sale` RPC.
 3. `supabase/sql/staff_invites.sql` — staff invitations.
 4. `supabase/sql/admin.sql` — admin audit table, trigger fix for SQL-editor edits, and promotes the platform owner.
+5. `supabase/sql/signup_hardening.sql` — makes profile creation non-fatal for Auth signup
+   (a trigger exception used to surface as "Database error saving new user"), keeps
+   `profiles.email` in sync on email change, and adds realtime tables idempotently.
+
+To diagnose a signup problem on the live project, run the read-only queries in
+`supabase/sql/diagnostics.sql` in the SQL editor; the file also lists the Logs
+Explorer queries that show the real error behind a signup 500.
 
 Platform admins manage every account (grant/revoke plans, link staff, add admins) from the
 "Admin · Accounts" page, which calls the `admin-users` Edge Function; it verifies the caller's
@@ -66,8 +73,8 @@ role server-side and writes with the service role, so nothing privileged happens
 | Secret                | Where it lives                                | Used by                          |
 |-----------------------|-----------------------------------------------|----------------------------------|
 | `PAYSTACK_SECRET_KEY` | `supabase secrets set`                        | `verify-payment` Edge Function   |
-| `GEMINI_API_KEY`      | `supabase secrets set`                        | `ai-gateway` Edge Function       |
-| `QWEN_API_KEY`        | `supabase secrets set` (optional)             | `ai-gateway` Edge Function       |
+| `MODEL_API_KEY`       | `supabase secrets set`                        | `ai-gateway` Edge Function       |
+| Meta key format       | starts with `MO...` (https://dev.meta.ai)       | —                                |
 | Supabase anon key     | `VITE_SUPABASE_ANON_KEY` (public by design)   | browser                          |
 | Paystack public key   | `VITE_PAYSTACK_PUBLIC_KEY` (public by design) | browser                          |
 
@@ -75,22 +82,50 @@ role server-side and writes with the service role, so nothing privileged happens
 supabase functions deploy verify-payment
 supabase functions deploy ai-gateway
 supabase functions deploy admin-users
-supabase secrets set PAYSTACK_SECRET_KEY=sk_live_... GEMINI_API_KEY=... QWEN_API_KEY=...
+supabase secrets set PAYSTACK_SECRET_KEY=sk_live_... MODEL_API_KEY=MO...
 ```
 
-Then **remove** `GEMINI_API_KEY`, `API_KEY`, `ALIBABA_API_KEY`, `QWEN_API_KEY`
+Then **remove** `MODEL_API_KEY`, `GEMINI_API_KEY`, `API_KEY`, `ALIBABA_API_KEY`, `QWEN_API_KEY`
 from Netlify/Vercel build environment variables — the client no longer reads
 them and `vite.config.ts` no longer inlines them.
 
 ## 4. Supabase Auth dashboard settings
 
-- Providers → Email: minimum password length **10**, enable **Leaked password
-  protection** (HaveIBeenPwned).
+- Providers → Email: **Confirm email ON**, minimum password length **10**, enable
+  **Leaked password protection** (HaveIBeenPwned). Leave "Secure email change" on.
 - Providers → Google: enable it with a Google Cloud OAuth client ID/secret and
   register `https://<project-ref>.supabase.co/auth/v1/callback` as the redirect
   URI in Google Cloud Console.
-- URL configuration: add your production origin(s) to the redirect allow-list.
+- URL configuration: Site URL = production origin; Redirect URLs must include
+  `https://<production-origin>/**` (and `http://localhost:3000/**` for dev). The
+  app passes `<origin>/` as `emailRedirectTo`; if it is not allow-listed the
+  email link silently falls back to the Site URL.
+- Email Templates: paste `supabase/templates/*.html` (see that folder's README —
+  the confirm-signup template uses a code + token-hash link so verification
+  works on any device, not only the browser that signed up).
+- **SMTP: configure a custom sender.** Supabase's built-in sender is limited to
+  a handful of emails per hour and only delivers to the project's own team
+  members, so real customers never receive the confirmation email. This is the
+  single most common reason "sign-up fails". Resend/Postmark/SES need a verified
+  domain; without one, use Gmail SMTP (app password) or Brevo's free tier for
+  now. Details in `supabase/templates/README.md`.
 - Rate limits: defaults are fine; tighten "sign-in attempts" if you see abuse.
+
+### Email verification flow (how sign-up completes)
+
+1. `signUp()` creates the auth user; the `on_auth_user_created` trigger creates
+   the profile (non-fatal — the client recreates it on first login if missing).
+2. The user either types the 6-digit code (`verifyOtp` with `type: 'email'`) or
+   opens the `?token_hash=` link, which the app exchanges on load. Neither path
+   depends on the PKCE verifier, so they work from any device.
+3. Failed links (`#error=...&error_code=otp_expired`) are parsed on load and
+   shown on the sign-in screen with a "resend" path instead of being ignored.
+4. Signing in with an unverified account routes to the code screen rather than
+   counting as a failed password attempt.
+5. Password reset works the same way: the reset email carries a 6-digit code
+   (`verifyOtp` with `type: 'recovery'`) and a `?token_hash=...&type=recovery`
+   link. Both produce a recovery session, after which the "Set a new password"
+   dialog runs `updateUser({ password })` and signs out every other device.
 
 ## 5. Staff invitations — `supabase/sql/staff_invites.sql` (run after security.sql)
 
