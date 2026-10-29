@@ -124,6 +124,28 @@ export interface Customer {
   created_at: string;
 }
 
+export type PurchaseOrderStatus = 'draft' | 'sent' | 'partial' | 'received' | 'cancelled';
+
+export interface PurchaseOrderItem {
+  id: string;
+  order_id: string;
+  product_id: string | null;
+  product_name: string;
+  quantity_ordered: number;
+  quantity_received: number;
+  unit_cost: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  user_id: string;
+  supplier_id: string | null;
+  status: PurchaseOrderStatus;
+  notes: string;
+  created_at: string;
+  items: PurchaseOrderItem[];
+}
+
 export interface Supplier {
   id: string;
   user_id: string;
@@ -146,6 +168,7 @@ export type AppState = {
   returns: ProductReturn[];
   suppliers: Supplier[];
   customers: Customer[];
+  purchaseOrders: PurchaseOrder[];
   notifications: AppNotification[];
   users: User[]; 
   currentUser: User | null;
@@ -162,6 +185,7 @@ export enum View {
   Returns = 'returns',
   Suppliers = 'suppliers',
   Customers = 'customers',
+  PurchaseOrders = 'purchase-orders',
   AIInsights = 'ai-insights',
   Sustainability = 'sustainability',
   Stocktake = 'stocktake',

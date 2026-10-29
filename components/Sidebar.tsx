@@ -19,7 +19,8 @@ import {
   Info,
   Scale,
   DownloadCloud,
-  Contact
+  Contact,
+  ClipboardList
 } from 'lucide-react';
 import { View, User as UserType, Settings as SettingsType } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
@@ -75,6 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         { id: View.Stocktake, icon: ClipboardCheck, label: t.stocktake, hidden: isStaff },
         { id: View.Suppliers, icon: Users, label: t.suppliers, hidden: isStaff },
         { id: View.Customers, icon: Contact, label: t.customers || 'Customers', hidden: isStaff },
+        { id: View.PurchaseOrders, icon: ClipboardList, label: t.purchase_orders || 'Purchase Orders', hidden: isStaff },
       ]
     },
     {

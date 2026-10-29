@@ -83,7 +83,7 @@ Status: Audit complete. No code changed in this pass — this file is the record
 
 Candidates, not commitments — each needs its own scope pass before building:
 
-20. Purchase orders (raise, receive, reconcile against suppliers).
+20. ~~Purchase orders (raise, receive, reconcile against suppliers).~~ DONE 2026-10-29 (docs/FEATURE_PURCHASE_ORDERS.md).
 21. First-class locations/warehouses with stock transfers between them
     (today `location` is a free-text string).
 22. Granular staff roles/permissions beyond owner/staff.
@@ -104,3 +104,5 @@ Candidates, not commitments — each needs its own scope pass before building:
   (see docs/FEATURES_CUSTOMERS_CSV.md). Owner set platform vision
   ("Shopify for inventory"); recorded as Phase 4 candidates. WhatsApp
   features explicitly deferred.
+- 2026-10-29: Purchase orders shipped (Phase 4 item 20 — see
+  docs/FEATURE_PURCHASE_ORDERS.md).

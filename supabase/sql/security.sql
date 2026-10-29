@@ -197,7 +197,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['products', 'sales', 'returns', 'suppliers', 'settings', 'customers'] loop
+  foreach t in array array['products', 'sales', 'returns', 'suppliers', 'settings', 'customers', 'purchase_orders'] loop
     execute format('alter table public.%I enable row level security', t);
 
     execute format('drop policy if exists "%s_select_member" on public.%I', t, t);
@@ -229,7 +229,29 @@ create policy "notifications_own" on public.notifications
 -- Nothing is readable anonymously.
 revoke all on public.profiles, public.products, public.sales, public.returns,
            public.suppliers, public.settings, public.notifications,
-           public.customers from anon;
+           public.customers, public.purchase_orders,
+           public.purchase_order_items from anon;
+
+-- Order lines inherit tenancy from their parent order.
+alter table public.purchase_order_items enable row level security;
+drop policy if exists "purchase_order_items_member" on public.purchase_order_items;
+create policy "purchase_order_items_member" on public.purchase_order_items
+  for all to authenticated
+  using (exists (
+    select 1 from public.purchase_orders o
+    where o.id = order_id and o.user_id = public.business_owner_id()
+  ))
+  with check (exists (
+    select 1 from public.purchase_orders o
+    where o.id = order_id and o.user_id = public.business_owner_id()
+  ));
+drop policy if exists "purchase_order_items_delete_owner" on public.purchase_order_items;
+create policy "purchase_order_items_delete_owner" on public.purchase_order_items
+  for delete to authenticated
+  using (exists (
+    select 1 from public.purchase_orders o
+    where o.id = order_id and o.user_id = auth.uid()
+  ));
 
 -- -----------------------------------------------------------------------------
 -- 5) Sales integrity: stock is decremented atomically on the server so two
@@ -346,6 +368,87 @@ $$;
 
 revoke all on function public.record_sale(jsonb, text, text, text) from public, anon;
 grant execute on function public.record_sale(jsonb, text, text, text) to authenticated;
+
+-- Receive stock against a purchase order. p_items: [{id, quantity}] (line ids
+-- + newly arrived quantities). Refuses over-receipts, closed orders, drafts.
+create or replace function public.receive_purchase_order_items(p_order_id uuid, p_items jsonb)
+returns public.purchase_orders
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_owner uuid := public.business_owner_id();
+  v_order public.purchase_orders%rowtype;
+  v_item jsonb;
+  v_line public.purchase_order_items%rowtype;
+  v_qty int;
+  v_total_ordered int;
+  v_total_received int;
+begin
+  if v_owner is null then
+    raise exception 'Not a member of any business.' using errcode = 'insufficient_privilege';
+  end if;
+  if p_items is null or jsonb_array_length(p_items) = 0 then
+    raise exception 'Nothing to receive.';
+  end if;
+
+  select * into v_order from public.purchase_orders
+    where id = p_order_id and user_id = v_owner for update;
+  if not found then
+    raise exception 'Order not found.';
+  end if;
+  if v_order.status in ('received', 'cancelled') then
+    raise exception 'This order is already closed.';
+  end if;
+  if v_order.status = 'draft' then
+    raise exception 'Send this order before receiving stock.';
+  end if;
+
+  for v_item in select * from jsonb_array_elements(p_items) loop
+    v_qty := (v_item->>'quantity')::int;
+    if v_qty is null or v_qty <= 0 then
+      raise exception 'Invalid quantity.';
+    end if;
+
+    select * into v_line from public.purchase_order_items
+      where id = (v_item->>'id')::uuid and order_id = v_order.id for update;
+    if not found then
+      raise exception 'Order line not found.';
+    end if;
+    if v_line.quantity_received + v_qty > v_line.quantity_ordered then
+      raise exception 'Cannot receive more than ordered for "%".', v_line.product_name;
+    end if;
+
+    update public.purchase_order_items
+      set quantity_received = quantity_received + v_qty
+      where id = v_line.id;
+
+    if v_line.product_id is not null then
+      update public.products
+        set quantity = quantity + v_qty, last_updated = now()
+        where id = v_line.product_id and user_id = v_owner;
+    end if;
+  end loop;
+
+  select coalesce(sum(quantity_ordered), 0), coalesce(sum(quantity_received), 0)
+    into v_total_ordered, v_total_received
+    from public.purchase_order_items where order_id = v_order.id;
+
+  update public.purchase_orders
+    set status = case
+      when v_total_ordered > 0 and v_total_received >= v_total_ordered then 'received'
+      else 'partial'
+    end
+    where id = v_order.id
+    returning * into v_order;
+
+  return v_order;
+end;
+$$;
+
+revoke all on function public.receive_purchase_order_items(uuid, jsonb) from public, anon;
+grant execute on function public.receive_purchase_order_items(uuid, jsonb) to authenticated;
 
 -- -----------------------------------------------------------------------------
 -- 6) Recommended Auth dashboard settings (cannot be set from SQL):

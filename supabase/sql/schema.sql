@@ -103,6 +103,28 @@ create table if not exists public.customers (
 create index if not exists customers_user_idx on public.customers(user_id);
 create index if not exists customers_name_idx on public.customers(user_id, name);
 
+create table if not exists public.purchase_orders (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.profiles(id) on delete cascade,
+  supplier_id uuid references public.suppliers(id) on delete set null,
+  status      text not null default 'draft'
+              check (status in ('draft', 'sent', 'partial', 'received', 'cancelled')),
+  notes       text default '',
+  created_at  timestamptz not null default now()
+);
+create index if not exists purchase_orders_user_idx on public.purchase_orders(user_id, created_at desc);
+
+create table if not exists public.purchase_order_items (
+  id                uuid primary key default gen_random_uuid(),
+  order_id          uuid not null references public.purchase_orders(id) on delete cascade,
+  product_id        uuid references public.products(id) on delete set null,
+  product_name      text not null default '',
+  quantity_ordered  integer not null default 0 check (quantity_ordered >= 0),
+  quantity_received integer not null default 0 check (quantity_received >= 0),
+  unit_cost         numeric not null default 0 check (unit_cost >= 0)
+);
+create index if not exists purchase_order_items_order_idx on public.purchase_order_items(order_id);
+
 -- -----------------------------------------------------------------------------
 -- products
 -- -----------------------------------------------------------------------------

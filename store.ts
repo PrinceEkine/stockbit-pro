@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { EmailOtpType, Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { friendlyAuthError, NEUTRAL_SIGNUP_MESSAGE } from './lib/authErrors';
-import { Product, Sale, Supplier, Customer, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod, StaffInvite } from './types';
+import { Product, Sale, Supplier, Customer, PurchaseOrder, PurchaseOrderItem, User, Settings, AppNotification, SaleItem, SubscriptionPlan, StocktakeItem, ProductReturn, PaymentMethod, StaffInvite } from './types';
 import { DEFAULT_CATEGORIES } from './constants';
 import { getEntitlements, isUnlimited } from './constants/plans';
 
@@ -82,6 +82,7 @@ export const useStore = () => {
   const [returns, setReturns] = useState<ProductReturn[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -123,11 +124,12 @@ export const useStore = () => {
     }
 
     try {
-      const [prodRes, saleRes, suppRes, custRes, retRes, noteRes, settingsRes, profilesRes] = await Promise.all([
+      const [prodRes, saleRes, suppRes, custRes, poRes, retRes, noteRes, settingsRes, profilesRes] = await Promise.all([
         supabase.from('products').select('*').eq('user_id', targetUserId).order('name'),
         supabase.from('sales').select('*').eq('user_id', targetUserId).order('date', { ascending: false }),
         supabase.from('suppliers').select('*').eq('user_id', targetUserId).order('name'),
         supabase.from('customers').select('*').eq('user_id', targetUserId).order('name'),
+        supabase.from('purchase_orders').select('*').eq('user_id', targetUserId).order('created_at', { ascending: false }),
         supabase.from('returns').select('*').eq('user_id', targetUserId).order('date', { ascending: false }),
         supabase.from('notifications').select('*').eq('user_id', userId).order('date', { ascending: false }),
         supabase.from('settings').select('*').eq('user_id', targetUserId).maybeSingle(),
@@ -138,6 +140,19 @@ export const useStore = () => {
       if (saleRes.data) setSales(saleRes.data);
       if (suppRes.data) setSuppliers(suppRes.data);
     if (custRes.data) setCustomers(custRes.data);
+    if (poRes.data) {
+      const orderIds = poRes.data.map((o: any) => o.id);
+      const { data: poItems } = orderIds.length > 0
+        ? await supabase.from('purchase_order_items').select('*').in('order_id', orderIds)
+        : { data: [] as any[] };
+      const linesByOrder = new Map<string, any[]>();
+      (poItems || []).forEach((it: any) => {
+        const list = linesByOrder.get(it.order_id) || [];
+        list.push(it);
+        linesByOrder.set(it.order_id, list);
+      });
+      setPurchaseOrders(poRes.data.map((o: any) => ({ ...o, items: linesByOrder.get(o.id) || [] })));
+    }
       if (retRes.data) setReturns(retRes.data);
       if (noteRes.data) setNotifications(noteRes.data);
       if (settingsRes.data) {
@@ -325,6 +340,8 @@ export const useStore = () => {
         setReturns([]);
         setSuppliers([]);
         setCustomers([]);
+      setPurchaseOrders([]);
+        setPurchaseOrders([]);
         setNotifications([])
         setUsers([]);
         setInitialLoadComplete(true);
@@ -510,6 +527,7 @@ export const useStore = () => {
       setReturns([]);
       setSuppliers([]);
       setCustomers([]);
+      setPurchaseOrders([]);
       setNotifications([])
       setUsers([]);
     }
@@ -766,6 +784,66 @@ export const useStore = () => {
     return data.length;
   };
 
+  const refreshOrders = useCallback(async () => {
+    if (!currentUser) return;
+    const targetUserId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+    if (!targetUserId) return;
+    const { data: orders } = await supabase.from('purchase_orders').select('*').eq('user_id', targetUserId).order('created_at', { ascending: false });
+    if (!orders) return;
+    const ids = orders.map((o: any) => o.id);
+    const { data: items } = ids.length > 0
+      ? await supabase.from('purchase_order_items').select('*').in('order_id', ids)
+      : { data: [] as any[] };
+    const byOrder = new Map<string, any[]>();
+    (items || []).forEach((it: any) => {
+      const list = byOrder.get(it.order_id) || [];
+      list.push(it);
+      byOrder.set(it.order_id, list);
+    });
+    setPurchaseOrders(orders.map((o: any) => ({ ...o, items: byOrder.get(o.id) || [] })));
+  }, [currentUser]);
+
+  const createPurchaseOrder = async (supplierId: string | null, notes: string, lines: { product_id: string; quantity_ordered: number; unit_cost: number }[]) => {
+    if (!currentUser || lines.length === 0) throw new Error('Add at least one order line.');
+    const userId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+    if (!userId) throw new Error('No business found.');
+    const { data: order, error: orderError } = await supabase.from('purchase_orders').insert([{ user_id: userId, supplier_id: supplierId, status: 'draft', notes: notes || '' }]).select().single();
+    if (orderError || !order) throw new Error(orderError?.message || 'Could not create the order.');
+    const nameById = new Map(products.map(p => [p.id, p.name] as const));
+    const { error: linesError } = await supabase.from('purchase_order_items').insert(lines.map(l => ({
+      order_id: order.id, product_id: l.product_id, product_name: nameById.get(l.product_id) || '',
+      quantity_ordered: l.quantity_ordered, unit_cost: l.unit_cost,
+    })));
+    if (linesError) throw new Error(linesError.message);
+    await refreshOrders();
+  };
+
+  const updatePurchaseOrderStatus = async (id: string, status: 'sent' | 'cancelled') => {
+    const { error } = await supabase.from('purchase_orders').update({ status }).eq('id', id);
+    if (error) throw new Error(error.message);
+    setPurchaseOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+  };
+
+  const receivePurchaseOrder = async (orderId: string, lines: { id: string; quantity: number }[]) => {
+    const { error } = await supabase.rpc('receive_purchase_order_items', { p_order_id: orderId, p_items: lines });
+    if (error) throw new Error(error.message.replace(/^.*?:\s*/, ''));
+    await refreshOrders();
+    // Receiving changes on-hand quantities — refresh products too.
+    if (currentUser) {
+      const targetUserId = currentUser.role === 'staff' ? currentUser.parentId : currentUser.id;
+      if (targetUserId) {
+        const { data: prods } = await supabase.from('products').select('*').eq('user_id', targetUserId).order('name');
+        if (prods) setProducts(prods);
+      }
+    }
+  };
+
+  const deletePurchaseOrder = async (id: string) => {
+    const { error } = await supabase.from('purchase_orders').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    setPurchaseOrders(prev => prev.filter(o => o.id !== id));
+  };
+
   // ---------------- Staff invitations ----------------
   const loadStaffInvites = useCallback(async () => {
     if (!currentUser || currentUser.role === 'staff') return;
@@ -922,10 +1000,10 @@ export const useStore = () => {
   }, [currentUser]);
 
   return {
-    loading, initialLoadComplete, currentUser, authProviders, products, sales, returns, suppliers, customers, notifications, users, settings, error, isLoggedIn, isOnline,
+    loading, initialLoadComplete, currentUser, authProviders, products, sales, returns, suppliers, customers, purchaseOrders, notifications, users, settings, error, isLoggedIn, isOnline,
     staffInvites, pendingInviteError, clearPendingInviteError,
     login, loginWithGoogle, register, verifySignupCode, resendSignupEmail, verifyEmailLink, previewInvite, resetPassword, verifyRecoveryCode, updatePassword, reauthenticate, signOutEverywhere, logout, updateSettings,
-    addProduct, updateProduct, deleteProduct, recordSale, reconcileInventory, recordReturn, addSupplier, updateSupplier, deleteSupplier, addCustomer, updateCustomer, deleteCustomer, importProducts, importCustomers, removeStaffMember,
+    addProduct, updateProduct, deleteProduct, recordSale, reconcileInventory, recordReturn, addSupplier, updateSupplier, deleteSupplier, addCustomer, updateCustomer, deleteCustomer, importProducts, importCustomers, refreshOrders, createPurchaseOrder, updatePurchaseOrderStatus, receivePurchaseOrder, deletePurchaseOrder, removeStaffMember,
     loadStaffInvites, createStaffInvite, revokeStaffInvite, joinBusinessWithCode,
     adminUsers, adminLoadUsers, adminUpdatePlan, adminAssignParent, adminSetRole,
     verifyAndActivateSubscription, refreshUsers, clearError, markNotificationRead, clearNotifications

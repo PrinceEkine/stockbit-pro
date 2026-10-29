@@ -13,6 +13,7 @@ import Returns from './pages/Returns';
 import Reports from './pages/Reports';
 import Suppliers from './pages/Suppliers';
 import Customers from './pages/Customers';
+import PurchaseOrders from './pages/PurchaseOrders';
 import SettingsView from './pages/Settings';
 import LaunchCenter from './pages/LaunchCenter';
 import UserManagement from './pages/UserManagement';
@@ -451,6 +452,7 @@ const App: React.FC = () => {
       case View.Reports: return <Reports state={store} />;
       case View.Suppliers: return <Suppliers suppliers={store.suppliers || []} onAdd={store.addSupplier} onUpdate={store.updateSupplier} onDelete={store.deleteSupplier} settings={store.settings} />;
       case View.Customers: return <Customers customers={store.customers || []} sales={store.sales || []} onAdd={store.addCustomer} onUpdate={store.updateCustomer} onDelete={store.deleteCustomer} onImport={store.importCustomers} settings={store.settings} />;
+      case View.PurchaseOrders: return <PurchaseOrders orders={store.purchaseOrders || []} products={store.products || []} suppliers={store.suppliers || []} onCreate={store.createPurchaseOrder} onUpdateStatus={store.updatePurchaseOrderStatus} onReceive={store.receivePurchaseOrder} onDelete={store.deletePurchaseOrder} settings={store.settings} />;
       case View.Settings: return <SettingsView settings={store.settings} onUpdate={store.updateSettings} staff={store.users || []} currentUser={store.currentUser} onRemoveStaff={store.removeStaffMember} invites={store.staffInvites} onLoadInvites={store.loadStaffInvites} onCreateInvite={store.createStaffInvite} onRevokeInvite={store.revokeStaffInvite} onJoinWithCode={store.joinBusinessWithCode} onVerifyPayment={store.verifyAndActivateSubscription} onUpdatePassword={store.updatePassword} onRefreshStaff={store.refreshUsers} onSignOutEverywhere={store.signOutEverywhere} authProviders={store.authProviders} />;
       case View.LaunchCenter: return <LaunchCenter state={store} onUpdateSettings={store.updateSettings} />;
       case View.UserManagement:
