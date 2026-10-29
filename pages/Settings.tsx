@@ -1001,7 +1001,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, onUpdate, staff, currentU
             >
                <div className="flex flex-col items-center justify-center text-center space-y-8">
                   <div className="space-y-4">
-                    <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white tracking-tight">Choose Your <span className="text-indigo-600">Plan</span></h2>
+                    <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Choose Your <span className="text-indigo-600">Plan</span></h2>
                     <p className="text-base text-slate-500 dark:text-slate-400 font-normal max-w-2xl px-4">Elevate your business with professional inventory management and real-time insights.</p>
                   </div>
 
@@ -1102,7 +1102,7 @@ const ChannelToggle = ({ label, desc, icon, active, onChange, locked }: any) => 
       onClick={onChange}
       disabled={locked}
       title={locked ? 'Available on Business and Enterprise plans' : undefined}
-      className={`w-18 h-10 rounded-full transition-all duration-500 relative shadow-inner shrink-0 ${
+      className={`w-[4.5rem] h-10 rounded-full transition-all duration-500 relative shadow-inner shrink-0 ${
         locked ? 'bg-slate-200 dark:bg-slate-700 cursor-not-allowed opacity-70' : active ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
       }`}
     >
@@ -1118,7 +1118,7 @@ const ChannelToggle = ({ label, desc, icon, active, onChange, locked }: any) => 
 );
 
 const PlanCard = ({ title, price, cycle, desc, active, features, onSelect, icon, popular }: any) => (
-  <div className={`relative p-8 md:p-10 rounded-[3rem] flex flex-col transition-all duration-500 h-full border-2 ${
+  <div className={`relative p-6 md:p-8 rounded-[2rem] flex flex-col transition-all duration-500 h-full border-2 ${
     active 
       ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xl shadow-indigo-600/30 scale-[1.02] z-10' 
       : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-indigo-500/30 shadow-sm'
@@ -1130,16 +1130,16 @@ const PlanCard = ({ title, price, cycle, desc, active, features, onSelect, icon,
     )}
     
     <div className="flex-1 flex flex-col">
-      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-8 shadow-sm shrink-0 ${
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 shadow-sm shrink-0 ${
         active ? 'bg-white/20 text-white' : 'bg-indigo-50 dark:bg-indigo-400/10 text-indigo-600 dark:text-indigo-400'
       }`}>
          {icon}
       </div>
       
-      <h3 className={`text-2xl md:text-3xl font-black mb-2 tracking-tighter uppercase ${active ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{title}</h3>
+      <h3 className={`text-lg md:text-xl font-extrabold mb-1.5 tracking-tight ${active ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{title}</h3>
       <div className="flex items-baseline gap-2 mb-6">
-        <span className={`text-4xl md:text-5xl font-black tracking-tighter ${active ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{price}</span>
-        <span className={`text-[10px] md:text-sm font-black uppercase tracking-widest ${active ? 'text-indigo-100/90' : 'text-slate-400 dark:text-slate-500'}`}>{cycle}</span>
+        <span className={`text-3xl md:text-4xl font-extrabold tracking-tight ${active ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{price}</span>
+        <span className={`text-xs font-bold ${active ? 'text-indigo-100/90' : 'text-slate-400 dark:text-slate-500'}`}>{cycle}</span>
       </div>
       
       <p className={`text-sm font-medium leading-relaxed mb-10 ${active ? 'text-indigo-100/90' : 'text-slate-600 dark:text-slate-400'}`}>

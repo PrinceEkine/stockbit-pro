@@ -1,6 +1,7 @@
 import { Product, Sale } from "../types";
 import { DEFAULT_CATEGORIES } from "../constants";
-import { invokeAi, ChatMessage } from "./aiClient";
+import { invokeAi, ChatMessage, AiGatewayError } from "./aiClient";
+import { answerSupportOffline, buildOfflineFallback } from "./supportBot";
 
 export interface InsightResult {
   text: string;
@@ -38,26 +39,60 @@ export const sanitizeAiText = (raw: string): string => {
 const PLAIN_TEXT_DIRECTIVE =
   "Formatting rules: reply in plain text only. Do NOT use markdown, asterisks (*), underscores, hashes (#), or backticks for emphasis, bullets, or headings. Use plain sentences, and where you need a list start each item on a new line with a simple dot (•).";
 
+export interface ChatStatusResult {
+  text: string;
+  /** 'ai' when the gateway answered, 'offline' when the local FAQ did. */
+  source: 'ai' | 'offline';
+  /** Gateway error code when source is 'offline' because the AI failed. */
+  errorCode?: string;
+}
+
+const lastUserMessage = (messages: ChatMessage[]): string => {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') return messages[i].content;
+  }
+  return '';
+};
+
 /**
  * Chat completion through the server-side gateway. `purpose: 'support'` is the
  * only mode available to signed-out visitors (landing-page StockBot).
+ *
+ * When the gateway fails, support chat falls back to the offline FAQ so the
+ * bot still answers common questions; the returned `source` tells the UI
+ * whether the reply came from the live AI. Insights/scan callers should use
+ * the raw result and handle errors themselves.
  */
-export const chatWithMuse = async (
+export const chatWithMuseStatus = async (
   messages: ChatMessage[],
-  fallbackText: string = "",
   purpose: 'support' | 'insights' = 'support'
-): Promise<string> => {
+): Promise<ChatStatusResult> => {
   const directedMessages = messages.some(m => m.role === 'system')
     ? messages.map(m => m.role === 'system' ? { ...m, content: `${m.content}\n\n${PLAIN_TEXT_DIRECTIVE}` } : m)
     : [{ role: 'system' as const, content: PLAIN_TEXT_DIRECTIVE }, ...messages];
 
   try {
     const { text } = await invokeAi({ provider: 'muse', purpose, messages: directedMessages });
-    return text ? sanitizeAiText(text) : fallbackText;
+    if (text) return { text: sanitizeAiText(text), source: 'ai' };
+    throw new AiGatewayError('Empty AI response.', 'PROVIDER_ERROR');
   } catch (error) {
     console.error("AI gateway call failed:", error);
-    return fallbackText || "Service is temporarily unavailable. Please try again shortly.";
+    const code = error instanceof AiGatewayError ? error.code : 'GATEWAY_ERROR';
+    const offline = purpose === 'support'
+      ? (answerSupportOffline(lastUserMessage(messages)) || buildOfflineFallback())
+      : '';
+    return { text: offline, source: 'offline', errorCode: code };
   }
+};
+
+export const chatWithMuse = async (
+  messages: ChatMessage[],
+  fallbackText: string = "",
+  purpose: 'support' | 'insights' = 'support'
+): Promise<string> => {
+  const result = await chatWithMuseStatus(messages, purpose);
+  if (result.source === 'ai') return result.text;
+  return result.text || fallbackText || "Service is temporarily unavailable. Please try again shortly.";
 };
 
 export const getInventoryInsightsMuse = async (products: Product[], sales: Sale[]): Promise<InsightResult> => {

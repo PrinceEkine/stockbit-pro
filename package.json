@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
+    "test": "vitest run",
     "deploy:supabase": "powershell -ExecutionPolicy Bypass -File scripts/deploy-supabase.ps1"
   },
   "dependencies": {
