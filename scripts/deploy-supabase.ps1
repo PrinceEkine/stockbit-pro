@@ -4,11 +4,11 @@
 #   2) npm run deploy:supabase
 #
 # Applies the SQL migrations (schema, RLS/security, staff invites) and deploys
-# both Edge Functions to project knrpqdehivlprvzjkcgx. Secrets are set only if
+# the Edge Functions to project blrlykycdtphdxtonlja. Secrets are set only if
 # the matching environment variables are present in this shell.
 
 $ErrorActionPreference = "Stop"
-$ref = "knrpqdehivlprvzjkcgx"
+$ref = "blrlykycdtphdxtonlja"
 
 Write-Host "==> Linking project $ref"
 npx supabase link --project-ref $ref
