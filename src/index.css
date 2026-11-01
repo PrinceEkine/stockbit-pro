@@ -45,6 +45,21 @@ html.dark body { background-color: #020617; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* Thin, quiet scrollbars for the app shell. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.35);
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
 @layer components {
   .glass {
     @apply backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border border-white/20 dark:border-white/5;

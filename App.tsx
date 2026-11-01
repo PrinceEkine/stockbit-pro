@@ -19,6 +19,7 @@ import LaunchCenter from './pages/LaunchCenter';
 import UserManagement from './pages/UserManagement';
 import LandingPage from './pages/LandingPage';
 import NotificationPanel from './components/NotificationPanel';
+import { TrialBanner } from './components/TrialNurture';
 import PasswordResetModal from './components/PasswordResetModal';
 import BottomNavigation from './components/BottomNavigation';
 import AboutUs from './pages/AboutUs';
@@ -511,6 +512,14 @@ const App: React.FC = () => {
           </div>
         )}
 
+        <TrialBanner
+          daysLeft={trialStatus.daysLeft}
+          isSubscribed={trialStatus.isSubscribed}
+          isExpired={trialStatus.isExpired}
+          userId={store.currentUser?.id || ''}
+          role={store.currentUser?.role || ''}
+          onSeePlans={() => setActiveView(View.Settings)}
+        />
         <div className="p-3 pb-28 md:p-8 lg:p-10 flex-1 overflow-x-hidden min-h-0 md:pb-[env(safe-area-inset-bottom)]">{renderView()}</div>
         <BottomNavigation
           activeView={activeView}

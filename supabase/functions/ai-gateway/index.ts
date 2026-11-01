@@ -86,11 +86,26 @@ interface MuseVisionRequest {
 }
 type GatewayRequest = MuseTextRequest | MuseVisionRequest;
 
-const MAX_ANON_CHARS = 2000;
+const MAX_ANON_CHARS = 4000;
 const MAX_AUTH_CHARS = 60_000; // inventory snapshots can be sizeable
 const MAX_IMAGE_CHARS = 8_000_000; // ~6 MB of base64
 
 const totalChars = (v: unknown): number => JSON.stringify(v ?? '').length;
+
+/**
+ * Anonymous visitors share one system prompt written by us — only THEIR words
+ * count against the message cap. Counting the whole payload (system prompt +
+ * JSON overhead) made normal questions fail with MESSAGE_TOO_LONG.
+ */
+const userChars = (messages: unknown): number =>
+  Array.isArray(messages)
+    ? (messages as { role?: string; content?: unknown }[])
+      .filter((m) => m?.role === 'user' && typeof m.content === 'string')
+      .reduce((n, m) => n + (m.content as string).length, 0)
+    : 0;
+
+const NOT_CONFIGURED_HINT =
+  'Add MODEL_API_KEY under Supabase Dashboard → Edge Functions → Secrets (NOT Project Settings → Environment Variables — those never reach Edge Functions), then redeploy: supabase functions deploy ai-gateway --no-verify-jwt. CLI alternative: supabase secrets set MODEL_API_KEY=... then redeploy.';
 
 const VISION_MIME_ALLOWLIST = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
@@ -182,7 +197,7 @@ Deno.serve(async (req) => {
   if (probe) {
     if (!museKey) {
       return fail('NOT_CONFIGURED', 'AI is not configured on the server.', 503, {
-        hint: 'Set the MODEL_API_KEY Edge Function secret (Supabase Dashboard → Edge Functions → Secrets, or: supabase secrets set MODEL_API_KEY=...) and redeploy ai-gateway.',
+        hint: NOT_CONFIGURED_HINT,
       });
     }
     return json({ ok: true, authenticated: req.headers.get('Authorization')?.startsWith('Bearer ') ?? false });
@@ -190,7 +205,7 @@ Deno.serve(async (req) => {
 
   if (!museKey) {
     return fail('NOT_CONFIGURED', 'AI is not configured on the server.', 503, {
-      hint: 'Set the MODEL_API_KEY Edge Function secret (Supabase Dashboard → Edge Functions → Secrets, or: supabase secrets set MODEL_API_KEY=...) and redeploy ai-gateway.',
+      hint: NOT_CONFIGURED_HINT,
     });
   }
 
@@ -217,7 +232,7 @@ Deno.serve(async (req) => {
       }
       if (!allow(`anon:${ip}`, 12, 60_000)) return fail('RATE_LIMITED', 'Too many requests. Please slow down.', 429);
       const messages = (body as MuseTextRequest).messages;
-      if (totalChars(messages) > MAX_ANON_CHARS) return fail('MESSAGE_TOO_LONG', 'Message too long. Please keep it under a few sentences.', 413);
+      if (userChars(messages) > MAX_ANON_CHARS) return fail('MESSAGE_TOO_LONG', 'Message too long. Please keep it under a few sentences.', 413);
     } else {
       if (!allow(`user:${userId}`, 60, 60_000)) return fail('RATE_LIMITED', 'Too many requests. Please slow down.', 429);
       if (totalChars(body) > MAX_AUTH_CHARS * 4) return fail('REQUEST_TOO_LARGE', 'Request too large.', 413);

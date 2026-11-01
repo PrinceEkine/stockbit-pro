@@ -98,3 +98,35 @@ export const invokeAi = async (body: Record<string, unknown>): Promise<AiRespons
   }
   return { text: data?.text || '', sources: Array.isArray(data?.sources) ? data.sources : [] };
 };
+
+export interface AiProbeResult {
+  ok: boolean;
+  code?: AiGatewayCode;
+  message?: string;
+}
+
+/**
+ * Lightweight health check for the `ai-gateway` Edge Function. Spends no AI
+ * budget — the server answers from its own configuration. Used by the chat
+ * widget to show an honest online/offline badge before the first message.
+ */
+export const probeAiGateway = async (): Promise<AiProbeResult> => {
+  try {
+    const fn = supabase.functions as unknown as { url?: string; headers?: Record<string, string> };
+    if (!fn?.url) return { ok: false, code: 'NETWORK_ERROR', message: 'AI client not initialised.' };
+    const res = await fetch(`${fn.url}/ai-gateway`, {
+      method: 'POST',
+      headers: { ...(fn.headers || {}), 'Content-Type': 'application/json', 'x-ai-probe': 'health' },
+      body: JSON.stringify({}),
+    });
+    if (res.ok) return { ok: true };
+    const parsed = await res.json().catch(() => null);
+    return {
+      ok: false,
+      code: (parsed?.code as AiGatewayCode) || (res.status === 404 ? 'FUNCTION_NOT_DEPLOYED' : 'GATEWAY_ERROR'),
+      message: parsed?.error || 'AI service unreachable.',
+    };
+  } catch {
+    return { ok: false, code: 'NETWORK_ERROR', message: 'Could not reach the AI service.' };
+  }
+};

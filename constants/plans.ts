@@ -39,3 +39,17 @@ export const getEntitlements = (user: User | null): PlanEntitlements => {
 };
 
 export const isUnlimited = (value: number): boolean => value >= UNLIMITED;
+
+export interface PlanPricing {
+  monthly: number;
+  annual: number;
+}
+
+/** Canonical Naira prices (ex-VAT). Keep in sync with Settings billing. */
+export const PLAN_PRICING: Record<SubscriptionPlan, PlanPricing> = {
+  beta: { monthly: 5000, annual: 50000 },
+  mega: { monthly: 7999, annual: 80000 },
+  mega_pro: { monthly: 12999, annual: 128000 },
+};
+
+export const formatNaira = (n: number): string => `₦${n.toLocaleString('en-NG')}`;

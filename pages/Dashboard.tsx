@@ -9,6 +9,7 @@ import {
 import { AppState, View } from '../types';
 import { getEffectiveTrialStatus, TRIAL_DAYS } from '../store';
 import { TRANSLATIONS } from '../constants/translations';
+import { SetupChecklist } from '../components/TrialNurture';
 
 interface DashboardProps {
   state: AppState;
@@ -167,6 +168,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onNavigate }) => {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-1000 px-1 pb-32">
+      <SetupChecklist products={state.products || []} sales={state.sales || []} users={state.users || []} userId={state.currentUser?.id || ''} role={state.currentUser?.role || ''} onNavigate={onNavigate} />
       {/* HEADER SECTION */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2">
         <div>

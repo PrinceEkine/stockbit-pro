@@ -19,6 +19,7 @@ export default {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         display: ['Space Grotesk', 'Inter', 'sans-serif'],
         mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+        editorial: ['Fraunces', 'Georgia', 'serif'],
       },
       borderRadius: {
         xl: '1rem',

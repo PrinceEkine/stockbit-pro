@@ -1,10 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, animate, useInView, useMotionValue, useReducedMotion, useSpring, useTransform } from 'motion/react';
 import {
   Box,
   Sparkles,
   Smartphone,
-  CheckCircle2,
   BarChart3,
   ShoppingCart,
   MessageSquare,
@@ -17,20 +16,24 @@ import {
   Activity,
   ArrowRight,
   DownloadCloud,
-  Terminal,
-  Cpu,
   CreditCard,
-  Scan,
   Database,
   TrendingUp,
   Languages,
   ChevronDown,
   Layout,
-  LogIn
+  LogIn,
+  Star,
+  ShieldCheck,
+  Check,
+  Quote,
+  Plus
 } from 'lucide-react';
 import { chatWithMuseStatus } from '../services/museService';
-import { View, AppLanguage } from '../types';
+import { probeAiGateway } from '../services/aiClient';
+import { View, AppLanguage, SubscriptionPlan } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
+import { PLAN_ENTITLEMENTS, PLAN_PRICING, formatNaira } from '../constants/plans';
 
 interface LandingPageProps {
   isLoggedIn: boolean;
@@ -43,34 +46,106 @@ interface LandingPageProps {
   onEnterTerminal: () => void;
 }
 
-const FLOATING_PARTICLES = [
-  { Icon: Box, size: 32, top: '12%', left: '6%', duration: 14, delay: 0, color: 'text-indigo-500/20 dark:text-indigo-400/30' },
-  { Icon: ShoppingCart, size: 26, top: '25%', left: '84%', duration: 18, delay: 1, color: 'text-emerald-500/20 dark:text-emerald-400/30' },
-  { Icon: TrendingUp, size: 28, top: '58%', left: '10%', duration: 22, delay: 2, color: 'text-blue-500/20 dark:text-blue-400/30' },
-  { Icon: Sparkles, size: 20, top: '70%', left: '76%', duration: 12, delay: 0.5, color: 'text-amber-500/25 dark:text-amber-400/35' },
-  { Icon: Database, size: 24, top: '38%', left: '90%', duration: 16, delay: 1.5, color: 'text-indigo-500/20 dark:text-indigo-400/30' },
-  { Icon: Scan, size: 26, top: '84%', left: '16%', duration: 20, delay: 3, color: 'text-rose-500/20 dark:text-rose-400/30' },
-  { Icon: BarChart3, size: 22, top: '45%', left: '5%', duration: 19, delay: 4, color: 'text-sky-500/20 dark:text-sky-400/30' },
-  { Icon: CreditCard, size: 24, top: '8%', left: '75%', duration: 15, delay: 2.5, color: 'text-emerald-500/20 dark:text-emerald-400/30' },
-  { Icon: Cpu, size: 20, top: '50%', left: '82%', duration: 21, delay: 1.2, color: 'text-indigo-500/15 dark:text-indigo-400/25' },
-  { Icon: Smartphone, size: 22, top: '30%', left: '18%', duration: 17, delay: 3.5, color: 'text-purple-500/20 dark:text-purple-400/30' },
-  { Icon: Layout, size: 24, top: '65%', left: '88%', duration: 24, delay: 0.8, color: 'text-pink-500/15 dark:text-pink-400/25' },
-  { Icon: CheckCircle2, size: 18, top: '78%', left: '42%', duration: 11, delay: 5, color: 'text-teal-500/20 dark:text-teal-400/25' },
-  { Icon: Terminal, size: 20, top: '92%', left: '68%', duration: 16, delay: 2.2, color: 'text-violet-500/20 dark:text-violet-400/30' },
-  { Icon: Activity, size: 22, top: '5%', left: '35%', duration: 13, delay: 1.8, color: 'text-rose-500/15 dark:text-rose-400/25' },
-  { Icon: MessageSquare, size: 18, top: '18%', left: '52%', duration: 15, delay: 4.1, color: 'text-blue-500/15 dark:text-blue-400/25' }
+/* Placeholder quotes — replace with real customer testimonials before launch. */
+const TESTIMONIALS = [
+  {
+    quote: 'I used to close shop for two days every month to count stock. Now I count on my phone in one evening — and I catch every missing carton.',
+    name: 'Adaeze O.',
+    detail: "Ada's Provisions · Onitsha",
+    initials: 'AO',
+  },
+  {
+    quote: 'My sales boy knows every sale is recorded. Shrinkage stopped in the first week, and my profit finally matches my bank balance.',
+    name: 'Musa I.',
+    detail: 'Phone accessories · Kano',
+    initials: 'MI',
+  },
+  {
+    quote: 'Payout days used to be guesswork. Now I see my profit for the day before I sleep, even when I never entered the shop.',
+    name: 'Tunde B.',
+    detail: 'Boutique · Lekki, Lagos',
+    initials: 'TB',
+  },
+];
+
+const FAQS = [
+  {
+    q: 'How does the 60-day free trial work?',
+    a: 'Every new shop gets full access for 60 days — no card, no payment. When the trial ends, pick Entry, Business or Enterprise to keep going. Your stock, sales and staff data stays intact.',
+  },
+  {
+    q: 'Do I need special hardware?',
+    a: 'No. Any smartphone becomes a barcode scanner and a point of sale. Snap a photo of a product and StockBit fills in the name, SKU and price for you. Receipt printing works with standard Bluetooth printers.',
+  },
+  {
+    q: 'What happens if my internet goes off?',
+    a: 'Your records sync to the cloud, so nothing is lost if you lose your phone or your data runs out. The app always shows whether you are online, and your shop data stays backed up.',
+  },
+  {
+    q: 'How do my staff join?',
+    a: 'Send them your invite code. They join as staff and get the sales terminal, while you keep control of reports, pricing and billing. Entry allows 3 team members, Business 8, and Enterprise is unlimited.',
+  },
+  {
+    q: 'How do I pay?',
+    a: 'Securely with Paystack, in Naira — monthly, or annually with 2 months free. Entry is ₦5,000/month, Business ₦7,999/month, Enterprise ₦12,999/month.',
+  },
+  {
+    q: 'How do I get help?',
+    a: 'Call 07010698264 any time, chat on WhatsApp at 07072127949, or ask StockBot — the assistant on this page. Real humans, based in Nigeria.',
+  },
 ];
 
 const LIVE_FEED_TRANSACTIONS = [
-  "🛒 Ikeja: New sale recorded • ₦18,500.00",
-  "📦 Abuja: Inventory synced • 140 units",
-  "⚡ Lekki: Auto-restock triggered for Category A",
-  "💳 PH Hub: Retail invoice generated",
-  "🌱 Mega Pro: Sustainability score of 85 verified",
-  "📈 Jumia Mall: Multi-channel stock updated",
-  "🛒 Kano: Walk-in customer checked out • ₦42,000.00",
-  "📦 Lagos Main: Received batch from Supplier A",
+  'Ikeja · New sale recorded · ₦18,500',
+  'Abuja · Inventory synced · 140 units',
+  'Lekki · Low-stock alert · Daneo Milk',
+  'Port Harcourt · Receipt printed · #1042',
+  'Kano · Walk-in checkout · ₦42,000',
+  'Lagos Mainland · Supplier batch received',
 ];
+
+const STATS = [
+  { target: 60, decimals: 0, prefix: '', suffix: ' days', label: 'Free trial, no card required' },
+  { target: 500, decimals: 0, prefix: '', suffix: '+', label: 'Shops run on StockBit Pro' },
+  { target: 4.9, decimals: 1, prefix: '', suffix: ' / 5', label: 'Average owner rating' },
+  { target: 24, decimals: 0, prefix: '', suffix: ' / 7', label: 'Nigerian support line' },
+];
+
+const PLAN_ORDER: { key: SubscriptionPlan; blurb: string; featured?: boolean }[] = [
+  { key: 'beta', blurb: 'For kiosks and starting vendors.' },
+  { key: 'mega', blurb: 'For growing retail stores.', featured: true },
+  { key: 'mega_pro', blurb: 'For chains and large hubs.' },
+];
+
+const PLAN_FEATURES: Record<SubscriptionPlan, string[]> = {
+  beta: ['Point of sale + receipts', 'Low-stock alerts', '3 team members', 'Cloud backup'],
+  mega: ['Everything in Entry', '8 team members', 'Jumia + Konga sync', 'AI reports & forecasting'],
+  mega_pro: ['Everything in Business', 'Unlimited team members', 'Sustainability audit', 'Multi-store + priority support'],
+};
+
+/** Number that counts up when scrolled into view (instant when reduced motion). */
+const CountUp = ({ target, decimals, prefix, suffix }: { target: number; decimals: number; prefix: string; suffix: string }) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-40px' });
+  const reduceMotion = useReducedMotion();
+  const [display, setDisplay] = useState((0).toFixed(decimals));
+
+  useEffect(() => {
+    if (!inView) return;
+    if (reduceMotion) {
+      setDisplay(target.toFixed(decimals));
+      return;
+    }
+    const controls = animate(0, target, {
+      duration: 1.4,
+      ease: [0.16, 1, 0.3, 1],
+      onUpdate: (v) => setDisplay(v.toFixed(decimals)),
+    });
+    return () => controls.stop();
+  }, [inView, target, decimals, reduceMotion]);
+
+  return <span ref={ref} className="tabular-nums">{prefix}{display}{suffix}</span>;
+};
 
 const QUICK_QUESTIONS = [
   "What is StockBit Pro?",
@@ -78,6 +153,21 @@ const QUICK_QUESTIONS = [
   "Is barcode scanning supported?",
   "Show support contact"
 ];
+
+/** Visitor-friendly notice for each AI gateway failure code. */
+const chatNoticeFor = (code?: string): string => {
+  switch (code) {
+    case 'NOT_CONFIGURED':
+    case 'FUNCTION_NOT_DEPLOYED':
+      return 'Live AI is being set up — answering from local help for now. Call 07010698264 for urgent issues.';
+    case 'MESSAGE_TOO_LONG':
+      return 'That message was too long — please keep it to a few sentences and try again.';
+    case 'RATE_LIMITED':
+      return 'Too many messages at once — please wait a moment and try again.';
+    default:
+      return 'Live AI is unreachable — answering from local help. Call 07010698264 for urgent issues.';
+  }
+};
 
 const LandingPage: React.FC<LandingPageProps> = ({
   isLoggedIn,
@@ -99,10 +189,20 @@ const LandingPage: React.FC<LandingPageProps> = ({
   const [feedIndex, setFeedIndex] = useState(0);
   const [chatStatus, setChatStatus] = useState<'online' | 'offline' | 'unknown'>('unknown');
   const [chatNotice, setChatNotice] = useState<string | null>(null);
+  const [annualBilling, setAnnualBilling] = useState(true);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [now, setNow] = useState(() => new Date());
+  const reduceMotion = useReducedMotion();
+  const tiltX = useMotionValue(0);
+  const tiltY = useMotionValue(0);
+  const tiltRX = useSpring(useTransform(tiltY, [-0.5, 0.5], [6, -6]), { stiffness: 140, damping: 18 });
+  const tiltRY = useSpring(useTransform(tiltX, [-0.5, 0.5], [-8, 8]), { stiffness: 140, damping: 18 });
+  const nowLabel = `${now.toLocaleDateString('en-NG', { weekday: 'short' })} ${now.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}`;
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const architectureRef = useRef<HTMLElement>(null);
+  const pricingRef = useRef<HTMLElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const isMounted = useRef(true);
 
@@ -113,6 +213,11 @@ const LandingPage: React.FC<LandingPageProps> = ({
       setFeedIndex((prev) => (prev + 1) % LIVE_FEED_TRANSACTIONS.length);
     }, 4000);
     return () => clearInterval(feedInterval);
+  }, []);
+
+  useEffect(() => {
+    const clockInterval = setInterval(() => setNow(new Date()), 15000);
+    return () => clearInterval(clockInterval);
   }, []);
 
   useEffect(() => {
@@ -130,7 +235,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
     return () => { isMounted.current = false; };
   }, []);
 
-  // Focus the chat input when opened, and let Escape close the panel.
+  // Focus the chat input when opened, let Escape close the panel, and probe
+  // the AI gateway once so the status badge is honest before the first message.
   useEffect(() => {
     if (!isChatOpen) return;
     chatInputRef.current?.focus();
@@ -138,8 +244,26 @@ const LandingPage: React.FC<LandingPageProps> = ({
       if (e.key === 'Escape') setIsChatOpen(false);
     };
     document.addEventListener('keydown', onKey);
+    if (chatStatus === 'unknown') {
+      probeAiGateway().then((r) => {
+        if (!isMounted.current) return;
+        setChatStatus(r.ok ? 'online' : 'offline');
+        if (!r.ok) setChatNotice(chatNoticeFor(r.code));
+      });
+    }
     return () => document.removeEventListener('keydown', onKey);
   }, [isChatOpen]);
+
+  const handleHeroMouse = (e: React.MouseEvent<HTMLElement>) => {
+    if (reduceMotion) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    tiltX.set((e.clientX - r.left) / r.width - 0.5);
+    tiltY.set((e.clientY - r.top) / r.height - 0.5);
+  };
+  const resetTilt = () => {
+    tiltX.set(0);
+    tiltY.set(0);
+  };
 
   const scrollToSection = (ref: React.RefObject<HTMLElement | null>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -163,19 +287,9 @@ const LandingPage: React.FC<LandingPageProps> = ({
     setIsTyping(true);
 
     try {
-      const systemInstruction = `You are StockBot, the official industrial-grade retail consultant for StockBit Pro, powered by Meta Muse.
-      Technical Context for you:
-      1. APP REGISTRATION: Users sign up with Name, Business Name, Email, and Password. We do NOT ask for a Phone Number on the signup form. Staff join via an "Invite ID" from their boss.
-      2. CORE TOOLS:
-         - "Strict Sensor": Advanced mobile barcode scanning.
-         - "Smart Extractor": Muse-powered metadata capture from product photos.
-         - "Multi-Channel Bridge": Syncing inventory with Jumia Mall and Konga.
-         - "Sustainability Audit": Only on Mega Pro, gives Eco-scores to inventory.
-      3. BUSINESS MODEL: 2 Months (60 days) free trial. Plans: Beta (₦5k), Mega (₦8k), Mega Pro (₦13k). Payments via Paystack.
-      4. MARKET: Nigerian retailers (Lagos, Abuja, PH, etc.). Currency is Naira (₦).
-      5. CONTACT SUPPORT: 07010698264 for calls, 07072127949 for WhatsApp.
-
-      Always be professional, concise, and accurate to these specific app features. Do not hallucinate non-existent features or requirements. Currently responding in ${language} mode.`;
+      const systemInstruction = `You are StockBot, the support assistant for StockBit Pro, an inventory and point-of-sale app for Nigerian retailers.
+Facts: signup needs name, business name, email and password (no phone number); staff join with an invite code from their boss. 60-day free trial, no payment needed. Plans: Entry ₦5,000/mo (3 staff), Business ₦7,999/mo (8 staff, Jumia/Konga sync, AI reports), Enterprise ₦12,999/mo (unlimited staff, sustainability audit). Payments via Paystack. Phone barcode scanning and photo product capture included. Support: call 07010698264, WhatsApp 07072127949.
+Be concise and professional. Never invent features or prices. Currently responding in ${language} mode.`;
 
       const result = await chatWithMuseStatus([
         { role: 'system', content: systemInstruction },
@@ -185,7 +299,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
       if (!isMounted.current) return;
       setChatStatus(result.source === 'ai' ? 'online' : 'offline');
       if (result.source === 'offline') {
-        setChatNotice('Live AI is unreachable — answering from local help. Call 07010698264 for urgent issues.');
+        setChatNotice(chatNoticeFor(result.errorCode));
       }
       setChatMessages(prev => [...prev, { role: 'bot', text: result.text }]);
     } catch (error: any) {
@@ -221,6 +335,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
           <div className="hidden lg:flex items-center gap-10">
             <NavOption label={t.inventory} onClick={() => scrollToSection(architectureRef)} />
+            <NavOption label="Pricing" onClick={() => scrollToSection(pricingRef)} />
             <NavOption label={t.about_us} onClick={() => onNavigateInfo(View.AboutUs)} />
             <NavOption label={t.help_center} onClick={() => onNavigateInfo(View.HelpCenter)} />
           </div>
@@ -279,245 +394,243 @@ const LandingPage: React.FC<LandingPageProps> = ({
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-28 md:pt-44 pb-16 px-4 sm:px-8 min-h-[85vh] flex items-center overflow-hidden">
-        {/* Floating Particles and Ambient Blurs background layer */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 select-none">
-          {/* Ambient blur gradients */}
-          <motion.div
-            animate={{ x: [0, 45, 0], y: [0, -35, 0] }}
-            transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-1/4 left-[8%] w-[30rem] h-[30rem] bg-indigo-500/5 dark:bg-indigo-500/10 blur-[120px] rounded-full"
-          />
-          <motion.div
-            animate={{ x: [0, -45, 0], y: [0, 35, 0] }}
-            transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute bottom-1/4 right-[8%] w-[35rem] h-[35rem] bg-emerald-500/5 dark:bg-emerald-500/5 blur-[140px] rounded-full"
-          />
-
-          {/* Retail Floating Particles */}
-          {FLOATING_PARTICLES.map((p, idx) => {
-            const IconComponent = p.Icon;
-            return (
-              <motion.div
-                key={idx}
-                initial={{ y: 0, x: 0, scale: 0.8, opacity: 0.05, rotate: 0 }}
-                animate={{
-                  y: [0, -40, 0],
-                  x: [0, idx % 2 === 0 ? 30 : -30, 0],
-                  scale: [0.8, 1.15, 0.8],
-                  rotate: [0, idx % 2 === 0 ? 360 : -360],
-                  opacity: [0.12, 0.35, 0.12]
-                }}
-                transition={{
-                  duration: p.duration,
-                  delay: p.delay,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-                style={{
-                  position: 'absolute',
-                  top: p.top,
-                  left: p.left,
-                }}
-                className={`hidden sm:block ${p.color || 'text-indigo-600 dark:text-indigo-400'} filter drop-shadow-[0_0_12px_rgba(99,102,241,0.12)]`}
-              >
-                <IconComponent size={p.size} />
-              </motion.div>
-            );
-          })}
+      <section
+        className="relative pt-28 md:pt-44 pb-16 px-4 sm:px-8 min-h-[85vh] flex items-center overflow-hidden"
+        onMouseMove={handleHeroMouse}
+        onMouseLeave={resetTilt}
+      >
+        {/* Restrained backdrop: hairline grid + single soft wash */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 select-none" aria-hidden="true">
+          <div className="absolute inset-0 bg-grid [mask-image:radial-gradient(ellipse_75%_65%_at_50%_35%,black,transparent)] opacity-70 dark:opacity-40" />
+          <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[52rem] h-[28rem] bg-indigo-500/[0.07] dark:bg-indigo-500/[0.12] blur-[110px] rounded-full" />
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-300/70 dark:via-slate-700/70 to-transparent" />
         </div>
 
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center relative z-10 w-full">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="space-y-6 md:space-y-8 text-left w-full"
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="space-y-7 text-left w-full"
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-full border border-indigo-100 dark:border-indigo-900/30"
-            >
-              <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" />
-              <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{t.smart_biz}</span>
-            </motion.div>
+            <div className="inline-flex items-center gap-2.5 pl-2 pr-4 py-1.5 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
+              <span className="flex items-center gap-0.5 px-2 py-1 bg-amber-50 dark:bg-amber-500/10 rounded-full">
+                {[1, 2, 3, 4, 5].map(i => <Star key={i} size={11} className="text-amber-500 fill-amber-500" />)}
+              </span>
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{t.smart_biz}</span>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="space-y-4 w-full"
-            >
-              <h1 className="text-[clamp(1.9rem,5.5vw,2.75rem)] md:text-[clamp(2.4rem,4vw,3.5rem)] font-extrabold tracking-tight leading-[1.08] text-slate-900 dark:text-white text-balance">
-                {t.hero_title_1} <span className="text-indigo-600">{t.hero_title_2}</span>
+            <div className="space-y-4 w-full">
+              <h1 className={language === 'en'
+                ? 'font-editorial text-[clamp(2.75rem,6vw,4.6rem)] font-medium tracking-[-0.02em] leading-[1.02] text-slate-900 dark:text-white text-balance'
+                : 'text-[clamp(1.9rem,5.5vw,2.75rem)] md:text-[clamp(2.4rem,4vw,3.5rem)] font-extrabold tracking-tight leading-[1.08] text-slate-900 dark:text-white text-balance'}>
+                {t.hero_title_1}{' '}
+                {language === 'en'
+                  ? <em className="italic text-indigo-600 dark:text-indigo-400">{t.hero_title_2}</em>
+                  : <span className="text-indigo-600">{t.hero_title_2}</span>}
               </h1>
-            </motion.div>
+            </div>
 
-            <motion.p
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="max-w-xl text-[15px] md:text-base text-slate-500 dark:text-slate-400 font-normal leading-relaxed"
-            >
+            <p className="max-w-xl text-base md:text-lg text-slate-600 dark:text-slate-400 font-normal leading-relaxed">
               {t.hero_subtitle}
-            </motion.p>
+            </p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="pt-2 pr-2 space-y-4"
-            >
-              <div className="flex flex-col sm:flex-row gap-4">
+            <div className="pt-1 space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={isLoggedIn ? onEnterTerminal : () => onAuth('register')}
-                  className="w-full md:w-auto px-10 md:px-12 py-4 md:py-5 bg-indigo-600 text-white rounded-2xl font-bold uppercase text-[11px] md:text-[12px] tracking-wider shadow-xl shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                  className="w-full sm:w-auto px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-semibold text-sm shadow-xl shadow-slate-900/15 dark:shadow-black/40 hover:bg-slate-800 dark:hover:bg-slate-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2.5"
                 >
-                  {t.hero_cta} <ArrowRight size={18} />
+                  {isLoggedIn ? t.dashboard : t.hero_cta} <ArrowRight size={17} />
                 </button>
                 <button
                   onClick={() => scrollToSection(architectureRef)}
-                  className="w-full md:w-auto px-10 md:px-12 py-4 md:py-5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-2xl font-bold uppercase text-[11px] md:text-[12px] tracking-wider active:scale-95 transition-all flex items-center justify-center gap-3 border border-slate-200 dark:border-slate-800"
+                  className="w-full sm:w-auto px-8 py-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl font-semibold text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 shadow-sm"
                 >
                   {t.see_how}
                 </button>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-6">
+              {language === 'en' && (
+                <p className="flex items-center gap-2 text-[13px] font-medium text-slate-500 dark:text-slate-400">
+                  <ShieldCheck size={15} className="text-emerald-600 shrink-0" />
+                  60-day free trial · No card required · Cancel anytime
+                </p>
+              )}
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
                 {!isAppInstalled && (
                   <button
                     onClick={onInstall}
-                    className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-white dark:bg-slate-900 text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 border-indigo-100 dark:border-indigo-900/30 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-all shadow-sm group"
+                    className="flex items-center gap-2 text-[13px] font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors py-1"
                   >
-                    <div className="p-1 bg-indigo-100 dark:bg-indigo-900 rounded-lg group-hover:scale-110 transition-transform">
-                      <DownloadCloud size={18} />
-                    </div>
-                    {t.install_app}
+                    <DownloadCloud size={16} /> {t.install_app}
                   </button>
                 )}
                 {!isLoggedIn && (
                   <button
                     onClick={() => onAuth('login')}
-                    className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 font-black uppercase text-[11px] tracking-widest transition-colors py-2"
+                    className="flex items-center gap-2 text-[13px] font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors py-1"
                   >
-                    <LogIn size={16} /> Already have a shop? {t.login}
+                    <LogIn size={16} /> {t.login}
                   </button>
                 )}
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-              className="flex flex-col xs:flex-row items-start xs:items-center gap-6 md:gap-8 pt-8 border-t border-slate-100 dark:border-slate-800"
-            >
-              <div className="flex -space-x-3 shrink-0">
-                {[1,2,3,4].map(i => (
-                  <div key={i} className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-100 dark:bg-slate-800 border-4 border-white dark:border-slate-950 flex items-center justify-center overflow-hidden shadow-sm">
-                    <img src={`https://i.pravatar.cc/150?u=stockbit_user_${i}`} alt="User" />
+            <div className="flex items-center gap-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
+              <div className="flex -space-x-2.5 shrink-0">
+                {[
+                  { i: 'AO', c: 'bg-indigo-600' },
+                  { i: 'MI', c: 'bg-emerald-600' },
+                  { i: 'KA', c: 'bg-amber-600' },
+                  { i: 'TB', c: 'bg-rose-600' },
+                ].map(a => (
+                  <div key={a.i} className={`w-9 h-9 rounded-full ${a.c} border-2 border-white dark:border-slate-950 flex items-center justify-center text-[10px] font-bold text-white`}>
+                    {a.i}
                   </div>
                 ))}
               </div>
-              <div className="flex flex-col min-w-0">
-                <p className="text-[13px] font-black uppercase text-slate-900 dark:text-white leading-none mb-1">PROUDLY NIGERIAN</p>
-                <p className="text-[9px] md:text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-widest truncate">TRUSTED BY 500+ SHOP OWNERS ACROSS NIGERIA</p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1 mb-0.5">
+                  {[1, 2, 3, 4, 5].map(i => <Star key={i} size={12} className="text-amber-500 fill-amber-500" />)}
+                  <span className="ml-1 text-xs font-bold text-slate-900 dark:text-white">4.9</span>
+                </div>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Loved by 500+ shop owners across Nigeria</p>
               </div>
-            </motion.div>
+            </div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, x: 40, scale: 0.95 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-            className="relative group hidden lg:block pr-8"
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut", delay: 0.25 }}
+            className="relative hidden lg:block"
+            style={{ perspective: 1400 }}
           >
-            <div className="absolute inset-0 bg-indigo-600/5 rounded-[5rem] rotate-3 scale-105 group-hover:rotate-6 transition-transform duration-1000"></div>
-            <div className="relative bg-white dark:bg-slate-900 rounded-[5rem] p-5 border border-slate-100 dark:border-slate-800 shadow-2xl overflow-hidden aspect-[4/3]">
-              <img
-                src="https://images.unsplash.com/photo-1556742044-3c52d6e88c62?auto=format&fit=crop&q=80&w=1200"
-                alt="StockBit Shop Dashboard"
-                className="w-full h-full object-cover rounded-[4rem] opacity-95 transition-transform duration-[2s] group-hover:scale-105"
-                loading="eager"
-              />
-              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/20 to-transparent"></div>
+           <motion.div
+              style={reduceMotion ? undefined : { rotateX: tiltRX, rotateY: tiltRY, transformStyle: 'preserve-3d' }}
+              className="relative"
+            >
+            {/* App window mockup */}
+            <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-[0_32px_80px_-24px_rgba(15,23,42,0.35)] overflow-hidden">
+              <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                <span className="ml-3 text-[11px] font-semibold text-slate-400 tabular-nums">{nowLabel} · Ikeja store</span>
+                <span className="ml-auto flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+                </span>
+              </div>
 
-              {/* Simulated Live Ledger Feed Overlay */}
-              <motion.div
-                animate={{ y: [0, 8, 0] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                className="absolute top-8 right-8 p-4 bg-slate-950/90 backdrop-blur-xl rounded-[1.8rem] border border-white/10 shadow-2xl w-72 pointer-events-none select-none"
-              >
-                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-indigo-500/20 text-indigo-400 rounded-xl flex items-center justify-center shrink-0">
-                       <Activity size={16} className="animate-pulse" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                       <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest flex items-center gap-1.5 leading-none mb-1">
-                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                         LIVE TERMINAL FEED
-                       </p>
-                       <AnimatePresence mode="wait">
-                         <motion.p
-                           key={feedIndex}
-                           initial={{ opacity: 0, y: 5 }}
-                           animate={{ opacity: 1, y: 0 }}
-                           exit={{ opacity: 0, y: -5 }}
-                           transition={{ duration: 0.3 }}
-                           className="text-[10px] font-bold text-white mt-0.5 leading-normal uppercase truncate"
-                         >
-                           {LIVE_FEED_TRANSACTIONS[feedIndex]}
-                         </motion.p>
-                       </AnimatePresence>
-                    </div>
-                 </div>
-              </motion.div>
+              <div className="p-6 space-y-5">
+                <div className="flex items-end justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{t.total_money}</p>
+                    <p className="font-editorial text-4xl text-slate-900 dark:text-white mt-1 tabular-nums">₦245,800</p>
+                  </div>
+                  <span className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-lg">
+                    <TrendingUp size={13} /> +18%
+                  </span>
+                </div>
 
-              <motion.div
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute bottom-10 left-10 p-6 bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-[2rem] shadow-2xl"
-              >
-                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white">
-                       <TrendingUp size={24} />
+                <div className="flex items-end gap-2 h-24" aria-hidden="true">
+                  {[35, 55, 40, 70, 52, 88, 64].map((h, i) => (
+                    <div key={i} className="flex-1 rounded-md bg-slate-100 dark:bg-slate-800 relative overflow-hidden" style={{ height: '100%' }}>
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: `${h}%` }}
+                        transition={{ duration: 0.9, delay: 0.5 + i * 0.08, ease: 'easeOut' }}
+                        className={`absolute bottom-0 inset-x-0 rounded-md ${i === 5 ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}`}
+                      />
                     </div>
-                    <div>
-                       <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">{t.total_money}</p>
-                       <p className="text-xl font-black text-slate-900 dark:text-white">₦245,800.00</p>
-                    </div>
-                 </div>
-              </motion.div>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-3 px-4 py-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-xl">
+                  <Activity size={16} className="text-rose-500 shrink-0" />
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Daneo Milk 400g · <span className="text-rose-600 dark:text-rose-400 font-bold">4 left</span> — restock suggested</p>
+                </div>
+
+                <div className="flex items-center gap-3 min-h-[20px]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <AnimatePresence mode="wait">
+                    <motion.p
+                      key={feedIndex}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.3 }}
+                      className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate"
+                    >
+                      {LIVE_FEED_TRANSACTIONS[feedIndex]}
+                    </motion.p>
+                  </AnimatePresence>
+                </div>
+              </div>
             </div>
+
+            {/* Floating receipt card */}
+            <motion.div
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              style={{ z: 50 }}
+              className="absolute -bottom-6 -left-8 px-5 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl shadow-2xl flex items-center gap-3"
+            >
+              <ShoppingCart size={18} />
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider opacity-60">Receipt #1042 printed</p>
+                <p className="text-sm font-bold tabular-nums">₦42,000 · Paid</p>
+              </div>
+            </motion.div>
+            </motion.div>
           </motion.div>
         </div>
       </section>
 
+      {/* Proof band */}
+      <section className="border-y border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-950 px-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10 py-12">
+          {STATS.map((s) => (
+            <div key={s.label}>
+              <p className="font-editorial text-4xl text-slate-900 dark:text-white">
+                <CountUp target={s.target} decimals={s.decimals} prefix={s.prefix} suffix={s.suffix} />
+              </p>
+              <p className="mt-1.5 text-[13px] font-medium text-slate-500 dark:text-slate-400">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Visual Benefits Section */}
-      <section ref={architectureRef} className="py-20 md:py-24 px-6 bg-slate-50 dark:bg-slate-900/50 scroll-mt-24">
-        <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center space-y-4 max-w-3xl mx-auto">
-            <h2 className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.4em]">{t.professional_grade}</h2>
-            <h3 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white uppercase tracking-tight leading-tight">{t.everything_needs}</h3>
-            <p className="text-[15px] md:text-base text-slate-500 dark:text-slate-400 font-medium">{t.simple_powerful}</p>
+      <section ref={architectureRef} className="py-20 md:py-28 px-6 bg-white dark:bg-slate-950 scroll-mt-24">
+        <div className="max-w-7xl mx-auto space-y-14">
+          <div className="max-w-2xl space-y-4">
+            <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em]">{t.professional_grade}</p>
+            <h2 className={language === 'en'
+              ? 'font-editorial text-4xl md:text-5xl font-medium tracking-[-0.01em] text-slate-900 dark:text-white leading-[1.08]'
+              : 'text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight'}>{t.everything_needs}</h2>
+            <p className="text-base text-slate-600 dark:text-slate-400">{t.simple_powerful}</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
             <FeatureImageCard
+              index={1}
               image="https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&q=80&w=800"
               title={t.sales}
               desc={t.fast_sales_desc || "Record sales in seconds. Print professional receipts for customers instantly."}
               icon={<ShoppingCart size={20} />}
             />
             <FeatureImageCard
+              index={2}
               image="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800"
               title={t.inventory}
               desc={t.smart_inv_desc || "Know exactly what is in your shop. Get alerts when stock is running low."}
               icon={<Box size={20} />}
             />
             <FeatureImageCard
+              index={3}
               image="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=800"
               title={t.reports}
               desc={t.biz_insights_desc || "See your profit and loss at a glance. Make better decisions with AI reports."}
@@ -532,8 +645,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
           <div className="space-y-10">
             <div className="space-y-5">
-              <h2 className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.4em]">{t.built_for_nigeria}</h2>
-              <h3 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white uppercase tracking-tight leading-tight">
+              <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em]">{t.built_for_nigeria}</p>
+              <h3 className={language === 'en'
+                ? 'font-editorial text-4xl md:text-5xl font-medium tracking-[-0.01em] text-slate-900 dark:text-white leading-[1.08]'
+                : 'text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight'}>
                 {t.manage_anywhere}
               </h3>
               <p className="text-[15px] md:text-base text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
@@ -606,28 +721,189 @@ const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 md:py-24 px-6 bg-[#4f46e5] relative overflow-hidden">
-        <div className="max-w-4xl mx-auto text-center space-y-8 relative z-10">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white uppercase tracking-tight leading-tight">
-            {t.ready_grow}
-          </h2>
-          <p className="text-white/80 text-[15px] md:text-base font-medium max-w-xl mx-auto leading-relaxed">
-            {t.join_hundreds}
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <button onClick={() => onAuth('register')} className="w-full sm:w-auto px-12 py-5 bg-white text-indigo-600 rounded-2xl font-black uppercase text-[12px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all">
-              {t.create_account}
-            </button>
-            {!isAppInstalled && (
-              <button onClick={onInstall} className="w-full sm:w-auto px-12 py-5 bg-indigo-800/40 text-white rounded-2xl font-black uppercase text-[12px] tracking-[0.2em] backdrop-blur-xl border border-white/10 active:scale-95 transition-all">
-                {t.download_app}
-              </button>
-            )}
+      {/* Testimonials */}
+      <section className="py-20 md:py-28 px-6 bg-slate-50 dark:bg-slate-900/40 border-y border-slate-200/60 dark:border-slate-800/60">
+        <div className="max-w-7xl mx-auto space-y-12">
+          <div className="max-w-2xl space-y-4">
+            <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em]">Shop owners talk</p>
+            <h2 className="font-editorial text-4xl md:text-5xl font-medium tracking-[-0.01em] text-slate-900 dark:text-white leading-[1.08]">
+              Trusted from Onitsha to Kano.
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {TESTIMONIALS.map((tm) => (
+              <figure key={tm.name} className="flex flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-7 shadow-sm">
+                <Quote size={20} className="text-indigo-600 dark:text-indigo-400" />
+                <blockquote className="mt-4 flex-1 text-[15px] leading-relaxed text-slate-700 dark:text-slate-300">
+                  &ldquo;{tm.quote}&rdquo;
+                </blockquote>
+                <div className="mt-5 flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map(i => <Star key={i} size={12} className="text-amber-500 fill-amber-500" />)}
+                </div>
+                <figcaption className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center text-xs font-bold shrink-0">
+                    {tm.initials}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold text-slate-900 dark:text-white">{tm.name}</span>
+                    <span className="block text-xs font-medium text-slate-500 dark:text-slate-400">{tm.detail}</span>
+                  </span>
+                </figcaption>
+              </figure>
+            ))}
           </div>
         </div>
-        <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-            <Database className="w-full h-full scale-150 rotate-12 text-white" />
+      </section>
+
+      {/* Pricing */}
+      <section ref={pricingRef} className="py-20 md:py-28 px-6 bg-white dark:bg-slate-950 scroll-mt-24">
+        <div className="max-w-7xl mx-auto space-y-10">
+          <div className="max-w-2xl space-y-4">
+            <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em]">Pricing</p>
+            <h2 className="font-editorial text-4xl md:text-5xl font-medium tracking-[-0.01em] text-slate-900 dark:text-white leading-[1.08]">
+              Pays for itself by Tuesday.
+            </h2>
+            <p className="text-base text-slate-600 dark:text-slate-400">One prevented stock-out covers a month of StockBit. Prices in Naira, secured by Paystack.</p>
+          </div>
+
+          <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800" role="tablist" aria-label="Billing period">
+            <button
+              role="tab"
+              aria-selected={!annualBilling}
+              onClick={() => setAnnualBilling(false)}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${!annualBilling ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+            >
+              Monthly
+            </button>
+            <button
+              role="tab"
+              aria-selected={annualBilling}
+              onClick={() => setAnnualBilling(true)}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${annualBilling ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+            >
+              Annual
+              <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold rounded-md">2 months free</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+            {PLAN_ORDER.map(({ key, blurb, featured }) => {
+              const price = annualBilling ? PLAN_PRICING[key].annual : PLAN_PRICING[key].monthly;
+              return (
+                <div
+                  key={key}
+                  className={featured
+                    ? 'relative flex flex-col bg-slate-950 dark:bg-white text-white dark:text-slate-900 rounded-2xl p-8 shadow-[0_24px_64px_-24px_rgba(15,23,42,0.5)]'
+                    : 'flex flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm'}
+                >
+                  {featured && (
+                    <span className="absolute -top-3 left-8 px-3 py-1 bg-indigo-600 text-white text-[11px] font-bold uppercase tracking-wider rounded-full">
+                      Most popular
+                    </span>
+                  )}
+                  <h3 className="text-xs font-bold uppercase tracking-[0.15em] opacity-60">{PLAN_ENTITLEMENTS[key].label}</h3>
+                  <p className="mt-1.5 text-sm font-medium opacity-70">{blurb}</p>
+                  <p className="mt-5 flex items-baseline gap-1.5">
+                    <span className="font-editorial text-5xl tabular-nums">{formatNaira(price)}</span>
+                    <span className="text-sm font-medium opacity-60">/{annualBilling ? 'year' : 'month'}</span>
+                  </p>
+                  {annualBilling && (
+                    <p className="mt-1 text-xs font-semibold opacity-50 tabular-nums">
+                      {formatNaira(Math.round(price / 12))}/mo, billed annually
+                    </p>
+                  )}
+                  <ul className="mt-6 space-y-3 flex-1">
+                    {PLAN_FEATURES[key].map(f => (
+                      <li key={f} className="flex items-start gap-2.5 text-sm font-medium">
+                        <Check size={16} className={`mt-0.5 shrink-0 ${featured ? 'text-emerald-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => onAuth('register')}
+                    className={featured
+                      ? 'mt-8 w-full py-3.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-[0.98] transition-all'
+                      : 'mt-8 w-full py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-semibold text-sm hover:bg-slate-800 dark:hover:bg-slate-100 active:scale-[0.98] transition-all'}
+                  >
+                    Start free trial
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[13px] font-medium text-slate-500 dark:text-slate-400">
+            Every plan starts with the 60-day free trial — no card required. Switch or cancel anytime; your data stays yours.
+          </p>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="py-20 md:py-28 px-6 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-200/60 dark:border-slate-800/60">
+        <div className="max-w-3xl mx-auto space-y-10">
+          <div className="space-y-4">
+            <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em]">Questions</p>
+            <h2 className="font-editorial text-4xl md:text-5xl font-medium tracking-[-0.01em] text-slate-900 dark:text-white leading-[1.08]">
+              Everything else you&rsquo;re wondering.
+            </h2>
+          </div>
+          <div className="border-y border-slate-200 dark:border-slate-800 divide-y divide-slate-200 dark:divide-slate-800">
+            {FAQS.map((f, i) => (
+              <div key={f.q}>
+                <button
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  aria-expanded={openFaq === i}
+                  className="w-full flex items-center justify-between gap-4 py-5 text-left"
+                >
+                  <span className="text-[15px] font-semibold text-slate-900 dark:text-white">{f.q}</span>
+                  <span className={`w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 transition-transform duration-300 ${openFaq === i ? 'rotate-45 bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent' : 'text-slate-500'}`}>
+                    <Plus size={16} />
+                  </span>
+                </button>
+                <AnimatePresence initial={false}>
+                  {openFaq === i && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: 'easeOut' }}
+                      className="overflow-hidden"
+                    >
+                      <p className="pb-6 pr-10 text-[15px] leading-relaxed text-slate-600 dark:text-slate-400">{f.a}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 md:py-28 px-6 bg-white dark:bg-slate-950">
+        <div className="max-w-6xl mx-auto relative overflow-hidden bg-slate-950 dark:bg-slate-900 rounded-3xl border border-slate-800 dark:border-slate-700 px-8 py-16 md:py-20 text-center">
+          <div className="absolute inset-0 bg-grid opacity-20 [mask-image:radial-gradient(ellipse_60%_80%_at_50%_50%,black,transparent)]" aria-hidden="true" />
+          <div className="relative space-y-6 max-w-2xl mx-auto">
+            <h2 className={language === 'en'
+              ? 'font-editorial text-4xl md:text-5xl font-medium tracking-[-0.01em] text-white leading-[1.08]'
+              : 'text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight'}>
+              {t.ready_grow}
+            </h2>
+            <p className="text-slate-400 text-base leading-relaxed max-w-xl mx-auto">
+              {t.join_hundreds}
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+              <button onClick={() => onAuth('register')} className="w-full sm:w-auto px-8 py-4 bg-white text-slate-900 rounded-xl font-semibold text-sm hover:bg-slate-100 active:scale-[0.98] transition-all">
+                {t.create_account}
+              </button>
+              {!isAppInstalled && (
+                <button onClick={onInstall} className="w-full sm:w-auto px-8 py-4 bg-transparent text-white rounded-xl font-semibold text-sm border border-white/20 hover:border-white/40 active:scale-[0.98] transition-all">
+                  {t.download_app}
+                </button>
+              )}
+            </div>
+            <p className="text-xs font-medium text-slate-500">60-day free trial · No card required</p>
+          </div>
         </div>
       </section>
 
@@ -653,6 +929,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
           <FooterSection title="PRODUCTS" links={[
             { label: t.inventory, onClick: () => scrollToSection(architectureRef) },
             { label: t.sales, onClick: () => scrollToSection(architectureRef) },
+            { label: 'Pricing', onClick: () => scrollToSection(pricingRef) },
             { label: 'Marketplace Sync', onClick: () => scrollToSection(architectureRef) },
             ...(!isAppInstalled ? [{ label: 'PWA Mobile App', onClick: onInstall }] : []),
           ]} />
@@ -674,7 +951,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
         </div>
 
         <div className="max-w-7xl mx-auto pt-16 mt-16 border-t border-slate-100 dark:border-slate-800 text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-600">© 2025 STOCKBIT TECHNOLOGIES NIGERIA. ALL RIGHTS RESERVED.</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-600">© {new Date().getFullYear()} STOCKBIT TECHNOLOGIES NIGERIA. ALL RIGHTS RESERVED.</p>
         </div>
       </footer>
 
@@ -701,10 +978,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
                     <p className="text-[9px] font-bold uppercase text-slate-400 mt-1">Nigeria shop assistant</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 bg-slate-800/60 px-2.5 py-1 rounded-full border border-slate-700/40 shrink-0" title={chatStatus === 'offline' ? 'Live AI unreachable — local help active' : 'StockBot status'}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${chatStatus === 'offline' ? 'bg-amber-400' : 'bg-emerald-500 animate-pulse'}`}></span>
+                <div className="flex items-center gap-1.5 bg-slate-800/60 px-2.5 py-1 rounded-full border border-slate-700/40 shrink-0" title={chatStatus === 'offline' ? 'Live AI unreachable — local help active' : chatStatus === 'online' ? 'Live AI connected' : 'Checking AI status…'}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${chatStatus === 'offline' ? 'bg-amber-400' : chatStatus === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`}></span>
                   <span className="text-[9px] font-extrabold text-slate-300 uppercase tracking-wider">
-                    {chatStatus === 'offline' ? 'Local' : 'Online'}
+                    {chatStatus === 'offline' ? 'Local' : chatStatus === 'online' ? 'Online' : '···'}
                   </span>
                 </div>
               </div>
@@ -803,7 +1080,7 @@ const NavOption = ({ label, onClick }: any) => (
   </button>
 );
 
-const FeatureImageCard = ({ image, title, desc, icon }: any) => (
+const FeatureImageCard = ({ image, title, desc, icon, index }: any) => (
   <motion.div
     initial={{ opacity: 0, y: 30 }}
     whileInView={{ opacity: 1, y: 0 }}
@@ -814,6 +1091,7 @@ const FeatureImageCard = ({ image, title, desc, icon }: any) => (
      <div className="h-48 overflow-hidden relative">
         <img src={image} alt={title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
         <div className="absolute inset-0 bg-indigo-600/10"></div>
+        <span className="absolute top-3 right-5 font-editorial text-5xl text-white/90 drop-shadow-md select-none">0{index}</span>
         <div className="absolute bottom-4 left-4 p-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-xl text-indigo-600 dark:text-indigo-400 shadow-xl">
            {icon}
         </div>

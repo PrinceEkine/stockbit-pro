@@ -136,7 +136,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }} 
                     className={`w-full group flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                       activeView === item.id 
-                      ? 'bg-indigo-600 text-white shadow-md' 
+                      ? 'bg-indigo-600/15 text-white shadow-[inset_2px_0_0_0_#6366f1]' 
                       : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
                   >
@@ -144,7 +144,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       <item.icon 
                         size={18} 
                         className={`transition-colors ${
-                          activeView === item.id ? 'text-white' : 'text-slate-500 group-hover:text-indigo-400'
+                          activeView === item.id ? 'text-indigo-400' : 'text-slate-500 group-hover:text-indigo-400'
                         }`} 
                       />
                       <span>{item.label}</span>
