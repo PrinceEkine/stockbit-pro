@@ -30,7 +30,8 @@ import {
   Plus
 } from 'lucide-react';
 import { chatWithMuseStatus } from '../services/museService';
-import { probeAiGateway } from '../services/aiClient';
+import { probeAiGateway, type ChatMessage } from '../services/aiClient';
+import { chatNoticeFor } from '../lib/aiNotice';
 import { View, AppLanguage, SubscriptionPlan } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
 import { PLAN_ENTITLEMENTS, PLAN_PRICING, formatNaira } from '../constants/plans';
@@ -154,21 +155,6 @@ const QUICK_QUESTIONS = [
   "Show support contact"
 ];
 
-/** Visitor-friendly notice for each AI gateway failure code. */
-const chatNoticeFor = (code?: string): string => {
-  switch (code) {
-    case 'NOT_CONFIGURED':
-    case 'FUNCTION_NOT_DEPLOYED':
-      return 'Live AI is being set up — answering from local help for now. Call 07010698264 for urgent issues.';
-    case 'MESSAGE_TOO_LONG':
-      return 'That message was too long — please keep it to a few sentences and try again.';
-    case 'RATE_LIMITED':
-      return 'Too many messages at once — please wait a moment and try again.';
-    default:
-      return 'Live AI is unreachable — answering from local help. Call 07010698264 for urgent issues.';
-  }
-};
-
 const LandingPage: React.FC<LandingPageProps> = ({
   isLoggedIn,
   isAppInstalled,
@@ -205,6 +191,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
   const pricingRef = useRef<HTMLElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const isMounted = useRef(true);
+  const chatFails = useRef(0);
 
   const t = TRANSLATIONS[language] || TRANSLATIONS.en;
 
@@ -291,21 +278,42 @@ const LandingPage: React.FC<LandingPageProps> = ({
 Facts: signup needs name, business name, email and password (no phone number); staff join with an invite code from their boss. 60-day free trial, no payment needed. Plans: Entry ₦5,000/mo (3 staff), Business ₦7,999/mo (8 staff, Jumia/Konga sync, AI reports), Enterprise ₦12,999/mo (unlimited staff, sustainability audit). Payments via Paystack. Phone barcode scanning and photo product capture included. Support: call 07010698264, WhatsApp 07072127949.
 Be concise and professional. Never invent features or prices. Currently responding in ${language} mode.`;
 
+      // Send recent turns so follow-up questions work; keep the newest user
+      // turns that fit ~3000 chars so long chats never trip the server cap.
+      const recent: ChatMessage[] = chatMessages.slice(-6).map((m) => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.text,
+      }));
+      const turns = [...recent, { role: 'user' as const, content: userMsg }].reverse();
+      const kept: ChatMessage[] = [turns[0]];
+      let budget = 3000 - turns[0].content.length;
+      for (const m of turns.slice(1)) {
+        if (m.role !== 'user') { kept.push(m); continue; }
+        if (m.content.length <= budget) { kept.push(m); budget -= m.content.length; }
+      }
+
       const result = await chatWithMuseStatus([
         { role: 'system', content: systemInstruction },
-        { role: 'user', content: userMsg }
+        ...kept.reverse()
       ]);
 
       if (!isMounted.current) return;
-      setChatStatus(result.source === 'ai' ? 'online' : 'offline');
-      if (result.source === 'offline') {
+      if (result.source === 'ai') {
+        chatFails.current = 0;
+        setChatStatus('online');
+      } else {
+        // One failed message (network blip, cold start) must not flip the
+        // badge — only consecutive failures mean the AI is really gone.
+        chatFails.current += 1;
+        if (chatFails.current >= 2) setChatStatus('offline');
         setChatNotice(chatNoticeFor(result.errorCode));
       }
       setChatMessages(prev => [...prev, { role: 'bot', text: result.text }]);
     } catch (error: any) {
       console.error("StockBot Call Failed:", error);
       if (isMounted.current) {
-        setChatStatus('offline');
+        chatFails.current += 1;
+        if (chatFails.current >= 2) setChatStatus('offline');
         const errorText = "Service is temporarily unavailable. Please call our direct helpline 07010698264 for immediate business support.";
         setChatMessages(prev => [...prev, { role: 'bot', text: errorText }]);
       }

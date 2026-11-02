@@ -28,6 +28,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
   const audioCtxRef = useRef<AudioContext | null>(null);
   const scanIntervalRef = useRef<number | null>(null);
   const isMounted = useRef(true);
+  const detectorRef = useRef<any>(null);
   
   const [status, setStatus] = useState<ScannerStatus>('initializing');
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -35,6 +36,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
   const [lastScannedName, setLastScannedName] = useState<string | null>(null);
   const [torchOn, setTorchOn] = useState(false);
   const [hasTorch, setHasTorch] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   useEffect(() => {
     isMounted.current = true;
@@ -142,6 +144,31 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
   }, [status, mode, onScan, onClose]);
 
   useEffect(() => {
+  }, []);
+
+  // Instant on-device decode (Chrome/Edge/Android). No network, no AI cost,
+  // ~400ms cadence — the AI vision pass below stays as the fallback.
+  const nativeDetect = useCallback(async () => {
+    const BD = (window as any).BarcodeDetector;
+    if (!BD || !videoRef.current || status !== 'active' || !isMounted.current) return;
+    if (mode === 'details') return;
+    try {
+      detectorRef.current = detectorRef.current
+        || new BD({ formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'itf'] });
+      const value = (await detectorRef.current.detect(videoRef.current))?.[0]?.rawValue;
+      if (value && isMounted.current) {
+        playBeep('success');
+        onScan(value, true);
+        setLastScannedName(value);
+        setStatus('success_feedback');
+        setTimeout(() => {
+          if (isMounted.current) { setStatus('active'); setLastScannedName(null); }
+        }, 400);
+      }
+    } catch { /* native miss — the AI fallback keeps trying */ }
+  }, [status, mode, onScan]);
+
+  useEffect(() => {
     const startCamera = async () => {
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({ 
@@ -161,7 +188,10 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
         setIsCameraActive(true);
         setStatus('active');
       } catch (err) {
-        if (isMounted.current) setStatus('error');
+        if (isMounted.current) {
+          setCameraError('Camera unavailable — check permission, or type the SKU manually.');
+          setStatus('error');
+        }
       }
     };
     startCamera();
@@ -169,10 +199,15 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
 
   useEffect(() => {
     if (isCameraActive && status === 'active' && isMounted.current) {
-      scanIntervalRef.current = window.setInterval(captureAndScan, 3000);
+      if ((window as any).BarcodeDetector && mode !== 'details') {
+        const fast = window.setInterval(nativeDetect, 400);
+        const slow = window.setInterval(captureAndScan, 6000);
+        return () => { clearInterval(fast); clearInterval(slow); };
+      }
+      scanIntervalRef.current = window.setInterval(captureAndScan, 2500);
       return () => { if (scanIntervalRef.current) clearInterval(scanIntervalRef.current); };
     }
-  }, [isCameraActive, status, captureAndScan]);
+  }, [isCameraActive, status, captureAndScan, nativeDetect, mode]);
 
   return (
     <div 
@@ -196,7 +231,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
                 {mode === 'details' ? 'Smart Extractor' : 'Strict Sensor'}
               </h3>
               <p className="text-[8px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5">
-                {status === 'processing' ? 'ANALYZING FRAME...' : 'CENTER ON PRODUCT CODE'}
+                {status === 'processing' ? 'ANALYZING FRAME...' : isCameraActive ? 'AUTO-SCAN ACTIVE' : 'CENTER ON PRODUCT CODE'}
               </p>
             </div>
           </div>
@@ -240,6 +275,12 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
             }
           `}</style>
           
+          {status === 'error' && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 text-white z-20 p-8 text-center">
+               <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">Camera unavailable</p>
+               <p className="text-sm font-medium text-slate-400">{cameraError || 'Could not start the camera.'}</p>
+            </div>
+          )}
           {status === 'success_feedback' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-emerald-500/90 backdrop-blur-md text-white z-20 animate-in fade-in zoom-in-95 duration-200">
                <CheckCircle2 size={64} className="mb-4 animate-bounce" />

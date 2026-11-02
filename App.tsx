@@ -32,6 +32,7 @@ import LockScreen, { useIdleLock } from './components/auth/LockScreen';
 import { useToast } from './components/ui/Toast';
 import { TRANSLATIONS } from './constants/translations';
 import { readAuthErrorFromUrl, readTokenHashFromUrl } from './lib/authErrors';
+import { shouldBlockAccess } from './lib/accessGate';
 import {
   Menu, Bell, Box, ShieldAlert, Moon, Sun, Clock, ArrowLeft, CreditCard, WifiOff
 } from 'lucide-react';
@@ -251,9 +252,9 @@ const App: React.FC = () => {
 
   const isAccessBlocked = useMemo(() => {
     if (!store.isLoggedIn) return false;
-    if (activeView === View.Settings) return false;
-    return trialStatus.isExpired && !trialStatus.isSubscribed;
-  }, [store.isLoggedIn, trialStatus.isExpired, trialStatus.isSubscribed, activeView]);
+    // Trial gate (admin + Settings exemptions) lives in lib/accessGate.ts.
+    return shouldBlockAccess(store.currentUser?.role, trialStatus, activeView === View.Settings);
+  }, [store.isLoggedIn, store.currentUser?.role, trialStatus, activeView]);
 
   const toggleTheme = () => {
     store.updateSettings({ theme: store.settings.theme === 'light' ? 'dark' : 'light' });

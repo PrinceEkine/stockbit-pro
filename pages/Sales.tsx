@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Sale, Product, Customer, Settings, SaleItem, User as UserType, PaymentMethod } from '../types';
 import ScannerModal from '../components/ScannerModal';
+import { useWedgeScanner } from '../components/useWedgeScanner';
 import { TRANSLATIONS } from '../constants/translations';
 
 interface SalesProps {
@@ -147,6 +148,9 @@ const Sales: React.FC<SalesProps> = ({ sales = [], products = [], customers = []
       }
     }
   }, [products, handleProductSelection]);
+
+  // Hardware scanners type the barcode + Enter — auto-capture them into the cart.
+  useWedgeScanner(isTerminalOpen && !isScannerOpen, handleScanResult);
 
   const handleQuantityChange = (idx: number, val: string) => {
     const updated = [...currentCart.items];

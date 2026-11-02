@@ -6,6 +6,7 @@ import { answerSupportOffline, buildOfflineFallback } from "./supportBot";
 export interface InsightResult {
   text: string;
   sources: { title: string; uri: string }[];
+  errorCode?: string;
 }
 
 // All calls go through the `ai-gateway` Edge Function, which forwards them to
@@ -38,6 +39,21 @@ export const sanitizeAiText = (raw: string): string => {
 // Shared directive appended to every AI prompt so responses come back as plain text.
 const PLAIN_TEXT_DIRECTIVE =
   "Formatting rules: reply in plain text only. Do NOT use markdown, asterisks (*), underscores, hashes (#), or backticks for emphasis, bullets, or headings. Use plain sentences, and where you need a list start each item on a new line with a simple dot (•).";
+
+const TRANSIENT_CODES = new Set(['NETWORK_ERROR', 'GATEWAY_ERROR', 'PROVIDER_ERROR', 'RATE_LIMITED']);
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** One silent retry for transient failures (network blips, cold starts) before the offline fallback. */
+const invokeAiWithRetry = async (body: Record<string, unknown>) => {
+  try {
+    return await invokeAi(body);
+  } catch (error) {
+    const code = error instanceof AiGatewayError ? error.code : 'GATEWAY_ERROR';
+    if (!TRANSIENT_CODES.has(code)) throw error;
+    await delay(800);
+    return await invokeAi(body);
+  }
+};
 
 export interface ChatStatusResult {
   text: string;
@@ -72,7 +88,7 @@ export const chatWithMuseStatus = async (
     : [{ role: 'system' as const, content: PLAIN_TEXT_DIRECTIVE }, ...messages];
 
   try {
-    const { text } = await invokeAi({ provider: 'muse', purpose, messages: directedMessages });
+    const { text } = await invokeAiWithRetry({ provider: 'muse', purpose, messages: directedMessages });
     if (text) return { text: sanitizeAiText(text), source: 'ai' };
     throw new AiGatewayError('Empty AI response.', 'PROVIDER_ERROR');
   } catch (error) {
@@ -116,15 +132,16 @@ export const getInventoryInsightsMuse = async (products: Product[], sales: Sale[
   `;
 
   try {
-    const textResult = await chatWithMuse([
+    const outcome = await chatWithMuseStatus([
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
-    ], "", 'insights');
+    ], 'insights');
 
-    return { text: textResult || "No insights could be generated right now.", sources: [] };
+    if (outcome.source === 'ai' && outcome.text) return { text: outcome.text, sources: [] };
+    return { text: '', sources: [], errorCode: outcome.errorCode || 'GATEWAY_ERROR' };
   } catch (error) {
     console.error("Insights Error:", error);
-    return { text: "Error generating predictive audit. Please try again in a moment.", sources: [] };
+    return { text: '', sources: [], errorCode: 'GATEWAY_ERROR' };
   }
 };
 

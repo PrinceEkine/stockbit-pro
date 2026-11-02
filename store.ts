@@ -28,6 +28,21 @@ const mapProfile = (dbProfile: any): User => {
 };
 
 // 2-month (60-day) free trial, matching the advertised plan.
+/**
+ * Translates a failed sale insert into something the cashier can act on. The
+ * most common cause is a live `sales` table that predates the total columns
+ * (Postgres 42703) — fixed by applying migration 20261102000001.
+ */
+export const saleInsertErrorMessage = (err: { code?: string; message?: string }): string => {
+  if (err?.code === '42703') {
+    return 'Sales table is missing its total columns. Apply the latest database migration, then retry.';
+  }
+  if (err?.code === '42501') {
+    return 'You do not have permission to record sales for this business.';
+  }
+  return (err?.message || 'Sale could not be recorded.').replace(/^.*?:\s*/, '');
+};
+
 export const TRIAL_DAYS = 60;
 
 export const getTrialStatus = (user: User | null) => {
@@ -656,6 +671,7 @@ export const useStore = () => {
       }]).select().single();
       if (insertError) {
         console.error("Sale Insert Error:", insertError.message);
+        setError(saleInsertErrorMessage(insertError));
         return false;
       }
       newSale = data;

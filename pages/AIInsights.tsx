@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, RefreshCw, Zap, TrendingUp, AlertTriangle, ShieldCheck, PieChart, Activity, ExternalLink, Globe, BookOpen, Leaf, Lock } from 'lucide-react';
 import { AppState } from '../types';
 import { getInventoryInsightsMuse, InsightResult } from '../services/museService';
+import { insightsNoticeFor } from '../lib/aiNotice';
 import { getEntitlements } from '../constants/plans';
 
 interface AIInsightsProps {
@@ -11,14 +12,21 @@ interface AIInsightsProps {
 const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
   const [insightData, setInsightData] = useState<InsightResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [insightError, setInsightError] = useState<string | null>(null);
 
   const isMegaPro = getEntitlements(state.currentUser).esgAudit;
 
   const fetchInsights = async () => {
     setLoading(true);
+    setInsightError(null);
     // Passing sustainability score context into the AI engine
     const result = await getInventoryInsightsMuse(state?.products || [], state?.sales || []);
-    setInsightData(result);
+    if (result.errorCode) {
+      setInsightError(insightsNoticeFor(result.errorCode));
+      setInsightData(null);
+    } else {
+      setInsightData(result);
+    }
     setLoading(false);
   };
 
@@ -122,7 +130,20 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
             ) : (
               <div className="text-center py-20 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
                 <BookOpen size={48} className="mx-auto mb-4 text-slate-100 dark:text-slate-800" />
-                <p className="text-slate-400 font-medium text-sm">Click the refresh button to generate your business insights</p>
+                {insightError ? (
+                  <div className="max-w-sm mx-auto space-y-4">
+                    <AlertTriangle size={40} className="mx-auto text-amber-400" />
+                    <p className="text-slate-500 font-medium text-sm">{insightError}</p>
+                    <button
+                      onClick={fetchInsights}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+                    >
+                      Retry analysis
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-slate-400 font-medium text-sm">Click the refresh button to generate your business insights</p>
+                )}
               </div>
             )}
           </div>
