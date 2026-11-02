@@ -10,12 +10,16 @@ import {
   Send,
   PackageCheck,
   Ban,
-  ChevronDown
+  ChevronDown,
+  Scan
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TRANSLATIONS } from '../constants/translations';
 import { PurchaseOrder, PurchaseOrderStatus, Product, Supplier, Settings } from '../types';
 import { useToast } from '../components/ui/Toast';
+import ScannerModal from '../components/ScannerModal';
+import { matchInvoiceLine, matchInvoiceSupplier } from '../lib/invoiceMatch';
+import { InvoiceExtraction } from '../services/museService';
 
 interface PurchaseOrdersProps {
   orders: PurchaseOrder[];
@@ -61,6 +65,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
   const [filter, setFilter] = useState<Filter>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [receiveOrder, setReceiveOrder] = useState<PurchaseOrder | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -142,6 +147,44 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       toast.error('Could not create order', err instanceof Error ? err.message : undefined);
     } finally {
       setCreating(false);
+    }
+  };
+
+  // Prefills the create form from a scanned invoice: matched lines become
+  // order lines, the supplier is linked when recognised, and anything the
+  // catalogue does not contain is reported instead of guessed.
+  const handleInvoiceScan = (res: unknown) => {
+    setIsInvoiceOpen(false);
+    const invoice = res as InvoiceExtraction | null;
+    if (!invoice || !Array.isArray(invoice.lines) || invoice.lines.length === 0) {
+      toast.error('No invoice lines found', 'Hold the invoice flat in good light and try again.');
+      return;
+    }
+    const matched: DraftLine[] = [];
+    const unmatched: string[] = [];
+    invoice.lines.forEach((line) => {
+      const product = matchInvoiceLine(line, products);
+      if (product) {
+        matched.push({ product_id: product.id, quantity_ordered: String(line.quantity), unit_cost: String(line.unitCost) });
+      } else {
+        unmatched.push(line.name);
+      }
+    });
+    const supplier = matchInvoiceSupplier(invoice.supplier, suppliers);
+    if (supplier) setSupplierId(supplier.id);
+    if (matched.length > 0) setLines(matched);
+    const ref = invoice.invoiceNo ? `Invoice ${invoice.invoiceNo}` : 'Scanned invoice';
+    setNotes((prev) => (prev ? `${prev} · ${ref}` : ref));
+    setIsCreateOpen(true);
+    if (matched.length > 0) {
+      toast.success(
+        `Invoice read: ${matched.length} line${matched.length === 1 ? '' : 's'} matched`,
+        unmatched.length > 0
+          ? `Unmatched: ${unmatched.slice(0, 3).join(', ')}${unmatched.length > 3 ? '…' : ''} — add them in Inventory first.`
+          : 'Review and create the draft.'
+      );
+    } else {
+      toast.error('No lines matched your catalogue', `Found ${unmatched.length} line${unmatched.length === 1 ? '' : 's'} but none match existing products.`);
     }
   };
 
@@ -391,6 +434,14 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
             >
               <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">New Purchase Order</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsInvoiceOpen(true)}
+                  title="Photograph a supplier invoice to prefill this order (Meta Muse)"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all"
+                >
+                  <Scan size={14} /> Scan invoice
+                </button>
                 <button onClick={() => setIsCreateOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                   <X size={24} />
                 </button>
@@ -493,6 +544,14 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       </AnimatePresence>
 
       <AnimatePresence>
+      {isInvoiceOpen && (
+        <ScannerModal
+          mode="invoice"
+          onScan={handleInvoiceScan}
+          onClose={() => setIsInvoiceOpen(false)}
+        />
+      )}
+
         {receiveOrder && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm no-print">
             <motion.div

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Sparkles, RefreshCw, Zap, TrendingUp, AlertTriangle, ShieldCheck, PieChart, Activity, ExternalLink, Globe, BookOpen, Leaf, Lock } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Sparkles, RefreshCw, Zap, TrendingUp, AlertTriangle, ShieldCheck, PieChart, Activity, ExternalLink, Globe, BookOpen, Leaf, Lock, PackagePlus } from 'lucide-react';
 import { AppState } from '../types';
 import { getInventoryInsightsMuse, InsightResult } from '../services/museService';
 import { insightsNoticeFor } from '../lib/aiNotice';
+import { forecastDemand } from '../lib/forecast';
 import { getEntitlements } from '../constants/plans';
 
 interface AIInsightsProps {
@@ -15,6 +16,10 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
   const [insightError, setInsightError] = useState<string | null>(null);
 
   const isMegaPro = getEntitlements(state.currentUser).esgAudit;
+  const forecastRisks = useMemo(
+    () => forecastDemand(state?.products || [], state?.sales || []).filter((r) => r.status !== 'ok').slice(0, 8),
+    [state]
+  );
 
   const fetchInsights = async () => {
     setLoading(true);
@@ -144,6 +149,53 @@ const AIInsights: React.FC<AIInsightsProps> = ({ state }) => {
                 ) : (
                   <p className="text-slate-400 font-medium text-sm">Click the refresh button to generate your business insights</p>
                 )}
+              </div>
+            )}
+          </div>
+
+          {/* Demand Forecast (on-device math, no AI cost) */}
+          <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 rounded-xl">
+                <PackagePlus size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Demand Forecast</h3>
+                <p className="text-xs text-slate-400">30-day sales velocity · 7-day supplier lead time · suggested cover orders.</p>
+              </div>
+            </div>
+            {forecastRisks.length === 0 ? (
+              <p className="text-sm text-slate-500 py-6 text-center">No restock risks — every selling product covers the next 14 days.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left mt-4 min-w-[560px]">
+                  <thead>
+                    <tr className="text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                      <th className="py-3 pr-4">Product</th>
+                      <th className="py-3 pr-4">On hand</th>
+                      <th className="py-3 pr-4">Sells/day</th>
+                      <th className="py-3 pr-4">Runs out in</th>
+                      <th className="py-3 pr-4">Status</th>
+                      <th className="py-3 text-right">Suggested order</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {forecastRisks.map((r) => (
+                      <tr key={r.productId} className="border-b border-slate-50 dark:border-slate-800/50 last:border-0">
+                        <td className="py-3 pr-4 text-xs font-bold text-slate-900 dark:text-white uppercase truncate max-w-[160px]">{r.productName}</td>
+                        <td className="py-3 pr-4 text-xs font-medium text-slate-500 tabular-nums">{r.onHand}</td>
+                        <td className="py-3 pr-4 text-xs font-medium text-slate-500 tabular-nums">{r.avgDaily}</td>
+                        <td className="py-3 pr-4 text-xs font-bold text-slate-700 dark:text-slate-300 tabular-nums">{r.status === 'out' ? 'now' : `${r.daysLeft}d`}</td>
+                        <td className="py-3 pr-4">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${r.status === 'out' ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/20' : r.status === 'critical' ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/20' : 'bg-amber-50 text-amber-600 dark:bg-amber-900/20'}`}>
+                            {r.status === 'out' ? 'Out' : r.status}
+                          </span>
+                        </td>
+                        <td className="py-3 text-right text-sm font-bold text-indigo-600 tabular-nums">{r.suggestedOrder > 0 ? `Order ${r.suggestedOrder}` : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

@@ -167,6 +167,85 @@ export const identifyProductFromImage = async (base64Image: string): Promise<str
   }
 };
 
+/**
+ * Answers a plain-English question about the shop's numbers using ONLY the
+ * provided digest — the model never sees raw rows and must not invent figures.
+ */
+export const askReportQuestion = async (
+  question: string,
+  digest: unknown,
+): Promise<{ text: string; errorCode?: string }> => {
+  const outcome = await chatWithMuseStatus([
+    {
+      role: 'system',
+      content: 'You are a retail analyst for a Nigerian shop. Answer the owner\'s question using ONLY the numbers provided — never invent figures, and say plainly when the numbers cannot answer it. Reply in plain text, short.',
+    },
+    { role: 'user', content: `Numbers: ${JSON.stringify(digest)}\n\nQuestion: ${question}` },
+  ], 'insights');
+  if (outcome.source === 'ai' && outcome.text) return { text: outcome.text };
+  return { text: '', errorCode: outcome.errorCode || 'GATEWAY_ERROR' };
+};
+
+export interface InvoiceLine {
+  name: string;
+  sku?: string;
+  quantity: number;
+  unitCost: number;
+}
+
+export interface InvoiceExtraction {
+  supplier?: string;
+  invoiceNo?: string;
+  date?: string;
+  lines: InvoiceLine[];
+}
+
+/**
+ * Reads a supplier invoice/delivery-note photo into structured order lines.
+ * Powers the Purchase Orders "Scan Invoice" flow, which prefills a draft order.
+ */
+export const extractInvoiceFromImage = async (base64Image: string): Promise<InvoiceExtraction | null> => {
+  try {
+    const { text } = await invokeAi({
+      provider: 'muse',
+      purpose: 'scan',
+      image: base64Image,
+      mimeType: 'image/jpeg',
+      prompt: 'Read this supplier invoice or delivery note. Reply with ONLY a single JSON object, no other text, no markdown fences, shaped like {"supplier":"name or empty string","invoiceNo":"","date":"","lines":[{"name":"item name","sku":"","quantity":1,"unitCost":0}]}. Quantities must be whole numbers of 1 or more; costs numbers of 0 or more; skip totals, tax and header rows.',
+    });
+    if (!text) return null;
+    let parsed: InvoiceExtraction | null = null;
+    try {
+      parsed = JSON.parse(text) as InvoiceExtraction;
+    } catch {
+      // Tolerate a little surrounding prose: parse the first {...} block.
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        try { parsed = JSON.parse(match[0]) as InvoiceExtraction; } catch { parsed = null; }
+      }
+    }
+    if (!parsed || !Array.isArray(parsed.lines)) return null;
+    const lines = parsed.lines
+      .map((l) => ({
+        name: String(l?.name || '').trim(),
+        sku: String(l?.sku || '').trim() || undefined,
+        quantity: Math.floor(Number(l?.quantity)),
+        unitCost: Number(l?.unitCost),
+      }))
+      .filter((l) => l.name && Number.isInteger(l.quantity) && l.quantity >= 1 && l.unitCost >= 0);
+    if (lines.length === 0) return null;
+    return {
+      supplier: String(parsed.supplier || '').trim() || undefined,
+      invoiceNo: String(parsed.invoiceNo || '').trim() || undefined,
+      date: String(parsed.date || '').trim() || undefined,
+      lines,
+    };
+  } catch (error) {
+    console.error('Invoice Extraction Error:', error);
+    return null;
+  }
+};
+
 export interface ProductExtraction {
   name: string;
   sku: string;

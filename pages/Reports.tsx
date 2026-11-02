@@ -13,7 +13,8 @@ import {
   Users,
   Briefcase,
   PieChart as PieIcon,
-  Zap
+  Zap,
+  Sparkles
 } from 'lucide-react';
 import { 
   XAxis, 
@@ -32,6 +33,9 @@ import {
 import { AppState } from '../types';
 import { TRANSLATIONS } from '../constants/translations';
 import { downloadCsv } from '../lib/csv';
+import { buildReportDigest } from '../lib/reportQuery';
+import { askReportQuestion } from '../services/museService';
+import { insightsNoticeFor } from '../lib/aiNotice';
 
 interface ReportsProps {
   state: AppState;
@@ -46,6 +50,11 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
   const users = state?.users || [];
   
   const [revenuePeriod, setRevenuePeriod] = useState<'day' | 'week' | 'month'>('day');
+  const [query, setQuery] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [asking, setAsking] = useState(false);
+  const [queryError, setQueryError] = useState<string | null>(null);
+  const digest = useMemo(() => buildReportDigest(sales), [sales]);
 
   const revenueTrendData = useMemo(() => {
     const now = new Date();
@@ -135,6 +144,18 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
     ]);
   };
 
+  const handleAsk = async (preset?: string) => {
+    const question = (preset ?? query).trim();
+    if (!question || asking) return;
+    setAsking(true);
+    setQueryError(null);
+    setAnswer('');
+    const res = await askReportQuestion(question, digest);
+    if (res.errorCode) setQueryError(insightsNoticeFor(res.errorCode));
+    else setAnswer(res.text);
+    setAsking(false);
+  };
+
   const formatCurrency = (val: number) => `${settings?.currency || '₦'}${(val || 0).toLocaleString()}`;
 
   return (
@@ -168,6 +189,55 @@ const Reports: React.FC<ReportsProps> = ({ state }) => {
             </h3>
           </div>
         ))}
+      </div>
+
+      {/* Ask your numbers (Meta Muse) */}
+      <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 rounded-xl">
+            <Sparkles size={20} />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Ask your numbers</h2>
+            <p className="text-xs text-slate-400">Plain-English answers from your sales data · Powered by Meta Muse</p>
+          </div>
+        </div>
+        <form onSubmit={(e) => { e.preventDefault(); void handleAsk(); }} className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="e.g. What sold best recently?"
+            aria-label="Ask a question about your sales"
+            className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+          />
+          <button
+            type="submit"
+            disabled={asking || !query.trim()}
+            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-600/20 active:scale-95 disabled:opacity-50"
+          >
+            {asking ? 'Thinking…' : 'Ask'}
+          </button>
+        </form>
+        <div className="flex flex-wrap gap-2 mt-3">
+          {['What sold best recently?', 'Which payment method brings the most money?', 'Summarise the last 14 days of sales.'].map((s) => (
+            <button
+              key={s}
+              type="button"
+              disabled={asking}
+              onClick={() => { setQuery(s); void handleAsk(s); }}
+              className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-slate-600 dark:text-slate-300 text-[11px] font-semibold rounded-xl border border-slate-200/70 dark:border-slate-700/60 transition-all disabled:opacity-50"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        {queryError && <p className="mt-4 text-sm font-medium text-rose-500">{queryError}</p>}
+        {answer && (
+          <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line">
+            {answer}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">

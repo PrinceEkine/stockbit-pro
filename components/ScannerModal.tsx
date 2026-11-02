@@ -11,12 +11,12 @@ import {
   Flashlight,
   Check
 } from 'lucide-react';
-import { identifyProductFromImage, extractProductDetailsFromImage } from '../services/museService';
+import { identifyProductFromImage, extractProductDetailsFromImage, extractInvoiceFromImage } from '../services/museService';
 
 interface ScannerModalProps {
   onScan: (result: string | any, stayOpen?: boolean) => void;
   onClose: () => void;
-  mode?: 'id' | 'details' | 'price_check';
+  mode?: 'id' | 'details' | 'price_check' | 'invoice';
   cartCount?: number;
 }
 
@@ -104,17 +104,20 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
       const base64Image = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
       
       try {
-        const result = mode === 'details' 
+        const result: any = mode === 'details' 
           ? await extractProductDetailsFromImage(base64Image)
+          : mode === 'invoice'
+            ? await extractInvoiceFromImage(base64Image)
           : await identifyProductFromImage(base64Image);
 
         if (!isMounted.current) return;
 
         if (result) {
           playBeep('success');
-          if (mode === 'details') {
+          if (mode === 'details' || mode === 'invoice') {
             setLastScannedName(typeof result === 'string' ? result : (result.name || result.sku));
             setStatus('success_feedback');
+            if (mode === 'invoice') setLastScannedName('Invoice captured');
             // Longer delay for full detail extraction
             setTimeout(() => { 
               if (isMounted.current) {
@@ -151,7 +154,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
   const nativeDetect = useCallback(async () => {
     const BD = (window as any).BarcodeDetector;
     if (!BD || !videoRef.current || status !== 'active' || !isMounted.current) return;
-    if (mode === 'details') return;
+    if (mode !== 'id' && mode !== 'price_check') return;
     try {
       detectorRef.current = detectorRef.current
         || new BD({ formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'itf'] });
@@ -199,7 +202,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
 
   useEffect(() => {
     if (isCameraActive && status === 'active' && isMounted.current) {
-      if ((window as any).BarcodeDetector && mode !== 'details') {
+      if ((window as any).BarcodeDetector && (mode === 'id' || mode === 'price_check')) {
         const fast = window.setInterval(nativeDetect, 400);
         const slow = window.setInterval(captureAndScan, 6000);
         return () => { clearInterval(fast); clearInterval(slow); };
@@ -228,7 +231,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onScan, onClose, mode = 'id
             </div>
             <div>
               <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
-                {mode === 'details' ? 'Smart Extractor' : 'Strict Sensor'}
+                {mode === 'details' ? 'Smart Extractor' : mode === 'invoice' ? 'Invoice Reader' : 'Strict Sensor'}
               </h3>
               <p className="text-[8px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5">
                 {status === 'processing' ? 'ANALYZING FRAME...' : isCameraActive ? 'AUTO-SCAN ACTIVE' : 'CENTER ON PRODUCT CODE'}
