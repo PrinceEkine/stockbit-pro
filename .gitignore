@@ -31,3 +31,6 @@ yarn-error.log*
 # Supabase CLI
 supabase/.temp/
 .supabase/
+
+# Local video production (captures, audio, renders — large, regenerable)
+video/

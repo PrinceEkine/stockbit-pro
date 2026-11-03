@@ -68,6 +68,32 @@ records it gives you, and set the sender to something like
 `no-reply@yourdomain.com`. Set the sender name to "StockBit Pro" in
 Authentication → SMTP Settings either way.
 
+## Dashboard field mapping (Supabase → Authentication → SMTP Settings)
+
+Enable "Custom SMTP", then fill in exactly one of these:
+
+Gmail (dedicated business mailbox — never your personal address):
+- Sender email: your sender mailbox (e.g. `stockbitpro@gmail.com`)
+- Sender name: `StockBit Pro`
+- Host: `smtp.gmail.com`, Port: `587`
+- Username: the same sender mailbox address
+- Password: a Google App Password for that mailbox, NOT its login password
+  (sign in to that mailbox → Google Account → Security →
+  2-Step Verification ON → App passwords → generate one for "Mail" and
+  paste the 16-letter code, no spaces)
+
+Brevo single sender (better deliverability, still no domain):
+- Brevo dashboard → Settings → Senders & IP → add and verify your sender
+  email (click the confirmation it sends you)
+- Brevo → SMTP & API → copy the SMTP login and key
+- Sender email: the verified address; Sender name: `StockBit Pro`
+- Host: `smtp-relay.brevo.com`, Port: `587`
+- Username: your Brevo SMTP login; Password: the SMTP key
+
+After saving, test with a real signup using an address you own (Gmail, Yahoo,
+and Outlook each, ideally). If mail lands in spam on Gmail, that is expected
+for a personal-Gmail sender — Brevo or a real domain fixes it.
+
 Tip: for deliverability on a real domain, configure a custom SMTP sender
 (Authentication → SMTP Settings) such as Resend or Postmark, and set the sender
 name to "StockBit Pro".
