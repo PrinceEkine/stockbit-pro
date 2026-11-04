@@ -697,7 +697,8 @@ Be concise and professional. Never invent features or prices. Currently respondi
               <img
                 src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=1000"
                 alt="Nigerian Retail Excellence"
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3s]"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                style={{ transitionDuration: '3s' }}
               />
               <div className="absolute inset-0 bg-indigo-900/20"></div>
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] bg-white dark:bg-slate-800 p-8 rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.15)] space-y-6">

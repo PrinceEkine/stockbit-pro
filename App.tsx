@@ -22,7 +22,7 @@ import NotificationPanel from './components/NotificationPanel';
 import { TrialBanner } from './components/TrialNurture';
 import PasswordResetModal from './components/PasswordResetModal';
 import BottomNavigation from './components/BottomNavigation';
-import StockBotWidget from './components/StockBotWidget';
+
 import AboutUs from './pages/AboutUs';
 import HelpCenter from './pages/HelpCenter';
 import TermsOfService from './pages/TermsOfService';
@@ -546,15 +546,6 @@ const App: React.FC = () => {
             onUnlock={handleUnlock}
             onGoogleUnlock={handleGoogleUnlock}
             onSignOut={handleLogout}
-          />
-        )}
-        {store.isLoggedIn && !locked && (
-          <StockBotWidget
-            companyName={store.currentUser?.companyName || store.settings.companyName}
-            userName={store.currentUser?.name || ''}
-            currency={store.settings.currency}
-            products={store.products || []}
-            sales={store.sales || []}
           />
         )}
       </main>
